@@ -1,0 +1,422 @@
+"use client";
+
+import { useState, FormEvent, useEffect } from "react";
+import { useCartStore } from "@/store/cartStore";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import PaymentMethodSelector from "@/components/checkout/PaymentMethodSelector";
+import OrderSummary from "@/components/checkout/OrderSummary";
+import { createClient } from "@/lib/supabase/client";
+
+export default function CheckoutPage() {
+  const router = useRouter();
+  const items = useCartStore((state) => state.items);
+  const getTotal = useCartStore((state) => state.getTotal);
+  const clearCart = useCartStore((state) => state.clearCart);
+
+  const [customerInfo, setCustomerInfo] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+  });
+  const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "card">("mpesa");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  const total = getTotal();
+
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+
+      // If user is authenticated, pre-fill their info
+      if (user) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("email, full_name, phone")
+          .eq("id", user.id)
+          .single();
+
+        if (profile) {
+          setCustomerInfo({
+            name: profile.full_name || "",
+            email: profile.email || user.email || "",
+            phone: profile.phone || "",
+            address: "",
+          });
+        } else {
+          setCustomerInfo({
+            name: user.user_metadata?.full_name || "",
+            email: user.email || "",
+            phone: "",
+            address: "",
+          });
+        }
+      }
+      setCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, []);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      // Require authentication for checkout
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (!user || authError) {
+        setError(
+          "Please sign in to complete your purchase. This allows us to track your orders."
+        );
+        setLoading(false);
+        // Redirect to signin with return URL
+        router.push(`/signin?redirect=/checkout`);
+        return;
+      }
+
+      // Check if database is configured
+      const hasDatabase =
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        process.env.NEXT_PUBLIC_SUPABASE_URL !== "placeholder";
+
+      if (!hasDatabase) {
+        // Preview mode - simulate successful checkout
+        clearCart();
+        const mockOrderId = `order_${Date.now()}`;
+        router.push(`/checkout/success?order_id=${mockOrderId}`);
+        return;
+      }
+
+      // Create order
+      const orderResponse = await fetch("/api/orders/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            product_id: item.product.id,
+            quantity: item.quantity,
+            price: item.product.price,
+          })),
+          customer_info: customerInfo,
+          sale_type: "online",
+        }),
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error("Failed to create order");
+      }
+
+      const { order_id } = await orderResponse.json();
+
+      // Initiate payment
+      const paymentResponse = await fetch("/api/payments/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id,
+          amount: total,
+          method: paymentMethod,
+          phone: paymentMethod === "mpesa" ? customerInfo.phone : undefined,
+          email: paymentMethod === "card" ? customerInfo.email : undefined,
+        }),
+      });
+
+      if (!paymentResponse.ok) {
+        throw new Error("Failed to initiate payment");
+      }
+
+      const paymentData = await paymentResponse.json();
+
+      if (paymentMethod === "card" && paymentData.authorization_url) {
+        // Redirect to Paystack payment page
+        window.location.href = paymentData.authorization_url;
+      } else {
+        // For M-Pesa, show success message and redirect
+        clearCart();
+        router.push(`/checkout/success?order_id=${order_id}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+      setLoading(false);
+    }
+  };
+
+  // Show loading state while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center animate-fade-in">
+        <div className="max-w-md mx-auto">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center animate-fade-in">
+        <div className="max-w-md mx-auto">
+          <svg
+            className="w-24 h-24 mx-auto text-gray-300 mb-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+          <h1 className="text-3xl font-bold mb-4 text-gray-900">
+            Your cart is empty
+          </h1>
+          <p className="text-gray-600 mb-8">
+            Add some products to your cart to continue
+          </p>
+          <button
+            onClick={() => router.push("/products")}
+            className="px-8 py-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark hover:shadow-lg transition-all hover:scale-105"
+          >
+            Continue Shopping
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show sign-in prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto px-4 py-16 animate-fade-in">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 md:p-12 text-center">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg
+                className="w-10 h-10 text-primary"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+              Sign In Required
+            </h1>
+            <p className="text-lg text-gray-600 mb-8 max-w-lg mx-auto">
+              Please sign in to complete your purchase. This allows us to track
+              your orders and provide you with order history.
+            </p>
+
+            <div className="space-y-4">
+              <Link
+                href={`/signin?redirect=/checkout`}
+                className="inline-block w-full md:w-auto px-8 py-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark transition-all hover:scale-105"
+              >
+                Sign In to Continue
+              </Link>
+              <div>
+                <p className="text-sm text-gray-500 mb-2">
+                  Don't have an account?
+                </p>
+                <Link
+                  href={`/signup?redirect=/checkout`}
+                  className="text-primary font-semibold hover:text-primary-dark underline"
+                >
+                  Create an account
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 md:py-12">
+      {/* Breadcrumb */}
+      <nav className="mb-8 text-sm text-gray-600">
+        <Link href="/" className="hover:text-primary">
+          Home
+        </Link>
+        <span className="mx-2">/</span>
+        <Link href="/products" className="hover:text-primary">
+          Products
+        </Link>
+        <span className="mx-2">/</span>
+        <span className="text-gray-900">Checkout</span>
+      </nav>
+
+      <h1 className="text-4xl font-bold mb-8 text-gray-900">Checkout</h1>
+
+      <form
+        onSubmit={handleSubmit}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+      >
+        <div className="lg:col-span-2 space-y-6">
+          {/* Customer Information */}
+          <div className="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100 animate-slide-up">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900">
+              Customer Information
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customerInfo.name}
+                  onChange={(e) =>
+                    setCustomerInfo({ ...customerInfo, name: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={customerInfo.email}
+                  onChange={(e) =>
+                    setCustomerInfo({ ...customerInfo, email: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700">
+                  Phone *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={customerInfo.phone}
+                  onChange={(e) =>
+                    setCustomerInfo({ ...customerInfo, phone: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  placeholder="+254 700 000 000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-700">
+                  Delivery Address *
+                </label>
+                <textarea
+                  required
+                  value={customerInfo.address}
+                  onChange={(e) =>
+                    setCustomerInfo({
+                      ...customerInfo,
+                      address: e.target.value,
+                    })
+                  }
+                  rows={4}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                  placeholder="Enter your full delivery address"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Method */}
+          <PaymentMethodSelector
+            paymentMethod={paymentMethod}
+            onMethodChange={setPaymentMethod}
+          />
+
+          {error && (
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl animate-fade-in">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                {error}
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 px-6 bg-primary text-white rounded-none font-semibold text-lg hover:bg-primary-dark hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg
+                  className="animate-spin h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Processing...
+              </span>
+            ) : (
+              `Pay KES ${total.toLocaleString()}`
+            )}
+          </button>
+        </div>
+
+        {/* Order Summary */}
+        <div className="lg:col-span-1">
+          <OrderSummary items={items} total={total} />
+        </div>
+      </form>
+    </div>
+  );
+}
