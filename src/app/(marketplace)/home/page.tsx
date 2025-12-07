@@ -103,12 +103,62 @@ export default async function HomePage() {
     }
   }
 
+  // Fetch New Arrivals - Latest products added
+  let { data: newArrivals, error: newArrivalsError } = await supabase
+    .from("products")
+    .select("*")
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  // If no products with status='active', try without status filter
+  if ((!newArrivals || newArrivals.length === 0) && !newArrivalsError) {
+    const { data: allNewArrivals, error: allNewArrivalsError } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(8);
+    newArrivals = allNewArrivals;
+    newArrivalsError = allNewArrivalsError;
+  }
+
+  // Fetch inventory for new arrivals
+  let newArrivalsInventoryMap = new Map();
+  if (newArrivals && newArrivals.length > 0) {
+    const newArrivalIds = newArrivals.map((p) => p.id);
+    const { data: newArrivalsInventory, error: newArrivalsInventoryError } =
+      await supabase
+        .from("inventory")
+        .select("product_id, stock_quantity, reserved_quantity")
+        .in("product_id", newArrivalIds);
+
+    if (newArrivalsInventoryError) {
+      console.error(
+        "Error fetching new arrivals inventory:",
+        newArrivalsInventoryError
+      );
+    }
+
+    if (newArrivalsInventory) {
+      newArrivalsInventory.forEach((inv: any) => {
+        const available = Math.max(
+          0,
+          (inv.stock_quantity || 0) - (inv.reserved_quantity || 0)
+        );
+        newArrivalsInventoryMap.set(inv.product_id, available);
+      });
+    }
+  }
+
   // Log errors for debugging
   if (productsError) {
     console.error("Error fetching products:", productsError);
   }
   if (flashSaleError) {
     console.error("Error fetching flash sale products:", flashSaleError);
+  }
+  if (newArrivalsError) {
+    console.error("Error fetching new arrivals:", newArrivalsError);
   }
 
   // Handle errors gracefully - fallback to empty array
@@ -136,6 +186,14 @@ export default async function HomePage() {
       flash_sale_end_date: product.flash_sale_end
         ? new Date(product.flash_sale_end)
         : null,
+    };
+  });
+
+  const newArrivalsWithStock = (newArrivals || []).map((product: any) => {
+    const stock = newArrivalsInventoryMap.get(product.id);
+    return {
+      ...product,
+      available_stock: stock !== undefined ? stock : undefined,
     };
   });
 
@@ -175,6 +233,62 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* New Arrivals Section */}
+      {newArrivalsWithStock.length > 0 && (
+        <section className="bg-gradient-to-br from-gray-50 to-white py-16 md:py-24">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12 animate-fade-in">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-primary-dark text-white px-4 py-2 rounded-full mb-4 font-bold text-sm shadow-lg">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                  />
+                </svg>
+                NEW ARRIVALS
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+                Just In
+              </h2>
+              <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+                Discover our latest additions. Fresh styles added just for you.
+              </p>
+            </div>
+
+            <ProductGrid products={newArrivalsWithStock} />
+
+            <div className="text-center mt-12">
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark hover:shadow-xl transition-all hover:scale-105"
+              >
+                View All Products
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 8l4 4m0 0l-4 4m4-4H3"
+                  />
+                </svg>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Flash Sale Section */}
       {flashSaleWithStock.length > 0 && (

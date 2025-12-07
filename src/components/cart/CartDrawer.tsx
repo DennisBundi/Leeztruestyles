@@ -19,7 +19,7 @@ export default function CartDrawer() {
       {/* Cart Button - Floating */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 z-50 bg-primary text-white rounded-none p-4 shadow-2xl hover:bg-primary-dark hover:shadow-primary/50 transition-all hover:scale-110 active:scale-95 group"
+        className="fixed bottom-6 left-6 z-50 bg-primary text-white rounded-full p-4 shadow-2xl hover:bg-primary-dark hover:shadow-primary/50 transition-all hover:scale-110 active:scale-95 group"
         aria-label="Open cart"
       >
         <svg className="w-6 h-6 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,9 +42,8 @@ export default function CartDrawer() {
 
       {/* Drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={`fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
       >
         <div className="flex flex-col h-full">
           {/* Header */}

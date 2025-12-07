@@ -130,18 +130,15 @@ export default function ProductCard({ product }: ProductCardProps) {
             }
           }}
           disabled={isOutOfStock}
-          className={`w-full py-3 px-4 rounded-none font-semibold transition-all duration-200 ${
-            isOutOfStock
+          className={`w-full py-3 px-4 rounded-none font-semibold transition-all duration-200 ${isOutOfStock
               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
               : isOnSale
-              ? "bg-gradient-to-r from-red-500 to-pink-500 text-white hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-              : "bg-primary text-white hover:bg-primary-dark hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-          }`}
+                ? "bg-gradient-to-r from-red-500 to-pink-500 text-white hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+                : "bg-primary text-white hover:bg-primary-dark hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+            }`}
         >
           {isOutOfStock
             ? "Out of Stock"
-            : isOnSale
-            ? "Add to Cart - On Sale!"
             : "Add to Cart"}
         </button>
       </div>
