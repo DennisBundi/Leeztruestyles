@@ -1,598 +1,201 @@
-"use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+'use client'
 
-function SignUpForm() {
-  const router = useRouter();
+import React, { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { signup } from '@/app/auth/actions';
+
+import { Suspense } from 'react';
+
+function SignUpContent() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/";
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    fullName: "",
-  });
-  const [loading, setLoading] = useState(false);
+  const redirectUrl = searchParams.get('redirect') || '/';
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async (formData: FormData) => {
     setError(null);
+    setSuccessMessage(null);
 
-    try {
-      const supabase = createClient();
-
-      // Check if Supabase is properly configured (only on client side)
-      if (typeof window !== "undefined") {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-        if (
-          !supabaseUrl ||
-          !supabaseKey ||
-          supabaseUrl === "placeholder" ||
-          supabaseKey === "placeholder" ||
-          supabaseUrl.trim() === "" ||
-          supabaseKey.trim() === ""
-        ) {
-          setError(
-            "Supabase is not configured. Please check your .env.local file has NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY set."
-          );
-          setLoading(false);
-          return;
-        }
+    startTransition(async () => {
+      const result = await signup(formData);
+      if (result?.error) {
+        setError(result.error);
+      } else if (result?.message) {
+        setSuccessMessage(result.message);
       }
-
-      console.log("Attempting to sign up user:", formData.email);
-
-      // Sign up the user
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-          },
-          email_redirect_to:
-            typeof window !== "undefined"
-              ? `${window.location.origin}/auth/callback`
-              : undefined,
-        },
-      });
-
-      console.log("Sign up response:", {
-        hasData: !!data,
-        hasUser: !!data?.user,
-        hasSession: !!data?.session,
-        userId: data?.user?.id,
-        error: signUpError,
-      });
-
-      if (signUpError) {
-        console.error("Sign up error details:", signUpError);
-        setError(
-          `Failed to create account: ${signUpError.message}. Please check your Supabase configuration.`
-        );
-        setLoading(false);
-        return;
-      }
-
-      // Check if email confirmation is required
-      if (data.user && !data.session) {
-        // User created but needs email confirmation
-        // Still create the profile and assign admin role (if applicable) for when they confirm
-        console.log(
-          "User created but email confirmation required. User ID:",
-          data.user.id
-        );
-
-        // Try to create profile even without session (might work if RLS allows)
-        try {
-          await supabase.from("users").insert({
-            id: data.user.id,
-            email: formData.email,
-            full_name: formData.fullName,
-          });
-        } catch (profileErr) {
-          console.log(
-            "Profile creation will happen on email confirmation via trigger"
-          );
-        }
-
-        setNeedsEmailConfirmation(true);
-        setSuccess(true);
-        setTimeout(() => {
-          router.push("/signin");
-          router.refresh();
-        }, 3000);
-        return;
-      }
-
-      if (!data || !data.user) {
-        console.error("No user data returned from signup");
-        setError(
-          "Account creation failed - no user data returned. Please check your Supabase configuration and try again."
-        );
-        setLoading(false);
-        return;
-      }
-
-      console.log("User created successfully:", data.user.id);
-
-      // Create user profile (if trigger doesn't handle it)
-      // The trigger should auto-create it, but we'll try manually as backup
-      const { error: profileError } = await supabase.from("users").insert({
-        id: data.user.id,
-        email: formData.email,
-        full_name: formData.fullName,
-      });
-
-      if (profileError) {
-        console.error("Error creating profile:", profileError);
-        // Check if profile was created by trigger (might already exist)
-        const { data: existingProfile } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", data.user.id)
-          .single();
-
-        if (!existingProfile) {
-          // Profile doesn't exist and creation failed
-          setError(
-            `Account created but profile setup failed: ${profileError.message}. Please contact support or try signing in - the profile may be created automatically.`
-          );
-          setLoading(false);
-          return;
-        }
-        // Profile exists (created by trigger), continue
-        console.log("Profile already exists (created by trigger)");
-      }
-
-      // Check if this email should get admin role and assign it
-      const adminEmails = ["leeztruestyles44@gmail.com"];
-      const isAdminEmail = adminEmails.includes(formData.email.toLowerCase());
-
-      if (isAdminEmail) {
-        console.log("🔐 Admin email detected, assigning admin role...");
-
-        // Wait for session to be fully established in cookies
-        // This is critical for server-side API to read the session
-        let sessionReady = false;
-        let sessionWaitAttempts = 10;
-
-        while (sessionWaitAttempts > 0 && !sessionReady) {
-          const {
-            data: { session },
-            error: sessionError,
-          } = await supabase.auth.getSession();
-
-          if (session && !sessionError) {
-            console.log("✅ Session confirmed on client side");
-            sessionReady = true;
-            // Additional wait to ensure cookies are set in browser
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            break;
-          }
-
-          console.log(
-            `⏳ Waiting for session... (${sessionWaitAttempts} attempts left)`
-          );
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          sessionWaitAttempts--;
-        }
-
-        if (!sessionReady) {
-          console.warn(
-            "⚠️ Session not ready, admin role will be assigned on sign-in"
-          );
-        } else {
-          // Try to create employee record directly from client FIRST
-          // RLS allows users to insert their own employee record, so this should work
-          // This avoids the session cookie issue with API calls
-          console.log("➕ Attempting direct employee record creation...");
-          let adminAssigned = false;
-
-          try {
-            const employeeCode = `EMP-${Date.now().toString().slice(-6)}`;
-            const { data: directInsert, error: directError } = await supabase
-              .from("employees")
-              .insert({
-                user_id: data.user.id,
-                role: "admin",
-                employee_code: employeeCode,
-              })
-              .select()
-              .single();
-
-            if (directError) {
-              console.warn("⚠️ Direct insert failed:", directError.message);
-              console.log("🔄 Trying API fallback...");
-
-              // Fallback to API call (though it may also fail due to session cookie issue)
-              try {
-                const assignAdminResponse = await fetch(
-                  "/api/auth/assign-admin",
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                  }
-                );
-
-                const responseText = await assignAdminResponse.text();
-                console.log(
-                  "📥 API Response status:",
-                  assignAdminResponse.status
-                );
-
-                if (assignAdminResponse.ok) {
-                  try {
-                    const adminData = JSON.parse(responseText);
-                    console.log("✅ Admin role assigned via API:", adminData);
-                    adminAssigned = true;
-                  } catch (e) {
-                    console.log(
-                      "✅ Admin role assigned via API (response not JSON)"
-                    );
-                    adminAssigned = true;
-                  }
-                } else {
-                  const errorData = responseText
-                    ? JSON.parse(responseText)
-                    : { error: "Unknown error" };
-                  console.error(
-                    "❌ API also failed:",
-                    errorData?.error || `HTTP ${assignAdminResponse.status}`
-                  );
-                  console.warn(
-                    "💡 Admin role will be assigned on dashboard access (dashboard layout has fallback)"
-                  );
-                }
-              } catch (apiError: any) {
-                console.error("❌ API call error:", apiError.message);
-                console.warn(
-                  "💡 Admin role will be assigned on dashboard access (dashboard layout has fallback)"
-                );
-              }
-            } else {
-              console.log(
-                "✅ Admin role created successfully via direct insert:",
-                directInsert
-              );
-              adminAssigned = true;
-            }
-          } catch (directErr: any) {
-            console.error("❌ Direct insert error:", directErr.message);
-            console.warn(
-              "💡 Admin role will be assigned on dashboard access (dashboard layout has fallback)"
-            );
-          }
-
-          // Wait for database to update
-          if (adminAssigned) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
-        }
-      }
-
-      // Check user's actual role from database (with retry)
-      let userRole: string | null = null;
-      let retries = 8; // Increased retries for admin emails
-
-      console.log("🔍 Checking user role in database...");
-      while (retries > 0 && !userRole) {
-        try {
-          const { data: employeeData, error: roleError } = await supabase
-            .from("employees")
-            .select("role")
-            .eq("user_id", data.user.id)
-            .single();
-
-          if (!roleError && employeeData) {
-            userRole = employeeData.role;
-            console.log("✅ User role found:", userRole);
-            break;
-          } else {
-            console.log(
-              `⏳ Role check attempt ${9 - retries}/8 failed:`,
-              roleError?.message || "No employee record found"
-            );
-            if (retries > 1) {
-              // Wait longer between retries for admin emails
-              const waitTime = isAdminEmail ? 1500 : 500;
-              console.log(`⏳ Waiting ${waitTime}ms before retry...`);
-              await new Promise((resolve) => setTimeout(resolve, waitTime));
-            }
-          }
-        } catch (roleCheckError: any) {
-          console.warn(
-            "⚠️ Error checking user role:",
-            roleCheckError?.message || roleCheckError
-          );
-          if (retries > 1) {
-            await new Promise((resolve) =>
-              setTimeout(resolve, isAdminEmail ? 1500 : 500)
-            );
-          }
-        }
-        retries--;
-      }
-
-      if (!userRole && isAdminEmail) {
-        console.warn("⚠️ Admin email but role not found after all retries");
-        console.warn(
-          "💡 This might be a timing issue. Role will be checked again on dashboard load."
-        );
-      }
-
-      setSuccess(true);
-
-      // Final session verification before redirect
-      // This ensures the server-side layout can read the session
-      console.log("🔐 Final session verification before redirect...");
-      let sessionEstablished = false;
-      let sessionRetries = 8;
-
-      while (sessionRetries > 0 && !sessionEstablished) {
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-        if (session && !sessionError) {
-          sessionEstablished = true;
-          console.log("✅ Final session confirmed, ready to redirect");
-          break;
-        }
-        console.log(
-          `⏳ Waiting for final session sync... (${sessionRetries} attempts left)`
-        );
-        if (sessionError) {
-          console.warn("Session error:", sessionError.message);
-        }
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        sessionRetries--;
-      }
-
-      if (!sessionEstablished) {
-        console.warn(
-          "⚠️ Session not fully established, but proceeding with redirect"
-        );
-        console.warn(
-          "💡 If dashboard shows auth error, try refreshing the page"
-        );
-      }
-
-      // Additional wait to ensure cookies are fully set
-      console.log("⏳ Waiting for cookies to be set...");
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Verify session and cookies are ready
-      const {
-        data: { session: finalSession },
-      } = await supabase.auth.getSession();
-
-      if (finalSession) {
-        console.log("✅ Session verified on client side");
-
-        // Additional wait to ensure browser has processed cookies
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } else {
-        console.warn("⚠️ Session not found in final check");
-        console.warn(
-          "💡 Cookies may not be set yet. Dashboard will handle auth check."
-        );
-      }
-
-      // Redirect based on actual role from database
-      console.log("🚀 Preparing redirect...");
-      console.log("   - User role:", userRole || "None");
-      console.log("   - Is admin email:", isAdminEmail);
-      console.log("   - Session established:", !!finalSession);
-
-      // Use setTimeout to ensure cookies are sent with the redirect
-      setTimeout(
-        () => {
-          if (userRole === "admin" || userRole === "manager") {
-            console.log("✅ Redirecting to dashboard for role:", userRole);
-            // Use window.location for full page reload
-            // This ensures cookies are sent with the request
-            window.location.href = "/dashboard";
-          } else if (isAdminEmail && !userRole) {
-            console.log(
-              "⚠️ Admin email but role not found yet, redirecting to dashboard anyway"
-            );
-            console.log(
-              "💡 Dashboard will check role and may assign it automatically"
-            );
-            window.location.href = "/dashboard";
-          } else {
-            console.log("🏠 No admin role found, redirecting to:", redirectTo);
-            router.push(redirectTo);
-            router.refresh();
-          }
-        },
-        500 // Short delay to ensure redirect happens after cookie test
-      );
-    } catch (err: any) {
-      console.error("Unexpected error:", err);
-      setError(
-        err.message ||
-          "An unexpected error occurred. Please check the console for details."
-      );
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
-  if (success) {
+  if (successMessage) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-white to-primary-light/10 px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center animate-fade-in">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-green-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light/40 via-white to-primary/20 p-4">
+        <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8 sm:p-10 text-center animate-in zoom-in-95 duration-300">
+          <div className="rounded-full bg-green-100 p-4 mx-auto w-20 h-20 flex items-center justify-center mb-6 shadow-inner">
+            <svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {needsEmailConfirmation ? "Check Your Email!" : "Account Created!"}
-          </h2>
-          <p className="text-gray-600 mb-6">
-            {needsEmailConfirmation
-              ? "We've sent a confirmation email to your inbox. Please click the link in the email to verify your account, then you can sign in."
-              : "Your account has been created successfully. Redirecting..."}
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Account Created!</h2>
+          <p className="text-gray-600 mb-8 text-lg">
+            You have successfully signed up. Welcome to Leez True Styles!
           </p>
-          {needsEmailConfirmation ? (
-            <Link
-              href="/signin"
-              className="inline-block px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors"
+
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              // The onClick handler below was throwing error before,
+              // but it was due to simple string mismatch in replace logic.
+              // Now we are replacing the whole function, so it's safe.
+              onClick={() => window.location.href = redirectUrl}
+              className="inline-flex justify-center w-full py-3.5 px-4 rounded-none text-base font-bold text-white bg-primary hover:bg-primary-dark shadow-lg shadow-primary/30 transform transition-all duration-200 hover:-translate-y-0.5"
             >
-              Go to Sign In
-            </Link>
-          ) : (
-            <Link
-              href="/"
-              className="inline-block px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors"
-            >
-              Go to Home
-            </Link>
-          )}
+              {redirectUrl === '/' ? 'Continue Shopping' : 'Continue to Checkout'}
+            </button>
+          </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-white to-primary-light/10 px-4 py-12">
-      <div className="max-w-md w-full">
-        {/* Logo/Brand */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
-              Leeztruestyles
-            </h1>
-          </Link>
-          <p className="text-gray-600 mt-2">Create your account</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light/40 via-white to-primary/20 relative overflow-hidden py-12">
+      {/* Decorative background blobs */}
+      <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-primary/30 rounded-full blur-3xl opacity-50 pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-secondary/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
 
-        {/* Sign Up Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 animate-slide-up">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Sign Up</h2>
+      <div className="w-full max-w-md p-4 relative z-10">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8 sm:p-10">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-block hover:opacity-80 transition-opacity">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-secondary-dark to-primary-dark bg-clip-text text-transparent">
+                Create Account
+              </h1>
+            </Link>
+            <p className="mt-3 text-gray-600 font-medium tracking-wide">
+              Join Leeztruestyles today
+            </p>
+          </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm animate-fade-in">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form action={handleSubmit} className="space-y-5">
             <div>
               <label
                 htmlFor="fullName"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-semibold text-gray-700 ml-1 mb-2"
               >
                 Full Name
               </label>
-              <input
-                type="text"
-                id="fullName"
-                value={formData.fullName}
-                onChange={(e) =>
-                  setFormData({ ...formData, fullName: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                placeholder="John Doe"
-                required
-              />
+              <div className="relative group">
+                <input
+                  id="fullName"
+                  name="fullName"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  className="block w-full px-5 py-3.5 rounded-2xl border border-gray-200 bg-white/50 focus:bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 ease-in-out shadow-sm group-hover:shadow-md"
+                  placeholder="John Doe"
+                />
+              </div>
             </div>
 
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-semibold text-gray-700 ml-1 mb-2"
               >
-                Email Address
+                Email address
               </label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                placeholder="your.email@example.com"
-                required
-              />
+              <div className="relative group">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="block w-full px-5 py-3.5 rounded-2xl border border-gray-200 bg-white/50 focus:bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 ease-in-out shadow-sm group-hover:shadow-md"
+                  placeholder="name@example.com"
+                />
+              </div>
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-semibold text-gray-700 ml-1 mb-2"
               >
                 Password
               </label>
-              <input
-                type="password"
-                id="password"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Must be at least 6 characters
-              </p>
+              <div className="relative group">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  className="block w-full px-5 py-3.5 rounded-2xl border border-gray-200 bg-white/50 focus:bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200 ease-in-out shadow-sm group-hover:shadow-md"
+                  placeholder="••••••••"
+                />
+                <p className="mt-2 text-xs text-gray-500 ml-1">Must be at least 6 characters</p>
+              </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Creating Account..." : "Create Account"}
-            </button>
+            {error && (
+              <div className="p-4 rounded-2xl bg-red-50 border border-red-100 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm font-medium text-red-800">{error}</p>
+              </div>
+            )}
+
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="w-full flex justify-center py-3.5 px-4 rounded-none text-base font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-lg shadow-primary/30 transform transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              >
+                {isPending ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating Account...
+                  </span>
+                ) : (
+                  'Sign Up'
+                )}
+              </button>
+            </div>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{" "}
+          <div className="mt-8">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white/50 backdrop-blur px-4 text-gray-500 font-medium">
+                  Already have an account?
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-8 text-center">
               <Link
                 href="/signin"
-                className="text-primary font-semibold hover:text-primary-dark"
+                className="inline-flex items-center justify-center font-bold text-secondary-dark hover:text-secondary transition-colors"
               >
-                Sign In
+                Sign in instead
+                <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
               </Link>
-            </p>
+            </div>
           </div>
-        </div>
-
-        {/* Footer Links */}
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <Link href="/" className="hover:text-primary transition-colors">
-            ← Back to Home
-          </Link>
         </div>
       </div>
     </div>
@@ -601,19 +204,12 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-white to-primary-light/10 px-4 py-12">
-          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <SignUpForm />
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <SignUpContent />
     </Suspense>
   );
 }

@@ -5,60 +5,41 @@ const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!;
 
 export class PaymentService {
   /**
+   * Format phone number to 254 format
+   */
+  private static formatPhoneNumber(phone: string): string {
+    // Remove all non-digit characters
+    let formatted = phone.replace(/\D/g, '');
+
+    // Handle standard cases
+    if (formatted.startsWith('254')) {
+      return formatted;
+    }
+    if (formatted.startsWith('0')) {
+      return `254${formatted.substring(1)}`;
+    }
+    if (formatted.startsWith('7') || formatted.startsWith('1')) {
+      return `254${formatted}`;
+    }
+
+    return formatted;
+  }
+
+  /**
    * Initiate M-Pesa STK Push payment via Paystack
+   */
+  /**
+   * Initiate M-Pesa STK Push payment via Daraja (Direct Safaricom)
    */
   static async initiateMpesaPayment(
     request: PaymentRequest
   ): Promise<PaymentResponse> {
-    try {
-      const response = await fetch('https://api.paystack.co/charge', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: request.email || 'customer@leeztruestyles.com',
-          amount: request.amount * 100, // Convert to kobo/cents
-          currency: 'KES',
-          mobile_money: {
-            phone: request.phone,
-            provider: 'mpesa',
-          },
-          metadata: {
-            order_id: request.order_id,
-            custom_fields: [
-              {
-                display_name: 'Order ID',
-                variable_name: 'order_id',
-                value: request.order_id,
-              },
-            ],
-          },
-        }),
-      });
+    const { DarajaService } = await import('./darajaService');
 
-      const data = await response.json();
+    // Format phone: Remove +, spaces. Ensure 254 prefix.
+    const formattedPhone = request.phone ? this.formatPhoneNumber(request.phone) : '';
 
-      if (data.status) {
-        return {
-          success: true,
-          reference: data.data.reference,
-          message: data.message || 'Payment initiated successfully',
-        };
-      }
-
-      return {
-        success: false,
-        error: data.message || 'Payment initiation failed',
-      };
-    } catch (error) {
-      console.error('M-Pesa payment error:', error);
-      return {
-        success: false,
-        error: 'Failed to initiate payment',
-      };
-    }
+    return DarajaService.initiateSTKPush(formattedPhone, request.amount, request.order_id);
   }
 
   /**

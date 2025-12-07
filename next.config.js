@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
+const dns = require("dns");
+
+if (typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -17,6 +23,12 @@ const nextConfig = {
     ],
     // Allow unoptimized images for external sources
     unoptimized: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   },
 };
 

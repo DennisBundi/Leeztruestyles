@@ -25,46 +25,125 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showMpesaModal, setShowMpesaModal] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
 
   const total = getTotal();
 
+
+
   // Check authentication on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
+    let mounted = true;
+    const supabase = createClient();
 
-      // If user is authenticated, pre-fill their info
-      if (user) {
+    const fillUserInfo = async (user: any) => {
+      if (!mounted) return;
+      try {
         const { data: profile } = await supabase
           .from("users")
           .select("email, full_name, phone")
           .eq("id", user.id)
           .single();
 
-        if (profile) {
-          setCustomerInfo({
-            name: profile.full_name || "",
-            email: profile.email || user.email || "",
-            phone: profile.phone || "",
-            address: "",
-          });
-        } else {
-          setCustomerInfo({
-            name: user.user_metadata?.full_name || "",
-            email: user.email || "",
-            phone: "",
-            address: "",
-          });
+        if (mounted && profile) {
+          setCustomerInfo(prev => ({
+            ...prev,
+            name: profile.full_name || prev.name || "",
+            email: profile.email || user.email || prev.email || "",
+            phone: profile.phone || prev.phone || "",
+          }));
+        } else if (mounted) {
+          setCustomerInfo(prev => ({
+            ...prev,
+            name: user.user_metadata?.full_name || prev.name || "",
+            email: user.email || prev.email || "",
+          }));
         }
+      } catch (e) {
+        console.error("Error fetching profile:", e);
       }
-      setCheckingAuth(false);
+    };
+
+    // Initial check
+    const checkAuth = async () => {
+      try {
+        // Race condition to prevent infinite loading
+        const getUserPromise = supabase.auth.getUser();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Auth check timeout')), 10000)
+        );
+
+        const result = await Promise.race([getUserPromise, timeoutPromise]) as any;
+        console.log("Checkout Auth Result:", result);
+
+        if (!mounted) return;
+
+        const user = result.data?.user;
+        if (user) {
+          setIsAuthenticated(true);
+          fillUserInfo(user);
+        } else {
+          // Fallback: check session if getUser failed but might be local
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            console.log("Fallback Session User:", session.user);
+            setIsAuthenticated(true);
+            fillUserInfo(session.user);
+          } else {
+            setIsAuthenticated(false);
+          }
+        }
+      } catch (error) {
+        console.error("Auth check error/timeout:", error);
+        if (mounted) {
+          // Fallback to session check on error
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            console.log("Checkout Auth Fallback:", session?.user?.id);
+            if (session?.user) {
+              setIsAuthenticated(true);
+              fillUserInfo(session.user);
+            } else {
+              setIsAuthenticated(false);
+            }
+          } catch (innerError) {
+            console.error("Checkout session fallback failed:", innerError);
+            setIsAuthenticated(false);
+          }
+        }
+      } finally {
+        if (mounted) setCheckingAuth(false);
+      }
     };
 
     checkAuth();
+
+    // Listen for auth changes (e.g. token refresh, login in another tab)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      console.log("Auth State Change:", event, session?.user?.id);
+
+      const user = session?.user;
+      if (user) {
+        setIsAuthenticated(true);
+        // Only fill if not already checking (to avoid double fill race, though safe)
+        if (!checkingAuth) fillUserInfo(user);
+      } else {
+        // Only set to false if we are sure (e.g. SIGNED_OUT)
+        // But be careful not to override initial check if 'INITIAL_SESSION' is null but 'getUser' worked?
+        // Usually onAuthStateChange is authoritative.
+        if (event === 'SIGNED_OUT') {
+          setIsAuthenticated(false);
+          setCheckingAuth(false);
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -147,14 +226,20 @@ export default function CheckoutPage() {
         // Redirect to Paystack payment page
         window.location.href = paymentData.authorization_url;
       } else {
-        // For M-Pesa, show success message and redirect
-        clearCart();
-        router.push(`/checkout/success?order_id=${order_id}`);
+        // For M-Pesa, show success modal
+        setCreatedOrderId(order_id);
+        setShowMpesaModal(true);
+        setLoading(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setLoading(false);
     }
+  };
+
+  const handleMpesaComplete = () => {
+    clearCart();
+    router.push(`/checkout/success?order_id=${createdOrderId}`);
   };
 
   // Show loading state while checking auth
@@ -417,6 +502,37 @@ export default function CheckoutPage() {
           <OrderSummary items={items} total={total} />
         </div>
       </form>
+
+      {/* M-Pesa STK Push Modal */}
+      {showMpesaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center animate-in zoom-in-95 duration-300 border border-white/20">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-green-600 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+            </div>
+
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Check Your Phone</h3>
+            <p className="text-gray-600 mb-6 text-lg">
+              We've sent an M-Pesa STK push to <span className="font-semibold text-gray-900">{customerInfo.phone}</span>.
+              <br /><br />
+              Please enter your M-Pesa PIN to complete the payment.
+            </p>
+
+            <button
+              onClick={handleMpesaComplete}
+              className="w-full py-4 px-6 bg-green-600 text-white rounded-xl font-bold text-lg hover:bg-green-700 hover:shadow-lg transition-all transform hover:-translate-y-1"
+            >
+              I have Completed Payment
+            </button>
+
+            <p className="mt-4 text-sm text-gray-500">
+              Didn't get the prompt? <button onClick={handleMpesaComplete} className="text-primary hover:underline">Verify Status</button>
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

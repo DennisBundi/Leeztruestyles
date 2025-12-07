@@ -12,32 +12,119 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const itemCount = useCartStore((state) => state.getItemCount());
+
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+
+
+  useEffect(() => {
+    let mounted = true;
     const supabase = createClient();
-    const hasSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL && 
-                        process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder' &&
-                        process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '';
-    
+    const hasSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder' &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '';
+
     if (hasSupabase) {
-      // Get initial user
-      supabase.auth.getUser().then(({ data }) => {
-        setUser(data.user);
-        setLoading(false);
-      }).catch(() => {
-        setUser(null);
-        setLoading(false);
+      const checkUserRole = async (userId: string) => {
+        try {
+          const { data: employeeData } = await supabase
+            .from('employees')
+            .select('role')
+            .eq('user_id', userId)
+            .single();
+
+          if (employeeData && (employeeData.role === 'admin' || employeeData.role === 'manager')) {
+            if (mounted) setIsAdmin(true);
+          } else {
+            if (mounted) setIsAdmin(false);
+          }
+        } catch (e) {
+          console.error("Error checking role:", e);
+        }
+      };
+
+      const initAuth = async () => {
+        try {
+          // Race condition to prevent infinite loading if Supabase hangs
+          const getUserPromise = supabase.auth.getUser();
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Auth timeout')), 10000)
+          );
+
+          const { data } = await Promise.race([getUserPromise, timeoutPromise]) as any;
+
+          if (!mounted) return;
+
+          const currentUser = data?.user ?? null;
+          console.log("Header Auth Check (getUser):", !!currentUser);
+
+          if (currentUser) {
+            setUser(currentUser);
+            checkUserRole(currentUser.id);
+          } else {
+            // Fallback to session check
+            const { data: { session } } = await supabase.auth.getSession();
+            console.log("Header Auth Check (getSession fallback):", !!session?.user);
+            if (session?.user) {
+              setUser(session.user);
+              checkUserRole(session.user.id);
+            } else {
+              setUser(null);
+            }
+          }
+        } catch (error) {
+          console.error("Header auth check failed/timeout:", error);
+          if (mounted) {
+            // Fallback to session check on error
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              console.log("Header Auth Check (Error Fallback):", !!session?.user);
+              if (session?.user) {
+                setUser(session.user);
+                checkUserRole(session.user.id);
+              } else {
+                setUser(null);
+              }
+            } catch (innerError) {
+              console.error("Header session fallback failed:", innerError);
+              setUser(null);
+            }
+          }
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      };
+
+      initAuth();
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted) return;
+        console.log("Header Auth State Change:", event, !!session?.user);
+
+        const currentUser = session?.user ?? null;
+        setUser(currentUser); // Always update state on change
+
+        if (currentUser) {
+          checkUserRole(currentUser.id);
+        } else {
+          setIsAdmin(false);
+        }
       });
 
-      // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
-      });
-
-      return () => subscription.unsubscribe();
+      return () => {
+        mounted = false;
+        subscription.unsubscribe();
+      };
     } else {
       setLoading(false);
     }
@@ -45,8 +132,12 @@ export default function Header() {
 
   const handleSignOut = async () => {
     const supabase = createClient();
+    // Clear cart specific to this user session
+    useCartStore.getState().clearCart();
+
     await supabase.auth.signOut();
     setUser(null);
+    setIsAdmin(false);
     router.push('/');
     router.refresh();
   };
@@ -63,13 +154,14 @@ export default function Header() {
     { href: '/contact', label: 'Contact' },
   ];
 
+
   return (
-    <header className="bg-white/95 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100">
+    <header className="bg-white/95 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100 relative">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="flex items-center hover:opacity-80 transition-opacity"
           >
             <Image
@@ -88,11 +180,10 @@ export default function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative font-medium transition-colors ${
-                  pathname === link.href
-                    ? 'text-primary'
-                    : 'text-gray-700 hover:text-primary'
-                }`}
+                className={`relative font-medium transition-colors ${pathname === link.href
+                  ? 'text-primary'
+                  : 'text-gray-700 hover:text-primary'
+                  }`}
               >
                 {link.label}
                 {pathname === link.href && (
@@ -104,34 +195,80 @@ export default function Header() {
 
           {/* Cart Icon & Auth Links & Mobile Menu */}
           <div className="flex items-center gap-4">
+
             {/* Auth Button (Desktop) */}
-            {!loading && (
-              <div className="hidden md:flex items-center">
-                {user ? (
-                  <div className="flex items-center gap-3">
-                    <Link
-                      href="/dashboard"
-                      className="text-gray-700 hover:text-primary transition-colors font-medium text-sm"
-                    >
-                      Account
-                    </Link>
-                    <button
-                      onClick={handleSignOut}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-none hover:bg-gray-200 transition-colors font-medium text-sm"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                ) : (
-                  <Link
-                    href="/signin"
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm"
+            <div className="hidden md:flex items-center">
+              {loading ? (
+                <div className="h-9 w-24 bg-gray-100 animate-pulse rounded-lg"></div>
+              ) : user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSignOutModal(!showSignOutModal)}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-none hover:bg-gray-200 transition-colors font-medium text-sm flex items-center gap-2"
                   >
-                    Sign In
-                  </Link>
-                )}
-              </div>
-            )}
+                    {isAdmin ? "Admin" : "Account"}
+                    <svg className={`w-4 h-4 transition-transform ${showSignOutModal ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {showSignOutModal && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
+                      <Link
+                        href={isAdmin ? "/dashboard" : "/profile"}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"
+                        onClick={() => setShowSignOutModal(false)}
+                      >
+                        {isAdmin ? "Dashboard" : "Profile"}
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setShowSignOutModal(false);
+                          handleSignOut();
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+
+
+                <div className="relative">
+
+                  <button
+                    onClick={() => setShowSignOutModal(!showSignOutModal)}
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center gap-2"
+                  >
+                    Sign Up
+                    <svg className={`w-4 h-4 transition-transform ${showSignOutModal ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {showSignOutModal && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
+                      <Link
+                        href="/signin"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"
+                        onClick={() => setShowSignOutModal(false)}
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        href="/signup"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"
+                        onClick={() => setShowSignOutModal(false)}
+                      >
+                        Create Account
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Cart Icon */}
             <Link
@@ -142,7 +279,7 @@ export default function Header() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              {itemCount > 0 && (
+              {isMounted && itemCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-scale-in">
                   {itemCount}
                 </span>
@@ -180,11 +317,10 @@ export default function Header() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    pathname === link.href
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${pathname === link.href
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-700 hover:bg-gray-50'
+                    }`}
                 >
                   {link.label}
                 </Link>
@@ -195,11 +331,11 @@ export default function Header() {
                   {user ? (
                     <>
                       <Link
-                        href="/dashboard"
+                        href={isAdmin ? "/dashboard" : "/profile"}
                         onClick={() => setMobileMenuOpen(false)}
                         className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center"
                       >
-                        Account
+                        {isAdmin ? "Dashboard" : "Account"}
                       </Link>
                       <button
                         onClick={() => {
@@ -212,19 +348,31 @@ export default function Header() {
                       </button>
                     </>
                   ) : (
-                    <Link
-                      href="/signin"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-center"
-                    >
-                      Sign In
-                    </Link>
+
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        href="/signin"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center"
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        href="/signup"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-center"
+                      >
+                        Sign Up
+                      </Link>
+                    </div>
                   )}
                 </div>
               )}
             </div>
           </nav>
         )}
+
+
       </div>
     </header>
   );
