@@ -21,16 +21,17 @@ export default function ProductForm({ categories, product, onSuccess, onClose }:
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
-  
+
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
     price: product?.price || '',
     sale_price: product?.sale_price || '',
     category_id: product?.category_id || '',
-    initial_stock: product ? '' : '0',
+    initial_stock: product ? '' : '',
     status: product?.status || 'active',
     is_flash_sale: product?.is_flash_sale || false,
     flash_sale_start: product?.flash_sale_start ? new Date(product.flash_sale_start).toISOString().slice(0, 16) : '',
@@ -79,8 +80,8 @@ export default function ProductForm({ categories, product, onSuccess, onClose }:
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const hasDatabase = process.env.NEXT_PUBLIC_SUPABASE_URL && 
-                        process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder';
+    const hasDatabase = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder';
 
     if (!hasDatabase) {
       // Preview mode - create object URLs for preview
@@ -161,8 +162,8 @@ export default function ProductForm({ categories, product, onSuccess, onClose }:
     setLoading(true);
 
     try {
-      const hasDatabase = process.env.NEXT_PUBLIC_SUPABASE_URL && 
-                          process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder';
+      const hasDatabase = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder';
 
       if (!hasDatabase) {
         // Preview mode - simulate success
@@ -191,15 +192,24 @@ export default function ProductForm({ categories, product, onSuccess, onClose }:
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save product');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save product');
+      }
 
-      if (onSuccess) onSuccess();
-      setIsOpen(false);
-      if (onClose) onClose();
-      window.location.reload();
+      // Show success modal
+      setShowSuccessModal(true);
+
+      // Auto-close success modal after 2 seconds and refresh
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        setIsOpen(false);
+        if (onSuccess) onSuccess();
+        if (onClose) onClose();
+      }, 2000);
     } catch (error) {
       console.error('Error saving product:', error);
-      alert('Failed to save product');
+      alert(error instanceof Error ? error.message : 'Failed to save product');
     } finally {
       setLoading(false);
     }
@@ -215,7 +225,7 @@ export default function ProductForm({ categories, product, onSuccess, onClose }:
         price: '',
         sale_price: '',
         category_id: '',
-        initial_stock: '0',
+        initial_stock: '',
         status: 'active',
         is_flash_sale: false,
         flash_sale_start: '',
@@ -414,7 +424,7 @@ export default function ProductForm({ categories, product, onSuccess, onClose }:
                 {/* Images */}
                 <div className="md:col-span-2">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 mt-4">Product Images</h3>
-                  
+
                   {/* File Upload Area */}
                   <div className="mb-4">
                     <input
@@ -531,15 +541,18 @@ export default function ProductForm({ categories, product, onSuccess, onClose }:
                 {!product && (
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Initial Stock Quantity
+                      Initial Stock Quantity *
                     </label>
                     <input
                       type="number"
+                      required
                       min="0"
                       value={formData.initial_stock}
                       onChange={(e) => setFormData({ ...formData, initial_stock: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      placeholder="Enter stock quantity"
                     />
+                    <p className="text-xs text-gray-500 mt-1">How many units are available for sale</p>
                   </div>
                 )}
               </div>
@@ -565,6 +578,25 @@ export default function ProductForm({ categories, product, onSuccess, onClose }:
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-scale-in">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              {product ? 'Product Updated!' : 'Product Created!'}
+            </h3>
+            <p className="text-gray-600">
+              {product ? 'Your product has been updated successfully.' : 'Your product has been created successfully and is now available.'}
+            </p>
           </div>
         </div>
       )}

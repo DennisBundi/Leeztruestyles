@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import ProductForm from '@/components/admin/ProductForm';
@@ -117,13 +117,71 @@ const dummyProducts: (Product & { category?: string; stock?: number; image?: str
 ];
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState(dummyProducts);
-  const [categories, setCategories] = useState(dummyCategories);
+  const [products, setProducts] = useState<(Product & { category?: string; stock?: number; image?: string })[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; product: { id: string; name: string } | null }>({ isOpen: false, product: null });
+  const [successModal, setSuccessModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoadingProducts(true);
+      try {
+        const response = await fetch('/api/products');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Fetched products:', data.products);
+          setProducts(data.products || []);
+        } else {
+          console.error('Failed to fetch products');
+          // Fall back to dummy products if API fails
+          setProducts(dummyProducts);
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        // Fall back to dummy products if fetch fails
+        setProducts(dummyProducts);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        } else {
+          console.error('Failed to fetch categories');
+          // Fall back to dummy categories if API fails
+          setCategories(dummyCategories);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Fall back to dummy categories if fetch fails
+        setCategories(dummyCategories);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Filter products based on search, category, and status
   const filteredProducts = useMemo(() => {
@@ -135,15 +193,72 @@ export default function ProductsPage() {
     });
   }, [searchQuery, selectedCategoryFilter, selectedStatus, products]);
 
-  const handleProductSuccess = () => {
-    // In real app, this would refresh from API
-    // For preview, we'll just close the form
+  const handleProductSuccess = async () => {
+    // Refresh products list
+    try {
+      const response = await fetch('/api/products');
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error('Error refreshing products:', error);
+    }
     setSelectedProduct(null);
   };
 
-  const handleCategorySuccess = () => {
-    // In real app, this would refresh from API
+  const handleCategorySuccess = async () => {
+    // Refresh categories list
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Error refreshing categories:', error);
+    }
     setSelectedCategory(null);
+  };
+
+  const handleDeleteProduct = (productId: string, productName: string) => {
+    setDeleteModal({ isOpen: true, product: { id: productId, name: productName } });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.product) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/products?id=${deleteModal.product.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete product');
+      }
+
+      // Close delete modal
+      setDeleteModal({ isOpen: false, product: null });
+
+      // Refresh products list
+      const productsResponse = await fetch('/api/products');
+      if (productsResponse.ok) {
+        const data = await productsResponse.json();
+        setProducts(data.products || []);
+      }
+
+      // Show success modal
+      setSuccessModal(true);
+      setTimeout(() => setSuccessModal(false), 2500);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete product');
+      setDeleteModal({ isOpen: false, product: null });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -238,88 +353,159 @@ export default function ProductsPage() {
                 </tr>
               ) : (
                 filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
-                        <Image
-                          src={product.image}
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                          sizes="64px"
-                        />
+                  <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                          <Image
+                            src={product.image || '/images/placeholder-product.jpg'}
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                          />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{product.name}</div>
+                          <div className="text-sm text-gray-500">ID: {product.id}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{product.name}</div>
-                        <div className="text-sm text-gray-500">ID: {product.id}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-700">{product.category}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      {product.sale_price ? (
-                        <>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-700">{product.category}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        {product.sale_price ? (
+                          <>
+                            <span className="font-semibold text-gray-900">
+                              KES {product.sale_price.toLocaleString()}
+                            </span>
+                            <span className="text-sm text-gray-500 line-through">
+                              KES {product.price.toLocaleString()}
+                            </span>
+                          </>
+                        ) : (
                           <span className="font-semibold text-gray-900">
-                            KES {product.sale_price.toLocaleString()}
-                          </span>
-                          <span className="text-sm text-gray-500 line-through">
                             KES {product.price.toLocaleString()}
                           </span>
-                        </>
-                      ) : (
-                        <span className="font-semibold text-gray-900">
-                          KES {product.price.toLocaleString()}
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {product.stock !== undefined ? (
+                        <span className={`font-semibold ${product.stock === 0 ? 'text-red-600' :
+                          product.stock < 10 ? 'text-yellow-600' :
+                            'text-green-600'
+                          }`}>
+                          {product.stock}
                         </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">N/A</span>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`font-semibold ${
-                      product.stock < 10 ? 'text-yellow-600' : 'text-green-600'
-                    }`}>
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    {product.is_flash_sale ? (
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                        🔥 Flash Sale
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {product.is_flash_sale ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                          🔥 Flash Sale
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${product.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                        {product.status}
                       </span>
-                    ) : (
-                      <span className="text-gray-400 text-sm">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      product.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center gap-3">
-                      <button
-                        onClick={() => setSelectedProduct(product as Product)}
-                        className="text-primary hover:text-primary-dark font-medium text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button className="text-red-600 hover:text-red-700 font-medium text-sm">
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => setSelectedProduct(product as Product)}
+                          className="text-primary hover:text-primary-dark font-medium text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(product.id, product.name)}
+                          className="text-red-600 hover:text-red-700 font-medium text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
+              Delete Product?
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              Are you sure you want to delete <strong>"{deleteModal.product?.name}"</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, product: null })}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {successModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-scale-in">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              Product Deleted!
+            </h3>
+            <p className="text-gray-600">
+              The product has been successfully removed from your inventory.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
