@@ -14,7 +14,7 @@ export default function WhatsAppWidget({
 }: WhatsAppWidgetProps) {
   const whatsappLink = productName && productUrl
     ? WhatsAppService.generateProductInquiryLink(productName, productUrl)
-    : `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_PHONE || ''}`;
+    : WhatsAppService.generateGeneralInquiryLink();
 
   return (
     <Link

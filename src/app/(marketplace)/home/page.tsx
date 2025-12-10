@@ -2,30 +2,126 @@ import Link from "next/link";
 import ProductGrid from "@/components/products/ProductGrid";
 import FlashSaleCountdown from "@/components/products/FlashSaleCountdown";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Product } from "@/types";
 
 export default async function HomePage() {
   const supabase = await createClient();
+  
+  // Fetch featured products - Top 4 products by sale count
+  let featuredProducts: any[] = [];
+  let productsError: any = null;
 
-  // Fetch products from Supabase
-  // Try with status filter first, if empty, try without status filter
-  let { data: products, error: productsError } = await supabase
-    .from("products")
-    .select("*")
-    .eq("status", "active")
-    .order("created_at", { ascending: false })
-    .limit(12);
+  try {
+    // Try to create admin client (may fail if service role key is not set)
+    let adminClient;
+    try {
+      adminClient = createAdminClient();
+    } catch (adminError) {
+      console.warn('Admin client not available, using fallback for featured products:', adminError);
+      adminClient = null;
+    }
 
-  // If no products with status='active', try without status filter
-  if ((!products || products.length === 0) && !productsError) {
-    const { data: allProducts, error: allError } = await supabase
+    // Fetch all completed orders (only if admin client is available)
+    if (adminClient) {
+      const { data: completedOrders, error: ordersError } = await adminClient
+        .from('orders')
+        .select('id')
+        .eq('status', 'completed');
+
+      if (ordersError) {
+        console.error('Error fetching completed orders for featured products:', ordersError);
+      }
+
+      if (completedOrders && completedOrders.length > 0) {
+        const orderIds = completedOrders.map((o: any) => o.id);
+
+        // Fetch order items for completed orders
+        const { data: orderItems, error: itemsError } = await adminClient
+          .from('order_items')
+          .select('product_id, quantity')
+          .in('order_id', orderIds);
+
+        if (itemsError) {
+          console.error('Error fetching order items for featured products:', itemsError);
+        } else if (orderItems && orderItems.length > 0) {
+          // Aggregate product sales (sum of quantities)
+          const productSalesMap = new Map<string, number>();
+
+          orderItems.forEach((item: any) => {
+            if (item.product_id && item.quantity) {
+              const currentSales = productSalesMap.get(item.product_id) || 0;
+              productSalesMap.set(item.product_id, currentSales + (parseInt(item.quantity) || 0));
+            }
+          });
+
+          // Get top 4 product IDs by sale count
+          const topProductIds = Array.from(productSalesMap.entries())
+            .sort((a, b) => b[1] - a[1]) // Sort by sales count descending
+            .slice(0, 4) // Top 4
+            .map(([productId]) => productId);
+
+          if (topProductIds.length > 0) {
+            // Fetch product details for top 4 products
+            const { data: products, error: productsFetchError } = await supabase
+              .from('products')
+              .select('*')
+              .in('id', topProductIds);
+
+            if (productsFetchError) {
+              console.error('Error fetching featured products:', productsFetchError);
+              productsError = productsFetchError;
+            } else if (products) {
+              // Sort products to match the sales order
+              const productMap = new Map(products.map((p: any) => [p.id, p]));
+              featuredProducts = topProductIds
+                .map(id => productMap.get(id))
+                .filter(Boolean) as any[];
+            }
+          }
+        }
+      }
+    } else {
+      // Admin client not available, skip to fallback
+      console.log('Skipping sales-based featured products (admin client not available)');
+    }
+
+    // Fallback: If no sales data or admin client unavailable, use newest products
+    if (featuredProducts.length === 0) {
+      const { data: fallbackProducts, error: fallbackError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(4);
+
+      if (fallbackError) {
+        // Try without status filter
+        const { data: allProducts, error: allError } = await supabase
+          .from("products")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(4);
+        featuredProducts = allProducts || [];
+        productsError = allError;
+      } else {
+        featuredProducts = fallbackProducts || [];
+        productsError = fallbackError;
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching featured products:', error);
+    // Fallback to newest products
+    const { data: fallbackProducts, error: fallbackError } = await supabase
       .from("products")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(12);
-    products = allProducts;
-    productsError = allError;
+      .limit(4);
+    featuredProducts = fallbackProducts || [];
+    productsError = fallbackError;
   }
+
+  const products = featuredProducts;
 
   // Fetch inventory separately with error handling
   let inventoryMap = new Map();
@@ -371,7 +467,7 @@ export default async function HomePage() {
           </p>
         </div>
 
-        <ProductGrid products={productsWithStock} />
+        <ProductGrid products={productsWithStock.slice(0, 4)} />
 
         <div className="text-center mt-12">
           <Link
