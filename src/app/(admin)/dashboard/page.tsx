@@ -164,7 +164,7 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-2xl font-bold text-primary">
-            {loading ? '...' : `KES ${totalSales.toLocaleString()}`}
+            {loading ? '...' : `KES ${(totalSales || 0).toLocaleString()}`}
           </p>
           <p className="text-xs text-gray-500 mt-1">All time</p>
         </div>
@@ -190,7 +190,7 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-2xl font-bold text-green-600">
-            {loading ? '...' : `KES ${todaySales.toLocaleString()}`}
+            {loading ? '...' : `KES ${(todaySales || 0).toLocaleString()}`}
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {loading ? 'Loading...' : `${todayOrders} orders today`}
@@ -296,7 +296,7 @@ export default function DashboardPage() {
                   <div key={index} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-medium text-gray-700">{day.day}</span>
-                      <span className="font-semibold text-gray-900">KES {day.sales.toLocaleString()}</span>
+                      <span className="font-semibold text-gray-900">KES {(day.sales || 0).toLocaleString()}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                       <div
@@ -403,7 +403,7 @@ export default function DashboardPage() {
                     {order.customer || 'Guest'}
                   </td>
                   <td className="py-2 px-3 text-sm font-semibold text-gray-900">
-                    KES {order.amount.toLocaleString()}
+                    KES {(order.amount || 0).toLocaleString()}
                   </td>
                   <td className="py-2 px-3">
                     <span

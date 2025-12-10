@@ -126,10 +126,9 @@ export default function OrdersPage() {
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <div className="text-2xl font-bold text-primary">
-              KES {filteredOrders
+              KES {(filteredOrders
                 .filter(o => o.status === 'completed')
-                .reduce((sum, o) => sum + o.amount, 0)
-                .toLocaleString()}
+                .reduce((sum, o) => sum + (o.amount || 0), 0) || 0).toLocaleString()}
             </div>
           )}
         </div>
@@ -258,7 +257,7 @@ export default function OrdersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-sm font-semibold text-gray-900">
-                      KES {order.amount.toLocaleString()}
+                      KES {(order.amount || 0).toLocaleString()}
                     </span>
                   </td>
                   <td className="px-4 py-3">
