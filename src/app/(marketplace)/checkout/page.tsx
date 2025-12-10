@@ -492,7 +492,7 @@ export default function CheckoutPage() {
                 Processing...
               </span>
             ) : (
-              `Pay KES ${total.toLocaleString()}`
+              `Pay KES ${(total || 0).toLocaleString()}`
             )}
           </button>
         </div>

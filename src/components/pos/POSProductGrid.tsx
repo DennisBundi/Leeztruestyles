@@ -60,7 +60,7 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
                 {product.name}
               </div>
               <div className="text-lg font-bold text-primary mb-2">
-                KES {product.price.toLocaleString()}
+                KES {(product.price || 0).toLocaleString()}
               </div>
               <div className={`text-xs font-medium ${
                 isOutOfStock 

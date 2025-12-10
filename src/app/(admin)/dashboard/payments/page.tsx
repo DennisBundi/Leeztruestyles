@@ -62,7 +62,7 @@ export default function PaymentsPage() {
   const transactions = filteredTransactions;
   const totalRevenue = transactions
     .filter(t => t.status === 'success')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -92,7 +92,7 @@ export default function PaymentsPage() {
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
           <div className="text-sm text-gray-600 mb-2">Total Revenue</div>
           <div className="text-3xl font-bold text-primary">
-            KES {totalRevenue.toLocaleString()}
+            KES {(totalRevenue || 0).toLocaleString()}
           </div>
         </div>
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
@@ -181,7 +181,7 @@ export default function PaymentsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className="font-semibold text-gray-900">
-                      KES {transaction.amount.toLocaleString()}
+                      KES {(transaction.amount || 0).toLocaleString()}
                     </span>
                   </td>
                   <td className="px-6 py-4">

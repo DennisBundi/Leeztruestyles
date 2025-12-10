@@ -134,7 +134,7 @@ export default function EmployeesPage() {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
               <div className="text-sm text-gray-600 mb-2">Total Sales</div>
               <div className="text-3xl font-bold text-primary">
-                KES {filteredEmployees.reduce((sum, e) => sum + e.total_sales, 0).toLocaleString()}
+                KES {(filteredEmployees.reduce((sum, e) => sum + (e.total_sales || 0), 0) || 0).toLocaleString()}
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
@@ -233,7 +233,7 @@ export default function EmployeesPage() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="font-semibold text-primary">
-                            KES {employee.total_sales.toLocaleString()}
+                            KES {(employee.total_sales || 0).toLocaleString()}
                           </span>
                         </td>
                         <td className="px-6 py-4">

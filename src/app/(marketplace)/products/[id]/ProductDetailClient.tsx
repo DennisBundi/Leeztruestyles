@@ -49,8 +49,11 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
 
   // Calculate display price (use sale_price if available and on flash sale)
   const isOnSale = product.is_flash_sale && product.sale_price !== null && product.sale_price !== undefined;
-  const displayPrice = isOnSale && product.sale_price ? product.sale_price : product.price;
-  const originalPrice = isOnSale ? product.price : null;
+  // Ensure displayPrice is always a number, never null/undefined
+  const displayPrice = isOnSale && product.sale_price 
+    ? (product.sale_price ? Number(product.sale_price) : 0)
+    : (product.price ? Number(product.price) : 0);
+  const originalPrice = isOnSale ? (product.price ? Number(product.price) : null) : null;
 
   // Minimum swipe distance (in pixels)
   const minSwipeDistance = 50;
@@ -308,11 +311,11 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="text-5xl font-bold text-primary">
-                  KES {displayPrice.toLocaleString()}
+                  KES {(displayPrice || 0).toLocaleString()}
                 </span>
                 {originalPrice && (
                   <span className="text-xl text-gray-400 line-through">
-                    KES {originalPrice.toLocaleString()}
+                    KES {(originalPrice || 0).toLocaleString()}
                   </span>
                 )}
               </div>

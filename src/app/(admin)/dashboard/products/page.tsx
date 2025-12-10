@@ -379,15 +379,15 @@ export default function ProductsPage() {
                         {product.sale_price ? (
                           <>
                             <span className="font-semibold text-gray-900">
-                              KES {product.sale_price.toLocaleString()}
+                              KES {(product.sale_price || 0).toLocaleString()}
                             </span>
                             <span className="text-sm text-gray-500 line-through">
-                              KES {product.price.toLocaleString()}
+                              KES {(product.price || 0).toLocaleString()}
                             </span>
                           </>
                         ) : (
                           <span className="font-semibold text-gray-900">
-                            KES {product.price.toLocaleString()}
+                            KES {(product.price || 0).toLocaleString()}
                           </span>
                         )}
                       </div>
