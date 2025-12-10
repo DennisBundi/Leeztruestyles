@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { formatOrderId } from '@/lib/utils/orderId';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -38,8 +39,8 @@ function SuccessContent() {
       {/* Order ID */}
       {orderId && (
         <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6 mb-8 inline-block">
-          <p className="text-sm text-gray-600 mb-2">Order ID</p>
-          <p className="text-lg font-mono font-bold text-primary">{orderId}</p>
+          <p className="text-sm text-gray-600 mb-2">Order Number</p>
+          <p className="text-lg font-mono font-bold text-primary">{formatOrderId(orderId)}</p>
         </div>
       )}
 

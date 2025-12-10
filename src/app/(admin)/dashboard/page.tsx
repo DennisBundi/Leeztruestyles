@@ -1,6 +1,10 @@
-import Link from 'next/link';
+'use client';
 
-// Dummy data for preview
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { formatOrderId } from '@/lib/utils/orderId';
+
+// Dummy data for preview (keeping original structure)
 const dummyStats = {
   totalSales: 125000,
   totalOrders: 45,
@@ -19,42 +23,125 @@ const dummyStats = {
     { id: '2', customer: 'John Smith', amount: 3200, status: 'pending', date: new Date(Date.now() - 86400000) },
     { id: '3', customer: 'Mary Johnson', amount: 6800, status: 'completed', date: new Date(Date.now() - 172800000) },
   ],
-  topProducts: [
-    { id: '1', name: 'Elegant Summer Dress', sales: 15, revenue: 37500 },
-    { id: '3', name: 'Designer Handbag', sales: 12, revenue: 66000 },
-    { id: '4', name: 'High-Waisted Jeans', sales: 10, revenue: 28000 },
-  ],
-  salesByDay: [
-    { day: 'Mon', sales: 12000 },
-    { day: 'Tue', sales: 15000 },
-    { day: 'Wed', sales: 18000 },
-    { day: 'Thu', sales: 14000 },
-    { day: 'Fri', sales: 22000 },
-    { day: 'Sat', sales: 28000 },
-    { day: 'Sun', sales: 16000 },
-  ],
 };
 
-export default function DashboardPage() {
-  // Check if database is configured
-  const hasDatabase = process.env.NEXT_PUBLIC_SUPABASE_URL && 
-                      process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder';
+interface SalesByDay {
+  day: string;
+  sales: number;
+}
 
-  // Use dummy data for preview
+interface TopProduct {
+  id: string;
+  name: string;
+  sales: number;
+}
+
+export default function DashboardPage() {
+  const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [recentOrdersLoading, setRecentOrdersLoading] = useState(true);
+  
+  // Real data from Supabase
+  const [completedOrders, setCompletedOrders] = useState<number>(0);
+  const [pendingOrders, setPendingOrders] = useState<number>(0);
+  const [totalCustomers, setTotalCustomers] = useState<number>(0);
+  const [totalSales, setTotalSales] = useState<number>(0);
+  const [totalOrders, setTotalOrders] = useState<number>(0);
+  const [totalProducts, setTotalProducts] = useState<number>(0);
+
+  // Use dummy data for other stats (not yet implemented)
   const {
-    totalSales,
-    totalOrders,
-    completedOrders,
-    pendingOrders,
-    totalProducts,
-    totalCustomers,
     todaySales,
     todayOrders,
     lowStock,
-    recentOrders,
-    topProducts,
-    salesByDay,
   } = dummyStats;
+
+  useEffect(() => {
+    fetchDashboardData();
+    fetchRecentOrders();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/dashboard/stats');
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('Dashboard stats received:', {
+          salesByDay: data.salesByDay?.length || 0,
+          topProducts: data.topProducts?.length || 0,
+          totalSales: data.totalSales || 0,
+          totalOrders: data.totalOrders || 0,
+          totalProducts: data.totalProducts || 0,
+          completedOrders: data.completedOrders || 0,
+          pendingOrders: data.pendingOrders || 0,
+          totalCustomers: data.totalCustomers || 0,
+        });
+        setSalesByDay(data.salesByDay || []);
+        setTopProducts(data.topProducts || []);
+        setTotalSales(data.totalSales || 0);
+        setTotalOrders(data.totalOrders || 0);
+        setTotalProducts(data.totalProducts || 0);
+        setCompletedOrders(data.completedOrders || 0);
+        setPendingOrders(data.pendingOrders || 0);
+        setTotalCustomers(data.totalCustomers || 0);
+      } else {
+        console.error('Dashboard stats API error:', data.error, data.details);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRecentOrders = async () => {
+    try {
+      setRecentOrdersLoading(true);
+      const response = await fetch('/api/orders');
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('Recent orders received:', data.orders?.length || 0);
+        
+        // Orders are already sorted by created_at descending from the API
+        // Just take the first 5 (most recent) and ensure dates are Date objects
+        const recent = (data.orders || [])
+          .slice(0, 5) // Take first 5 (already sorted by most recent)
+          .map((order: any) => {
+            // Ensure date is a Date object
+            let orderDate: Date;
+            if (order.date instanceof Date) {
+              orderDate = order.date;
+            } else if (typeof order.date === 'string') {
+              orderDate = new Date(order.date);
+            } else {
+              // Fallback: try to use created_at if date is not available
+              orderDate = order.created_at ? new Date(order.created_at) : new Date();
+            }
+            
+            return {
+              ...order,
+              date: orderDate,
+            };
+          });
+        
+        console.log('Recent orders processed:', recent.length, 'orders');
+        setRecentOrders(recent);
+      } else {
+        console.error('Recent orders API error:', data.error, data.details);
+        setRecentOrders([]);
+      }
+    } catch (error) {
+      console.error('Error fetching recent orders:', error);
+      setRecentOrders([]);
+    } finally {
+      setRecentOrdersLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -72,8 +159,10 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-4xl font-bold text-primary">KES {totalSales.toLocaleString()}</p>
-          <p className="text-sm text-gray-500 mt-2">Last 30 days</p>
+          <p className="text-4xl font-bold text-primary">
+            {loading ? '...' : `KES ${totalSales.toLocaleString()}`}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">All time</p>
         </div>
         
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl shadow-lg border border-blue-200 hover:shadow-xl transition-all">
@@ -83,7 +172,9 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
-          <p className="text-4xl font-bold text-blue-600">{totalOrders}</p>
+          <p className="text-4xl font-bold text-blue-600">
+            {loading ? '...' : totalOrders}
+          </p>
           <p className="text-sm text-gray-500 mt-2">All time</p>
         </div>
         
@@ -105,7 +196,9 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           </div>
-          <p className="text-4xl font-bold text-purple-600">{totalProducts}</p>
+          <p className="text-4xl font-bold text-purple-600">
+            {loading ? '...' : totalProducts}
+          </p>
           <p className="text-sm text-gray-500 mt-2">Active products</p>
         </div>
       </div>
@@ -117,8 +210,12 @@ export default function DashboardPage() {
             <h3 className="text-gray-600 text-sm font-semibold">Completed Orders</h3>
             <span className="text-2xl">✓</span>
           </div>
-          <p className="text-3xl font-bold text-green-600">{completedOrders}</p>
-          <p className="text-xs text-gray-500 mt-1">{Math.round((completedOrders / totalOrders) * 100)}% success rate</p>
+          <p className="text-3xl font-bold text-green-600">
+            {loading ? '...' : completedOrders}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {loading ? 'Loading...' : totalOrders > 0 ? `${Math.round((completedOrders / totalOrders) * 100)}% success rate` : 'No orders yet'}
+          </p>
         </div>
         
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
@@ -126,7 +223,9 @@ export default function DashboardPage() {
             <h3 className="text-gray-600 text-sm font-semibold">Pending Orders</h3>
             <span className="text-2xl">⏳</span>
           </div>
-          <p className="text-3xl font-bold text-yellow-600">{pendingOrders}</p>
+          <p className="text-3xl font-bold text-yellow-600">
+            {loading ? '...' : pendingOrders}
+          </p>
           <p className="text-xs text-gray-500 mt-1">Requires attention</p>
         </div>
         
@@ -135,7 +234,9 @@ export default function DashboardPage() {
             <h3 className="text-gray-600 text-sm font-semibold">Total Customers</h3>
             <span className="text-2xl">👥</span>
           </div>
-          <p className="text-3xl font-bold text-blue-600">{totalCustomers}</p>
+          <p className="text-3xl font-bold text-blue-600">
+            {loading ? '...' : totalCustomers}
+          </p>
           <p className="text-xs text-gray-500 mt-1">Registered users</p>
         </div>
       </div>
@@ -169,26 +270,37 @@ export default function DashboardPage() {
         {/* Sales Chart */}
         <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 animate-slide-up">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Sales This Week</h2>
-          <div className="space-y-4">
-            {salesByDay.map((day, index) => {
-              const maxSales = Math.max(...salesByDay.map(d => d.sales));
-              const percentage = (day.sales / maxSales) * 100;
-              return (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">{day.day}</span>
-                    <span className="font-semibold text-gray-900">KES {day.sales.toLocaleString()}</span>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : salesByDay.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p>No sales data available</p>
+              <p className="text-sm mt-2">Check console for details</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {salesByDay.map((day, index) => {
+                const maxSales = Math.max(...salesByDay.map(d => d.sales), 1); // Avoid division by zero
+                const percentage = maxSales > 0 ? (day.sales / maxSales) * 100 : 0;
+                return (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">{day.day}</span>
+                      <span className="font-semibold text-gray-900">KES {day.sales.toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-primary to-primary-dark h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-primary to-primary-dark h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Top Products */}
@@ -202,25 +314,35 @@ export default function DashboardPage() {
               View All
             </Link>
           </div>
-          <div className="space-y-4">
-            {topProducts.map((product, index) => (
-              <div key={product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-lg flex items-center justify-center text-white font-bold">
-                    {index + 1}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : topProducts.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p>No product sales data available</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {topProducts.map((product, index) => (
+                <div key={product.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-lg flex items-center justify-center text-white font-bold">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-900">{product.name}</div>
+                      <div className="text-sm text-gray-600">{product.sales} units sold</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-gray-900">{product.name}</div>
-                    <div className="text-sm text-gray-600">{product.sales} sales</div>
+                  <div className="text-right">
+                    <div className="font-bold text-primary">{product.sales}</div>
+                    <div className="text-xs text-gray-500">Sales Count</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-primary">KES {product.revenue.toLocaleString()}</div>
-                  <div className="text-xs text-gray-500">Revenue</div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -251,9 +373,24 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {recentOrders?.map((order: any) => (
+              {recentOrdersLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                    Loading recent orders...
+                  </td>
+                </tr>
+              ) : recentOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                    No recent orders found
+                  </td>
+                </tr>
+              ) : (
+                recentOrders.map((order: any) => (
                 <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-4 font-mono text-sm text-gray-600">#{order.id}</td>
+                  <td className="py-3 px-4 font-mono text-sm text-gray-600">
+                    {order.order_number ? `#${order.order_number}` : `#${formatOrderId(order.id)}`}
+                  </td>
                   <td className="py-3 px-4 font-medium text-gray-900">
                     {order.customer || 'Guest'}
                   </td>
@@ -285,7 +422,8 @@ export default function DashboardPage() {
                     </Link>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>

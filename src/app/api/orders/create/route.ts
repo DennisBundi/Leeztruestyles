@@ -22,6 +22,14 @@ const createOrderSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    // Log the request for debugging
+    console.log('Order creation request:', {
+      itemsCount: body.items?.length,
+      saleType: body.sale_type,
+      hasCustomerInfo: !!body.customer_info,
+    });
+    
     const validated = createOrderSchema.parse(body);
 
     const supabase = await createClient();
@@ -98,15 +106,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ order_id: order.id });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Validation error:", error.errors);
+      // Format validation errors for better readability
+      const formattedErrors = error.errors.map((err) => ({
+        field: err.path.join('.'),
+        message: err.message,
+        code: err.code,
+      }));
+      
       return NextResponse.json(
-        { error: "Invalid request data", details: error.errors },
+        { 
+          error: "Invalid request data", 
+          details: formattedErrors,
+          rawErrors: error.errors 
+        },
         { status: 400 }
       );
     }
 
     console.error("Order creation error:", error);
     return NextResponse.json(
-      { error: "Failed to create order" },
+      { error: "Failed to create order", details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

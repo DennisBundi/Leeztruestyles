@@ -234,7 +234,9 @@ export async function GET(request: NextRequest) {
       return {
         ...product,
         category: product.categories?.name || null,
-        stock: inv?.stock || 0,
+        stock: inv?.available ?? inv?.stock ?? 0, // Return available stock (stock_quantity - reserved_quantity)
+        stock_quantity: inv?.stock ?? 0, // Also include total stock for reference
+        available_stock: inv?.available ?? 0, // Explicit available stock field
         image: product.images && product.images.length > 0 ? product.images[0] : null,
       };
     });

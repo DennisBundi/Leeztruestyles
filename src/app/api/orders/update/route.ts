@@ -27,6 +27,20 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
+    
+    // Log the request for debugging
+    console.log('Order update request:', {
+      order_id: body.order_id,
+      seller_id: body.seller_id,
+      payment_method: body.payment_method,
+      status: body.status,
+    });
+    
+    // Clean up the body - remove undefined/null seller_id
+    if (body.seller_id === null || body.seller_id === undefined || body.seller_id === '') {
+      delete body.seller_id;
+    }
+    
     const validated = updateOrderSchema.parse(body);
 
     const updateData: any = {};
@@ -50,15 +64,28 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors);
+      // Format validation errors for better readability
+      const formattedErrors = error.errors.map((err) => ({
+        field: err.path.join('.'),
+        message: err.message,
+        code: err.code,
+        received: err.path.length > 0 ? (body as any)[err.path[0]] : undefined,
+      }));
+      
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { 
+          error: 'Invalid request data', 
+          details: formattedErrors,
+          rawErrors: error.errors 
+        },
         { status: 400 }
       );
     }
 
     console.error('Order update error:', error);
     return NextResponse.json(
-      { error: 'Failed to update order' },
+      { error: 'Failed to update order', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
