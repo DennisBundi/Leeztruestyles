@@ -4,6 +4,8 @@ import { getUserRole } from '@/lib/auth/roles';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatOrderId } from '@/lib/utils/orderId';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();

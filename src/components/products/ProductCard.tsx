@@ -22,8 +22,11 @@ export default function ProductCard({ product }: ProductCardProps) {
   const isOutOfStock =
     product.available_stock !== undefined && product.available_stock <= 0;
   const isOnSale = product.is_flash_sale && product.sale_price !== undefined;
-  const displayPrice = isOnSale ? product.sale_price! : product.price;
-  const originalPrice = isOnSale ? product.price : null;
+  // Ensure displayPrice is always a number, never null/undefined
+  const displayPrice = isOnSale 
+    ? (product.sale_price ? Number(product.sale_price) : 0) 
+    : (product.price ? Number(product.price) : 0);
+  const originalPrice = isOnSale ? (product.price ? Number(product.price) : null) : null;
 
   return (
     <div className="group relative bg-white rounded-none shadow-sm overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-primary/20 animate-fade-in">
@@ -90,11 +93,11 @@ export default function ProductCard({ product }: ProductCardProps) {
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-primary">
-                KES {displayPrice.toLocaleString()}
+                KES {(displayPrice || 0).toLocaleString()}
               </span>
               {originalPrice && (
                 <span className="text-sm text-gray-400 line-through">
-                  KES {originalPrice.toLocaleString()}
+                  KES {(originalPrice || 0).toLocaleString()}
                 </span>
               )}
             </div>

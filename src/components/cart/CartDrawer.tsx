@@ -82,7 +82,7 @@ export default function CartDrawer() {
             <div className="border-t bg-gray-50 p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 font-medium">Subtotal:</span>
-                <span className="text-2xl font-bold text-primary">KES {total.toLocaleString()}</span>
+                <span className="text-2xl font-bold text-primary">KES {(total || 0).toLocaleString()}</span>
               </div>
               <div className="text-sm text-gray-500 text-center">
                 Shipping calculated at checkout

@@ -111,7 +111,7 @@ export default function AddToCartButton({
           ? '✓ Added to Cart!'
           : isOutOfStock
           ? 'Out of Stock'
-          : `Add to Cart - KES ${(displayPrice * quantity).toLocaleString()}`}
+          : `Add to Cart - KES ${((displayPrice || 0) * quantity).toLocaleString()}`}
       </button>
     </div>
   );

@@ -96,7 +96,7 @@ export default function CartNotification({
                 Quantity: {quantity}
               </p>
               <p className="text-lg font-bold text-primary">
-                KES {(displayPrice * quantity).toLocaleString()}
+                KES {((displayPrice || 0) * quantity).toLocaleString()}
               </p>
             </div>
           </div>

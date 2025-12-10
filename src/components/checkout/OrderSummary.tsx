@@ -42,15 +42,15 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
                 {(item.product as any).is_flash_sale && (item.product as any).sale_price ? (
                   <div className="flex items-center gap-2">
                     <span className="text-gray-900 font-semibold">
-                      KES {(item.product as any).sale_price.toLocaleString()}
+                      KES {((item.product as any).sale_price || 0).toLocaleString()}
                     </span>
                     <span className="text-gray-400 line-through text-xs">
-                      KES {item.product.price.toLocaleString()}
+                      KES {(item.product.price || 0).toLocaleString()}
                     </span>
                   </div>
                 ) : (
                   <span className="text-gray-600">
-                    KES {item.product.price.toLocaleString()} each
+                    KES {(item.product.price || 0).toLocaleString()} each
                   </span>
                 )}
               </div>
@@ -83,7 +83,7 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
                 const price = product.sale_price && product.is_flash_sale 
                   ? product.sale_price 
                   : product.price;
-                return (price * item.quantity).toLocaleString();
+                return ((price || 0) * item.quantity).toLocaleString();
               })()}
             </div>
               <button
@@ -109,7 +109,7 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
       <div className="border-t-2 border-gray-200 pt-6 space-y-3">
         <div className="flex justify-between text-gray-700">
           <span className="font-medium">Subtotal</span>
-          <span className="font-semibold">KES {total.toLocaleString()}</span>
+          <span className="font-semibold">KES {(total || 0).toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-gray-700">
           <span className="font-medium">Shipping</span>
@@ -117,7 +117,7 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
         </div>
         <div className="border-t-2 border-primary pt-3 flex justify-between text-xl font-bold text-gray-900">
           <span>Total</span>
-          <span className="text-primary">KES {total.toLocaleString()}</span>
+          <span className="text-primary">KES {(total || 0).toLocaleString()}</span>
         </div>
       </div>
     </div>

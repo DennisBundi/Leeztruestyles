@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getUserRole } from '@/lib/auth/roles';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const updateOrderSchema = z.object({
   order_id: z.string().uuid(),
   seller_id: z.string().uuid().optional(),

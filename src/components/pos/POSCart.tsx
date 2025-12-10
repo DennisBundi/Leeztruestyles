@@ -320,7 +320,7 @@ export default function POSCart({
                   Total Amount:
                 </span>
                 <span className="text-lg font-bold text-primary">
-                  KES {saleDetails.total.toLocaleString()}
+                  KES {(saleDetails.total || 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -461,12 +461,12 @@ export default function POSCart({
                     </button>
                   </div>
                   <div className="text-xs text-gray-600">
-                    KES {item.product.price.toLocaleString()} each
+                    KES {(item.product.price || 0).toLocaleString()} each
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-primary text-lg">
-                    KES {(item.product.price * item.quantity).toLocaleString()}
+                    KES {((item.product.price || 0) * item.quantity).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -483,13 +483,13 @@ export default function POSCart({
                   Subtotal
                 </span>
                 <span className="text-lg font-semibold text-gray-900">
-                  KES {total.toLocaleString()}
+                  KES {(total || 0).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-2xl font-bold text-gray-900">Total</span>
                 <span className="text-3xl font-bold text-primary">
-                  KES {total.toLocaleString()}
+                  KES {(total || 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -563,7 +563,7 @@ export default function POSCart({
                   Processing...
                 </span>
               ) : (
-                `Complete Sale - KES ${total.toLocaleString()}`
+                `Complete Sale - KES ${(total || 0).toLocaleString()}`
               )}
             </button>
 

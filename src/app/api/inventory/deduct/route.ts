@@ -4,6 +4,8 @@ import { InventoryService } from '@/services/inventoryService';
 import { getUserRole } from '@/lib/auth/roles';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const deductRequestSchema = z.object({
   product_id: z.string().uuid(),
   quantity: z.number().positive().int(),

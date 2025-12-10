@@ -37,10 +37,10 @@ export default function CartItem({ item }: CartItemProps) {
                 {(item.product as any).is_flash_sale && (item.product as any).sale_price ? (
                   <div className="flex items-center gap-2">
                     <span className="text-gray-900 font-semibold">
-                      KES {(item.product as any).sale_price.toLocaleString()}
+                      KES {((item.product as any).sale_price || 0).toLocaleString()}
                     </span>
                     <span className="text-gray-400 line-through">
-                      KES {item.product.price.toLocaleString()}
+                      KES {(item.product.price || 0).toLocaleString()}
                     </span>
                     <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
                       SALE
@@ -48,7 +48,7 @@ export default function CartItem({ item }: CartItemProps) {
                   </div>
                 ) : (
                   <p className="text-gray-500">
-                    KES {item.product.price.toLocaleString()} each
+                    KES {(item.product.price || 0).toLocaleString()} each
                   </p>
                 )}
               </div>
@@ -75,7 +75,7 @@ export default function CartItem({ item }: CartItemProps) {
                 const price = product.sale_price && product.is_flash_sale 
                   ? product.sale_price 
                   : product.price;
-                return (price * item.quantity).toLocaleString();
+                return ((price || 0) * item.quantity).toLocaleString();
               })()}
             </span>
             <button
