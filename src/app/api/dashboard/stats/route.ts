@@ -279,6 +279,31 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Calculate today's sales and orders
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    // Fetch today's orders
+    const { data: todayOrders, error: todayOrdersError } = await adminClient
+      .from('orders')
+      .select('id, total_amount, created_at, status')
+      .gte('created_at', todayStart.toISOString())
+      .lte('created_at', todayEnd.toISOString());
+
+    if (todayOrdersError) {
+      console.error('Error fetching today\'s orders:', todayOrdersError);
+    }
+
+    // Calculate today's sales (sum of all orders created today)
+    const todaySales = (todayOrders || []).reduce((sum: number, order: any) => {
+      return sum + parseFloat(order.total_amount || 0);
+    }, 0);
+
+    // Count today's orders
+    const todayOrdersCount = todayOrders?.length || 0;
+
     // Debug: Log final results
     const weekTotalSales = formattedSalesByDay.reduce((sum, day) => sum + day.sales, 0);
     console.log('Dashboard stats response:', {
@@ -287,6 +312,8 @@ export async function GET(request: NextRequest) {
       totalSales: totalSalesAmount,
       totalOrders: totalOrdersCount,
       totalProducts: finalProductsCount,
+      todaySales,
+      todayOrders: todayOrdersCount,
       completedOrders: completedCount || 0,
       pendingOrders: pendingCount || 0,
       totalCustomers: customersCount || 0,
@@ -300,6 +327,8 @@ export async function GET(request: NextRequest) {
       totalSales: totalSalesAmount,
       totalOrders: totalOrdersCount,
       totalProducts: finalProductsCount,
+      todaySales,
+      todayOrders: todayOrdersCount,
       completedOrders: completedCount || 0,
       pendingOrders: pendingCount || 0,
       totalCustomers: customersCount || 0,
