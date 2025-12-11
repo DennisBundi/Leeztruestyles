@@ -138,7 +138,21 @@ export default function ProductsPage() {
         const response = await fetch('/api/products');
         if (response.ok) {
           const data = await response.json();
-          console.log('Fetched products:', data.products);
+          console.log('📦 Fetched products:', data.products?.length || 0, 'products');
+          
+          // Log stock information for debugging
+          if (data.products && data.products.length > 0) {
+            const stockInfo = data.products.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              stock: p.stock,
+              stock_quantity: p.stock_quantity,
+              available_stock: p.available_stock,
+              has_inventory: p.stock !== undefined,
+            }));
+            console.log('📊 Stock Information:', stockInfo.slice(0, 5)); // Log first 5
+          }
+          
           setProducts(data.products || []);
         } else {
           console.error('Failed to fetch products');
