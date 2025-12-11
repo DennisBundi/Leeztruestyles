@@ -542,14 +542,19 @@ export async function GET(request: NextRequest) {
       return result;
     });
 
+    // Filter out products with 0 stock - don't show products with no inventory
+    // This also filters out custom products created via POS (they have 0 stock)
+    const productsWithStock = productsWithInventory.filter(
+      (p: any) => p.stock > 0
+    );
+
     console.log("✅ Returning products with inventory:", {
       total: productsWithInventory.length,
-      with_stock: productsWithInventory.filter((p: any) => p.stock > 0).length,
-      without_stock: productsWithInventory.filter((p: any) => p.stock === 0)
-        .length,
+      with_stock: productsWithStock.length,
+      filtered_out: productsWithInventory.length - productsWithStock.length,
     });
 
-    return NextResponse.json({ products: productsWithInventory });
+    return NextResponse.json({ products: productsWithStock });
   } catch (error) {
     console.error("Products fetch error:", error);
     return NextResponse.json(

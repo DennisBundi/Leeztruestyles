@@ -258,40 +258,58 @@ export default async function HomePage() {
   }
 
   // Handle errors gracefully - fallback to empty array
-  // If inventory is missing, default to undefined (not 0) so we can show "Stock available" instead of "Out of Stock"
-  const productsWithStock = (products || []).map((product: any) => {
-    const stock = inventoryMap.get(product.id);
-    return {
-      ...product,
-      // Only set available_stock if we have inventory data, otherwise leave undefined
-      // This allows the UI to handle missing inventory differently
-      available_stock: stock !== undefined ? stock : undefined,
-    };
-  });
+  // Filter out products with 0 stock - only show products with stock > 0
+  const productsWithStock = (products || [])
+    .map((product: any) => {
+      const stock = inventoryMap.get(product.id);
+      return {
+        ...product,
+        // Only set available_stock if we have inventory data, otherwise leave undefined
+        // This allows the UI to handle missing inventory differently
+        available_stock: stock !== undefined ? stock : undefined,
+      };
+    })
+    .filter((product: any) => {
+      // Filter out products with 0 stock
+      // Keep products with undefined stock (inventory not set up yet) or stock > 0
+      return product.available_stock === undefined || product.available_stock > 0;
+    });
 
-  const flashSaleWithStock = (flashSaleProducts || []).map((product: any) => {
-    const discountPercent = product.sale_price
-      ? Math.round(((product.price - product.sale_price) / product.price) * 100)
-      : 0;
-    const stock = flashSaleInventoryMap.get(product.id);
-    return {
-      ...product,
-      // Only set available_stock if we have inventory data
-      available_stock: stock !== undefined ? stock : undefined,
-      discount_percent: discountPercent,
-      flash_sale_end_date: product.flash_sale_end
-        ? new Date(product.flash_sale_end)
-        : null,
-    };
-  });
+  const flashSaleWithStock = (flashSaleProducts || [])
+    .map((product: any) => {
+      const discountPercent = product.sale_price
+        ? Math.round(((product.price - product.sale_price) / product.price) * 100)
+        : 0;
+      const stock = flashSaleInventoryMap.get(product.id);
+      return {
+        ...product,
+        // Only set available_stock if we have inventory data
+        available_stock: stock !== undefined ? stock : undefined,
+        discount_percent: discountPercent,
+        flash_sale_end_date: product.flash_sale_end
+          ? new Date(product.flash_sale_end)
+          : null,
+      };
+    })
+    .filter((product: any) => {
+      // Filter out products with 0 stock
+      // Keep products with undefined stock (inventory not set up yet) or stock > 0
+      return product.available_stock === undefined || product.available_stock > 0;
+    });
 
-  const newArrivalsWithStock = (newArrivals || []).map((product: any) => {
-    const stock = newArrivalsInventoryMap.get(product.id);
-    return {
-      ...product,
-      available_stock: stock !== undefined ? stock : undefined,
-    };
-  });
+  const newArrivalsWithStock = (newArrivals || [])
+    .map((product: any) => {
+      const stock = newArrivalsInventoryMap.get(product.id);
+      return {
+        ...product,
+        available_stock: stock !== undefined ? stock : undefined,
+      };
+    })
+    .filter((product: any) => {
+      // Filter out products with 0 stock
+      // Keep products with undefined stock (inventory not set up yet) or stock > 0
+      return product.available_stock === undefined || product.available_stock > 0;
+    });
 
   return (
     <div className="min-h-screen">

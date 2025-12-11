@@ -11,6 +11,7 @@ interface Order {
   seller: string;
   type: string;
   amount: number;
+  commission?: number;
   status: string;
   date: Date;
   payment_method: string;
@@ -23,10 +24,22 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders();
+    fetchUserRole();
   }, []);
+
+  const fetchUserRole = async () => {
+    try {
+      const response = await fetch('/api/auth/role');
+      const { role } = await response.json();
+      setUserRole(role);
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -121,15 +134,24 @@ export default function OrdersPage() {
           )}
         </div>
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">Total Revenue</div>
+          <div className="text-xs text-gray-600 mb-2">
+            {userRole === 'seller' ? 'Total Commission' : 'Total Revenue'}
+          </div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <div className="text-2xl font-bold text-primary">
-              KES {(filteredOrders
-                .filter(o => o.status === 'completed')
-                .reduce((sum, o) => sum + (o.amount || 0), 0) || 0).toLocaleString()}
+              KES {userRole === 'seller'
+                ? (filteredOrders
+                    .filter(o => o.status === 'completed')
+                    .reduce((sum, o) => sum + (o.commission || 0), 0) || 0).toLocaleString()
+                : (filteredOrders
+                    .filter(o => o.status === 'completed')
+                    .reduce((sum, o) => sum + (o.amount || 0), 0) || 0).toLocaleString()}
             </div>
+          )}
+          {userRole === 'seller' && (
+            <div className="text-xs text-gray-500 mt-1">3% of total sales</div>
           )}
         </div>
       </div>
@@ -181,7 +203,9 @@ export default function OrdersPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Customer</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Seller</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">
+                  {userRole === 'seller' ? 'Commission' : 'Amount'}
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Payment</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Date</th>
@@ -200,7 +224,7 @@ export default function OrdersPage() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center">
+                  <td colSpan={userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
                     <div className="text-red-500">
                       <svg className="w-10 h-10 mx-auto mb-3 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -218,7 +242,7 @@ export default function OrdersPage() {
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center">
+                  <td colSpan={userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
                     <div className="text-gray-500">
                       <svg className="w-10 h-10 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -255,11 +279,27 @@ export default function OrdersPage() {
                       {order.type}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm font-semibold text-gray-900">
-                      KES {(order.amount || 0).toLocaleString()}
-                    </span>
-                  </td>
+                  {userRole === 'seller' ? (
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-primary">
+                        KES {(order.commission || 0).toLocaleString()}
+                      </span>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        from KES {(order.amount || 0).toLocaleString()}
+                      </div>
+                    </td>
+                  ) : (
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-gray-900">
+                        KES {(order.amount || 0).toLocaleString()}
+                      </span>
+                      {order.commission && order.commission > 0 && (
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          Commission: KES {(order.commission || 0).toLocaleString()}
+                        </div>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <span className="text-xs text-gray-600 capitalize">{order.payment_method}</span>
                   </td>

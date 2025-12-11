@@ -48,10 +48,46 @@ export function hasRole(userRole: UserRole | null, requiredRole: UserRole): bool
 }
 
 export function canAccessAdmin(userRole: UserRole | null): boolean {
-  return hasRole(userRole, 'admin') || hasRole(userRole, 'manager');
+  return hasRole(userRole, 'admin') || hasRole(userRole, 'manager') || hasRole(userRole, 'seller');
 }
 
 export function canAccessPOS(userRole: UserRole | null): boolean {
   return hasRole(userRole, 'admin') || hasRole(userRole, 'manager') || hasRole(userRole, 'seller');
+}
+
+export type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings';
+
+export function canAccessSection(userRole: UserRole | null, section: DashboardSection): boolean {
+  if (!userRole) return false;
+
+  // Sellers can only access: orders, pos, profile, settings (NOT payments)
+  if (userRole === 'seller') {
+    return ['orders', 'pos', 'profile', 'settings'].includes(section);
+  }
+
+  // Admin and manager can access these sections
+  if (['orders', 'payments', 'pos', 'profile', 'settings'].includes(section)) {
+    return true;
+  }
+
+  // Only admin and manager can access these sections
+  if (['dashboard', 'products', 'inventory'].includes(section)) {
+    return userRole === 'admin' || userRole === 'manager';
+  }
+
+  // Only admin can access employees section
+  if (section === 'employees') {
+    return userRole === 'admin';
+  }
+
+  return false;
+}
+
+export function getAllowedSections(userRole: UserRole | null): DashboardSection[] {
+  if (!userRole) return [];
+
+  const allSections: DashboardSection[] = ['dashboard', 'products', 'orders', 'inventory', 'employees', 'payments', 'pos', 'profile', 'settings'];
+  
+  return allSections.filter(section => canAccessSection(userRole, section));
 }
 

@@ -1,10 +1,35 @@
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { getEmployee } from '@/lib/auth/roles';
+import { canAccessPOS, getUserRole } from '@/lib/auth/roles';
 import POSInterface from '@/components/pos/POSInterface';
 
-export default function POSPage() {
-  // Preview mode - show POS with dummy employee
-  const dummyEmployeeId = 'emp-preview-001';
-  const dummyEmployeeCode = 'EMP-001';
+export default async function POSPage() {
+  const supabase = await createClient();
+  
+  // Check authentication
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/signin?redirect=/pos');
+  }
+
+  // Check user role
+  const userRole = await getUserRole(user.id);
+  if (!canAccessPOS(userRole)) {
+    redirect('/');
+  }
+
+  // Get employee record
+  const employee = await getEmployee(user.id);
+  
+  // If no employee record, redirect (shouldn't happen if role check passed)
+  if (!employee) {
+    redirect('/dashboard');
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -29,14 +54,14 @@ export default function POSPage() {
             </div>
             <div className="text-right">
               <div className="text-sm text-gray-600">
-                Employee: <span className="font-semibold text-gray-900">{dummyEmployeeCode}</span>
+                Employee: <span className="font-semibold text-gray-900">{employee.employee_code}</span>
               </div>
-              <div className="text-xs text-gray-500 mt-1">Preview Mode</div>
+              <div className="text-xs text-gray-500 mt-1 capitalize">{employee.role}</div>
             </div>
           </div>
         </div>
       </div>
-      <POSInterface employeeId={dummyEmployeeId} employeeCode={dummyEmployeeCode} />
+      <POSInterface employeeId={employee.id} employeeCode={employee.employee_code} />
     </div>
   );
 }

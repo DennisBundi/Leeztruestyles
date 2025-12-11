@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useCartStore } from "@/store/cartStore";
+import { useCartStore, type ExtendedProduct } from "@/store/cartStore";
 import { useRouter } from "next/navigation";
 import { formatOrderId } from "@/lib/utils/orderId";
 
@@ -76,22 +76,27 @@ export default function POSCart({
       }
 
       // Step 1: Create order
-      // Validate and format items before sending
-      const orderItems = items.map((item) => {
-        // Ensure product_id is a valid UUID string
-        if (!item.product.id || typeof item.product.id !== "string") {
-          throw new Error(`Invalid product ID for ${item.product.name}`);
-        }
+      // Separate existing products and custom products
+      const existingProductItems: Array<{
+        product_id: string;
+        quantity: number;
+        price: number;
+      }> = [];
+      const customProductItems: Array<{
+        product_data: {
+          name: string;
+          price: number;
+          size?: string;
+          category_id?: string | null;
+          description?: string | null;
+        };
+        quantity: number;
+        price: number;
+      }> = [];
 
-        // Validate UUID format (basic check)
-        const uuidRegex =
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(item.product.id)) {
-          console.error("Invalid UUID format for product:", item.product);
-          throw new Error(
-            `Product "${item.product.name}" has an invalid ID format. Please refresh the page and try again.`
-          );
-        }
+      items.forEach((item) => {
+        const extendedProduct = item.product as ExtendedProduct;
+        const isCustom = extendedProduct.isCustom === true;
 
         // Ensure price is a number
         const price =
@@ -109,29 +114,85 @@ export default function POSCart({
           throw new Error(`Invalid quantity for ${item.product.name}`);
         }
 
-        return {
-          product_id: item.product.id,
-          quantity: quantity,
-          price: price,
-        };
+        if (isCustom && extendedProduct.customData) {
+          // Custom product - send product_data
+          customProductItems.push({
+            product_data: {
+              name: extendedProduct.customData.name,
+              price: extendedProduct.customData.price,
+              size: extendedProduct.customData.size,
+              category_id: extendedProduct.customData.category_id || null,
+              description: extendedProduct.customData.description || null,
+            },
+            quantity: quantity,
+            price: price,
+          });
+        } else {
+          // Existing product - validate UUID and send product_id
+          if (!item.product.id || typeof item.product.id !== "string") {
+            throw new Error(`Invalid product ID for ${item.product.name}`);
+          }
+
+          // Validate UUID format (basic check)
+          const uuidRegex =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(item.product.id)) {
+            console.error("Invalid UUID format for product:", item.product);
+            throw new Error(
+              `Product "${item.product.name}" has an invalid ID format. Please refresh the page and try again.`
+            );
+          }
+
+          existingProductItems.push({
+            product_id: item.product.id,
+            quantity: quantity,
+            price: price,
+          });
+        }
       });
 
+      // Combine items (existing products with product_id, custom products with product_data)
+      const orderItems = [
+        ...existingProductItems,
+        ...customProductItems,
+      ];
+
       // Log the order data for debugging
-      console.log("Creating order with items:", orderItems);
+      console.log("Creating order with items:", {
+        existing: existingProductItems.length,
+        custom: customProductItems.length,
+        total: orderItems.length,
+      });
+
+      // Prepare order data with seller_id if available
+      const orderData: any = {
+        items: orderItems,
+        customer_info: {
+          name: customerName || "POS Customer",
+          email: "pos@leeztruestyles.com",
+          phone: "0000000000",
+          address: "In-store",
+        },
+        sale_type: "pos",
+      };
+
+      // Include seller_id if employeeId is a valid UUID
+      if (
+        employeeId &&
+        typeof employeeId === "string" &&
+        employeeId.trim() !== ""
+      ) {
+        const uuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(employeeId)) {
+          orderData.seller_id = employeeId;
+        }
+      }
 
       const orderResponse = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: orderItems,
-          customer_info: {
-            name: customerName || "POS Customer",
-            email: "pos@leeztruestyles.com",
-            phone: "0000000000",
-            address: "In-store",
-          },
-          sale_type: "pos",
-        }),
+        body: JSON.stringify(orderData),
       });
 
       if (!orderResponse.ok) {
@@ -189,30 +250,36 @@ export default function POSCart({
         throw new Error(errorMessage);
       }
 
-      // Step 3: Deduct inventory for each item (with error handling)
+      // Step 3: Deduct inventory for each item (skip custom products)
       const inventoryDeductions = await Promise.allSettled(
-        items.map(async (item) => {
-          const deductResponse = await fetch("/api/inventory/deduct", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              product_id: item.product.id,
-              quantity: item.quantity,
-              order_id,
-            }),
-          });
+        items
+          .filter((item) => {
+            // Skip custom products - they have 0 stock and weren't in inventory
+            const extendedProduct = item.product as ExtendedProduct;
+            return !extendedProduct.isCustom;
+          })
+          .map(async (item) => {
+            const deductResponse = await fetch("/api/inventory/deduct", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                product_id: item.product.id,
+                quantity: item.quantity,
+                order_id,
+              }),
+            });
 
-          if (!deductResponse.ok) {
-            const errorData = await deductResponse.json().catch(() => ({}));
-            throw new Error(
-              `Failed to deduct inventory for ${item.product.name}: ${
-                errorData.error || "Insufficient stock"
-              }`
-            );
-          }
+            if (!deductResponse.ok) {
+              const errorData = await deductResponse.json().catch(() => ({}));
+              throw new Error(
+                `Failed to deduct inventory for ${item.product.name}: ${
+                  errorData.error || "Insufficient stock"
+                }`
+              );
+            }
 
-          return await deductResponse.json();
-        })
+            return await deductResponse.json();
+          })
       );
 
       // Check if any inventory deductions failed
@@ -415,8 +482,15 @@ export default function POSCart({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm text-gray-900 truncate mb-1">
-                    {item.product.name}
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="font-semibold text-sm text-gray-900 truncate">
+                      {item.product.name}
+                    </div>
+                    {(item.product as ExtendedProduct).isCustom && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full whitespace-nowrap">
+                        Custom
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center gap-1 bg-white rounded-lg p-1">

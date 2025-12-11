@@ -1,66 +1,66 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
-// Dummy payment transactions for preview
-const dummyTransactions = [
-  {
-    id: '1',
-    reference: 'MPESA-ABC123',
-    order_id: 'ORD-001',
-    amount: 5500,
-    method: 'mpesa',
-    status: 'success',
-    date: new Date(),
-  },
-  {
-    id: '2',
-    reference: 'PAYSTACK-XYZ789',
-    order_id: 'ORD-002',
-    amount: 3200,
-    method: 'card',
-    status: 'pending',
-    date: new Date(Date.now() - 86400000),
-  },
-  {
-    id: '3',
-    reference: 'CASH-001',
-    order_id: 'ORD-003',
-    amount: 6800,
-    method: 'cash',
-    status: 'success',
-    date: new Date(Date.now() - 172800000),
-  },
-  {
-    id: '4',
-    reference: 'MPESA-DEF456',
-    order_id: 'ORD-004',
-    amount: 1750,
-    method: 'mpesa',
-    status: 'failed',
-    date: new Date(Date.now() - 259200000),
-  },
-];
+interface Transaction {
+  id: string;
+  reference: string;
+  order_id: string;
+  order_number: string;
+  amount: number;
+  method: 'mpesa' | 'card' | 'cash';
+  status: 'success' | 'pending' | 'failed';
+  date: string;
+  created_at: string;
+}
 
 export default function PaymentsPage() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedMethod, setSelectedMethod] = useState('all');
 
+  // Fetch transactions from API
+  useEffect(() => {
+    async function fetchTransactions() {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch('/api/payments/transactions');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch transactions');
+        }
+        
+        const data = await response.json();
+        setTransactions(data.transactions || []);
+      } catch (err: any) {
+        console.error('Error fetching transactions:', err);
+        setError(err.message || 'Failed to load transactions');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTransactions();
+  }, []);
+
   // Filter transactions based on search, status, and method
   const filteredTransactions = useMemo(() => {
-    return dummyTransactions.filter((transaction) => {
+    return transactions.filter((transaction) => {
       const matchesSearch = 
         transaction.reference.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        transaction.order_id.toLowerCase().includes(searchQuery.toLowerCase());
+        transaction.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        transaction.order_number.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = selectedStatus === 'all' || transaction.status === selectedStatus;
       const matchesMethod = selectedMethod === 'all' || transaction.method === selectedMethod;
       return matchesSearch && matchesStatus && matchesMethod;
     });
-  }, [searchQuery, selectedStatus, selectedMethod]);
+  }, [transactions, searchQuery, selectedStatus, selectedMethod]);
 
-  const transactions = filteredTransactions;
-  const totalRevenue = transactions
+  const totalRevenue = filteredTransactions
     .filter(t => t.status === 'success')
     .reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
 
@@ -78,28 +78,46 @@ export default function PaymentsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
           <div className="text-sm text-gray-600 mb-2">Total Transactions</div>
-          <div className="text-3xl font-bold text-gray-900">{dummyTransactions.length}</div>
-          {filteredTransactions.length !== dummyTransactions.length && (
-            <div className="text-xs text-gray-500 mt-1">Showing {filteredTransactions.length} filtered</div>
+          {loading ? (
+            <div className="text-3xl font-bold text-gray-400">...</div>
+          ) : (
+            <>
+              <div className="text-3xl font-bold text-gray-900">{transactions.length}</div>
+              {filteredTransactions.length !== transactions.length && (
+                <div className="text-xs text-gray-500 mt-1">Showing {filteredTransactions.length} filtered</div>
+              )}
+            </>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
           <div className="text-sm text-gray-600 mb-2">Successful</div>
-          <div className="text-3xl font-bold text-green-600">
-            {filteredTransactions.filter(t => t.status === 'success').length}
-          </div>
+          {loading ? (
+            <div className="text-3xl font-bold text-gray-400">...</div>
+          ) : (
+            <div className="text-3xl font-bold text-green-600">
+              {filteredTransactions.filter(t => t.status === 'success').length}
+            </div>
+          )}
         </div>
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
           <div className="text-sm text-gray-600 mb-2">Total Revenue</div>
-          <div className="text-3xl font-bold text-primary">
-            KES {(totalRevenue || 0).toLocaleString()}
-          </div>
+          {loading ? (
+            <div className="text-3xl font-bold text-gray-400">...</div>
+          ) : (
+            <div className="text-3xl font-bold text-primary">
+              KES {(totalRevenue || 0).toLocaleString()}
+            </div>
+          )}
         </div>
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
           <div className="text-sm text-gray-600 mb-2">Failed</div>
-          <div className="text-3xl font-bold text-red-600">
-            {filteredTransactions.filter(t => t.status === 'failed').length}
-          </div>
+          {loading ? (
+            <div className="text-3xl font-bold text-gray-400">...</div>
+          ) : (
+            <div className="text-3xl font-bold text-red-600">
+              {filteredTransactions.filter(t => t.status === 'failed').length}
+            </div>
+          )}
         </div>
       </div>
 
@@ -134,9 +152,14 @@ export default function PaymentsPage() {
             <option value="cash">Cash</option>
           </select>
         </div>
-        {filteredTransactions.length !== dummyTransactions.length && (
+        {!loading && filteredTransactions.length !== transactions.length && (
           <div className="mt-4 text-sm text-gray-600">
-            Showing {filteredTransactions.length} of {dummyTransactions.length} transactions
+            Showing {filteredTransactions.length} of {transactions.length} transactions
+          </div>
+        )}
+        {error && (
+          <div className="mt-4 text-sm text-red-600">
+            {error}
           </div>
         )}
       </div>
@@ -156,7 +179,28 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredTransactions.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="text-gray-500">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="font-medium">Loading transactions...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="text-red-500">
+                      <svg className="w-12 h-12 mx-auto mb-4 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="font-medium">Error loading transactions</p>
+                      <p className="text-sm mt-1">{error}</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="text-gray-500">
@@ -169,44 +213,51 @@ export default function PaymentsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-mono text-sm font-semibold text-gray-900">
-                      {transaction.reference}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{transaction.order_id}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-semibold text-gray-900">
-                      KES {(transaction.amount || 0).toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600 capitalize">{transaction.method}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        transaction.status === 'success'
-                          ? 'bg-green-100 text-green-700'
-                          : transaction.status === 'failed'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {transaction.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-600">
-                      {transaction.date.toLocaleDateString()}
-                    </div>
-                  </td>
-                </tr>
-                ))
+                filteredTransactions.map((transaction) => {
+                  const transactionDate = new Date(transaction.date);
+                  return (
+                    <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-mono text-sm font-semibold text-gray-900">
+                          {transaction.reference}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{transaction.order_number}</div>
+                        <div className="text-xs text-gray-500">{transaction.order_id.slice(0, 8)}...</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-semibold text-gray-900">
+                          KES {(transaction.amount || 0).toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600 capitalize">{transaction.method}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            transaction.status === 'success'
+                              ? 'bg-green-100 text-green-700'
+                              : transaction.status === 'failed'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}
+                        >
+                          {transaction.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600">
+                          {transactionDate.toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {transactionDate.toLocaleTimeString()}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

@@ -38,6 +38,7 @@ export interface Order {
   seller_id: string | null; // Employee ID for POS sales
   sale_type: "online" | "pos";
   total_amount: number;
+  commission?: number | null; // 3% commission for POS sales by sellers
   status: "pending" | "processing" | "completed" | "cancelled" | "refunded";
   payment_method: "mpesa" | "card" | "cash";
   payment_reference: string | null;

@@ -6,12 +6,50 @@ import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState } from 'react';
+import type { Employee } from '@/types';
 
-export default function AdminNav() {
+type UserRole = 'admin' | 'manager' | 'seller';
+type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings';
+
+// Client-side version of canAccessSection (duplicated to avoid server-side imports)
+function canAccessSection(userRole: UserRole | null, section: DashboardSection): boolean {
+  if (!userRole) return false;
+
+  // Sellers can only access: orders, pos, profile, settings (NOT payments)
+  if (userRole === 'seller') {
+    return ['orders', 'pos', 'profile', 'settings'].includes(section);
+  }
+
+  // Admin and manager can access these sections
+  if (['orders', 'payments', 'pos', 'profile', 'settings'].includes(section)) {
+    return true;
+  }
+
+  // Only admin and manager can access these sections
+  if (['dashboard', 'products', 'inventory'].includes(section)) {
+    return userRole === 'admin' || userRole === 'manager';
+  }
+
+  // Only admin can access employees section
+  if (section === 'employees') {
+    return userRole === 'admin';
+  }
+
+  return false;
+}
+
+interface AdminNavProps {
+  userRole?: UserRole | null;
+  employee?: Employee | null;
+}
+
+export default function AdminNav({ userRole: propUserRole, employee: propEmployee }: AdminNavProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [userRole, setUserRole] = useState<UserRole | null>(propUserRole || null);
+  const [employee, setEmployee] = useState<Employee | null>(propEmployee || null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -21,8 +59,31 @@ export default function AdminNav() {
       process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '';
 
     if (hasSupabase) {
-      supabase.auth.getUser().then(({ data }) => {
+      supabase.auth.getUser().then(async ({ data }) => {
         setUser(data.user);
+        
+        // Fetch user role if not provided via props
+        if (!propUserRole && data.user) {
+          try {
+            const response = await fetch('/api/auth/role');
+            const { role } = await response.json();
+            setUserRole(role);
+            
+            // Fetch employee info if role exists
+            if (role) {
+              const { data: empData } = await supabase
+                .from('employees')
+                .select('*')
+                .eq('user_id', data.user.id)
+                .single();
+              if (empData) {
+                setEmployee(empData as Employee);
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching role:', error);
+          }
+        }
       }).catch(() => {
         // Silently fail in preview mode
         setUser(null);
@@ -30,8 +91,19 @@ export default function AdminNav() {
     } else {
       // Preview mode - set a dummy user
       setUser({ email: 'admin@preview.com' });
+      if (!propUserRole) {
+        setUserRole('admin');
+      }
     }
-  }, []);
+    
+    // Use prop values if provided
+    if (propUserRole) {
+      setUserRole(propUserRole);
+    }
+    if (propEmployee) {
+      setEmployee(propEmployee);
+    }
+  }, [propUserRole, propEmployee]);
 
   const handleSignOut = async () => {
     const hasSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -46,15 +118,20 @@ export default function AdminNav() {
     router.refresh();
   };
 
-  const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { href: '/dashboard/products', label: 'Products', icon: '🛍️' },
-    { href: '/dashboard/orders', label: 'Orders', icon: '📦' },
-    { href: '/dashboard/inventory', label: 'Inventory', icon: '📋' },
-    { href: '/dashboard/employees', label: 'Employees', icon: '👥' },
-    { href: '/dashboard/payments', label: 'Payments', icon: '💳' },
-    { href: '/pos', label: 'POS System', icon: '💰' },
+  const allNavItems = [
+    { href: '/dashboard', label: 'Dashboard', icon: '📊', section: 'dashboard' as const },
+    { href: '/dashboard/products', label: 'Products', icon: '🛍️', section: 'products' as const },
+    { href: '/dashboard/orders', label: 'Orders', icon: '📦', section: 'orders' as const },
+    { href: '/dashboard/inventory', label: 'Inventory', icon: '📋', section: 'inventory' as const },
+    { href: '/dashboard/employees', label: 'Employees', icon: '👥', section: 'employees' as const },
+    { href: '/dashboard/payments', label: 'Payments', icon: '💳', section: 'payments' as const },
+    { href: '/pos', label: 'POS System', icon: '💰', section: 'pos' as const },
+    { href: '/dashboard/profile', label: 'Profile', icon: '👤', section: 'profile' as const },
+    { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', section: 'settings' as const },
   ];
+
+  // Filter nav items based on user role
+  const navItems = allNavItems.filter(item => canAccessSection(userRole, item.section));
 
   return (
     <>
@@ -132,7 +209,13 @@ export default function AdminNav() {
             <div className={`border-t border-gray-200 pt-4 mt-4 ${sidebarOpen ? 'block' : 'hidden lg:hidden'}`}>
               <div className="px-3 mb-3">
                 <div className="text-sm font-medium text-gray-900 truncate">{user.email}</div>
-                <div className="text-xs text-gray-500 mt-0.5">Administrator</div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {userRole === 'admin' ? 'Administrator' : 
+                   userRole === 'manager' ? 'Manager' : 
+                   userRole === 'seller' ? 'Sales Person' : 
+                   'User'}
+                  {employee && ` • ${employee.employee_code}`}
+                </div>
               </div>
               <button
                 onClick={handleSignOut}

@@ -2,14 +2,30 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Product, CartItem } from '@/types';
 
+// Extended Product type for custom products with temporary IDs
+export interface CustomProductData {
+  name: string;
+  price: number;
+  size?: string;
+  category_id?: string;
+  description?: string;
+}
+
+export interface ExtendedProduct extends Product {
+  isCustom?: boolean;
+  customData?: CustomProductData;
+}
+
 interface CartStore {
   items: CartItem[];
-  addItem: (product: Product, quantity?: number) => void;
+  addItem: (product: Product | ExtendedProduct, quantity?: number) => void;
+  addCustomItem: (customData: CustomProductData, quantity?: number) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
+  isCustomProduct: (productId: string) => boolean;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -31,6 +47,45 @@ export const useCartStore = create<CartStore>()(
         } else {
           set({
             items: [...items, { product, quantity }],
+          });
+        }
+      },
+      addCustomItem: (customData, quantity = 1) => {
+        // Create temporary product with temp ID
+        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const customProduct: ExtendedProduct = {
+          id: tempId,
+          name: customData.name,
+          description: customData.description || null,
+          price: customData.price,
+          images: [],
+          category_id: customData.category_id || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          isCustom: true,
+          customData: customData,
+        };
+
+        // Check if same custom product already exists (by name and price)
+        const items = get().items;
+        const existingCustomItem = items.find(
+          (item) =>
+            (item.product as ExtendedProduct).isCustom &&
+            item.product.name === customData.name &&
+            item.product.price === customData.price
+        );
+
+        if (existingCustomItem) {
+          set({
+            items: items.map((item) =>
+              item.product.id === existingCustomItem.product.id
+                ? { ...item, quantity: item.quantity + quantity }
+                : item
+            ),
+          });
+        } else {
+          set({
+            items: [...items, { product: customProduct, quantity }],
           });
         }
       },
@@ -68,6 +123,11 @@ export const useCartStore = create<CartStore>()(
       },
       getItemCount: () => {
         return get().items.reduce((count, item) => count + item.quantity, 0);
+      },
+      isCustomProduct: (productId: string) => {
+        const items = get().items;
+        const item = items.find((item) => item.product.id === productId);
+        return item ? (item.product as ExtendedProduct).isCustom === true : false;
       },
     }),
     {

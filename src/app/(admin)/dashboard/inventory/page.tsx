@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface InventoryItem {
@@ -15,12 +16,31 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
+  const router = useRouter();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStockStatus, setSelectedStockStatus] = useState('all');
+
+  // Check role and redirect sellers (only once)
+  useEffect(() => {
+    let mounted = true;
+    const checkRole = async () => {
+      try {
+        const response = await fetch('/api/auth/role');
+        const { role } = await response.json();
+        if (mounted && role === 'seller') {
+          router.replace('/dashboard/orders');
+        }
+      } catch (error) {
+        console.error('Error checking role:', error);
+      }
+    };
+    checkRole();
+    return () => { mounted = false; };
+  }, [router]);
 
   // Fetch inventory from API
   useEffect(() => {

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import type { Product } from '@/types';
 import POSProductGrid from './POSProductGrid';
 import POSCart from './POSCart';
+import CustomProductModal from './CustomProductModal';
+import { useCartStore } from '@/store/cartStore';
 
 interface POSInterfaceProps {
   employeeId?: string;
@@ -23,6 +25,9 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showCustomProductModal, setShowCustomProductModal] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'manager' | 'seller' | null>(null);
+  const addCustomItem = useCartStore((state) => state.addCustomItem);
 
   const fetchProducts = async () => {
     try {
@@ -38,21 +43,30 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
       
       // Transform products to match Product type with available_stock
       // The API returns products with 'available_stock' field (stock_quantity - reserved_quantity)
-      const productsWithStock = (data.products || []).map((product: any) => {
-        return {
-          id: product.id,
-          name: product.name,
-          description: product.description || '',
-          price: parseFloat(product.price),
-          images: product.images || [],
-          category_id: product.category_id,
-          created_at: product.created_at,
-          updated_at: product.updated_at,
-          available_stock: product.available_stock !== undefined ? product.available_stock : (product.stock !== undefined ? product.stock : undefined),
-          status: product.status,
-          sale_price: product.sale_price,
-        };
-      });
+      // Filter out products with 0 stock - only show products with stock > 0
+      const productsWithStock = (data.products || [])
+        .filter((product: any) => {
+          const stock = product.available_stock !== undefined 
+            ? product.available_stock 
+            : (product.stock !== undefined ? product.stock : undefined);
+          // Only include products with stock > 0 or undefined (inventory not set up)
+          return stock === undefined || stock > 0;
+        })
+        .map((product: any) => {
+          return {
+            id: product.id,
+            name: product.name,
+            description: product.description || '',
+            price: parseFloat(product.price),
+            images: product.images || [],
+            category_id: product.category_id,
+            created_at: product.created_at,
+            updated_at: product.updated_at,
+            available_stock: product.available_stock !== undefined ? product.available_stock : (product.stock !== undefined ? product.stock : undefined),
+            status: product.status,
+            sale_price: product.sale_price,
+          };
+        });
       
       setProducts(productsWithStock);
     } catch (err) {
@@ -79,7 +93,33 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    fetchUserRole();
   }, []);
+
+  const fetchUserRole = async () => {
+    try {
+      const response = await fetch('/api/auth/role');
+      if (response.ok) {
+        const data = await response.json();
+        setUserRole(data.role);
+      }
+    } catch (err) {
+      console.error('Error fetching user role:', err);
+    }
+  };
+
+  const handleAddCustomProduct = (customData: {
+    name: string;
+    price: number;
+    size?: string;
+    category_id?: string;
+    description?: string;
+  }) => {
+    addCustomItem(customData, 1);
+    setShowCustomProductModal(false);
+  };
+
+  const canAddCustomProduct = userRole === 'admin' || userRole === 'seller';
 
   const handleOrderComplete = () => {
     // Refresh products after order completion to update inventory
@@ -127,6 +167,17 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
                   </option>
                 ))}
               </select>
+              {canAddCustomProduct && (
+                <button
+                  onClick={() => setShowCustomProductModal(true)}
+                  className="px-6 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors whitespace-nowrap flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Custom Product
+                </button>
+              )}
             </div>
           </div>
 
@@ -176,6 +227,14 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
           />
         </div>
       </div>
+
+      {/* Custom Product Modal */}
+      <CustomProductModal
+        isOpen={showCustomProductModal}
+        onClose={() => setShowCustomProductModal(false)}
+        onAdd={handleAddCustomProduct}
+        categories={categories}
+      />
     </div>
   );
 }

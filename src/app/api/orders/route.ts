@@ -19,20 +19,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check user role - only admins and managers can view all orders
+    // Check user role
     const userRole = await getUserRole(user.id);
-    if (!userRole || (userRole !== 'admin' && userRole !== 'manager')) {
+    if (!userRole) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch orders first (RLS should allow admins/managers to see all)
-    // Order by created_at descending to get most recent first
-    const { data: orders, error: ordersError } = await supabase
+    // Get employee record for sellers
+    let employeeId: string | null = null;
+    if (userRole === 'seller') {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (!employee) {
+        return NextResponse.json({ error: 'Employee record not found' }, { status: 403 });
+      }
+      employeeId = employee.id;
+    }
+
+    // Build query - sellers only see their own orders, admins/managers see all
+    let query = supabase
       .from('orders')
-      .select('*')
+      .select('*');
+    
+    if (userRole === 'seller' && employeeId) {
+      query = query.eq('seller_id', employeeId);
+      console.log('Orders API - filtering by seller_id:', employeeId);
+    } else {
+      console.log('Orders API - fetching all orders (role:', userRole, ')');
+    }
+    
+    const { data: orders, error: ordersError } = await query
       .order('created_at', { ascending: false });
     
     console.log('Orders API - fetched orders:', orders?.length || 0);
+    if (userRole === 'seller' && orders && orders.length > 0) {
+      console.log('Orders API - sample order seller_ids:', orders.slice(0, 3).map((o: any) => o.seller_id));
+    }
 
     if (ordersError) {
       console.error('Orders fetch error:', ordersError);
@@ -100,6 +126,7 @@ export async function GET(request: NextRequest) {
         seller: employee?.employee_code || '-',
         type: order.sale_type || 'online',
         amount: parseFloat(order.total_amount || 0),
+        commission: parseFloat(order.commission || 0), // Commission for this order
         status: order.status || 'pending',
         date: order.created_at, // Keep as ISO string, will be converted to Date in frontend
         payment_method: order.payment_method || 'N/A',

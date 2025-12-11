@@ -40,6 +40,31 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
+    // Check current stock before attempting deduction
+    const currentStock = await InventoryService.getStock(validated.product_id);
+    
+    console.log('Inventory deduction request:', {
+      product_id: validated.product_id,
+      quantity: validated.quantity,
+      current_stock: currentStock,
+      employee_id: employee?.id,
+    });
+    
+    if (currentStock < validated.quantity) {
+      console.error('Insufficient stock:', {
+        available: currentStock,
+        requested: validated.quantity,
+      });
+      return NextResponse.json(
+        { 
+          error: `Insufficient inventory. Available: ${currentStock}, Requested: ${validated.quantity}`,
+          available: currentStock,
+          requested: validated.quantity
+        },
+        { status: 400 }
+      );
+    }
+
     // Deduct stock atomically
     const success = await InventoryService.deductStock(
       validated.product_id,
@@ -48,11 +73,35 @@ export async function POST(request: NextRequest) {
     );
 
     if (!success) {
+      // Re-check stock to see what happened
+      const stockAfterAttempt = await InventoryService.getStock(validated.product_id);
+      console.error('Deduction failed:', {
+        product_id: validated.product_id,
+        quantity: validated.quantity,
+        stock_before: currentStock,
+        stock_after: stockAfterAttempt,
+        success: false,
+      });
+      
+      // If deduction failed after stock check, it might be a race condition or database issue
       return NextResponse.json(
-        { error: 'Failed to deduct stock. Insufficient inventory.' },
+        { 
+          error: 'Failed to deduct stock. This may be due to concurrent updates or database permissions. Please try again.',
+          available: stockAfterAttempt,
+          requested: validated.quantity
+        },
         { status: 400 }
       );
     }
+
+    // Verify deduction was successful
+    const stockAfterDeduction = await InventoryService.getStock(validated.product_id);
+    console.log('Deduction successful:', {
+      product_id: validated.product_id,
+      quantity: validated.quantity,
+      stock_before: currentStock,
+      stock_after: stockAfterDeduction,
+    });
 
     // If order_id is provided, update the order with seller_id
     if (validated.order_id && employee) {

@@ -11,21 +11,21 @@ interface POSProductGridProps {
 export default function POSProductGrid({ products }: POSProductGridProps) {
   const addItem = useCartStore((state) => state.addItem);
 
+  // Filter out products with 0 stock - only show products with stock > 0
+  const availableProducts = products.filter((product) => {
+    // If available_stock is undefined, treat as in stock (inventory not set up yet)
+    // If available_stock is 0 or less, filter it out
+    return product.available_stock === undefined || product.available_stock > 0;
+  });
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {products.map((product) => {
-        // If available_stock is undefined, treat as in stock (inventory not set up yet)
-        const isOutOfStock = product.available_stock !== undefined && product.available_stock <= 0;
+      {availableProducts.map((product) => {
         return (
-          <button
+            <button
             key={product.id}
-            onClick={() => !isOutOfStock && addItem(product, 1)}
-            disabled={isOutOfStock}
-            className={`group relative bg-white rounded-none shadow-md text-left hover:shadow-xl transition-all border-2 ${
-              isOutOfStock
-                ? 'opacity-50 cursor-not-allowed border-gray-200'
-                : 'hover:scale-105 cursor-pointer border-transparent hover:border-primary/30 active:scale-95'
-            }`}
+            onClick={() => addItem(product, 1)}
+            className="group relative bg-white rounded-none shadow-md text-left hover:shadow-xl transition-all border-2 hover:scale-105 cursor-pointer border-transparent hover:border-primary/30 active:scale-95"
           >
             {/* Product Image */}
             <div className="aspect-square relative bg-gradient-to-br from-gray-50 to-gray-100 rounded-t-xl overflow-hidden">
@@ -45,13 +45,6 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
                   </svg>
                 </div>
               )}
-              {isOutOfStock && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="bg-white/90 text-gray-900 font-semibold px-3 py-1 rounded-full text-xs">
-                    Out of Stock
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Product Info */}
@@ -63,30 +56,24 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
                 KES {(product.price || 0).toLocaleString()}
               </div>
               <div className={`text-xs font-medium ${
-                isOutOfStock 
-                  ? 'text-red-600' 
-                  : product.available_stock === undefined
-                    ? 'text-blue-600'
-                    : product.available_stock < 10 
-                      ? 'text-yellow-600' 
-                      : 'text-green-600'
+                product.available_stock === undefined
+                  ? 'text-blue-600'
+                  : product.available_stock < 10 
+                    ? 'text-yellow-600' 
+                    : 'text-green-600'
               }`}>
-                {isOutOfStock 
-                  ? 'Out of Stock' 
-                  : product.available_stock === undefined
-                    ? 'Stock available'
-                    : `${product.available_stock} in stock`}
+                {product.available_stock === undefined
+                  ? 'Stock available'
+                  : `${product.available_stock} in stock`}
               </div>
             </div>
 
             {/* Add Indicator */}
-            {!isOutOfStock && (
-              <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-            )}
+            <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
           </button>
         );
       })}

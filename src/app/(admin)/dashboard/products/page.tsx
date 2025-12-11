@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import ProductForm from '@/components/admin/ProductForm';
@@ -117,6 +118,7 @@ const dummyProducts: (Product & { category?: string; stock?: number; image?: str
 ];
 
 export default function ProductsPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<(Product & { category?: string; stock?: number; image?: string })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -129,6 +131,24 @@ export default function ProductsPage() {
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; product: { id: string; name: string } | null }>({ isOpen: false, product: null });
   const [successModal, setSuccessModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Check role and redirect sellers (only once)
+  useEffect(() => {
+    let mounted = true;
+    const checkRole = async () => {
+      try {
+        const response = await fetch('/api/auth/role');
+        const { role } = await response.json();
+        if (mounted && role === 'seller') {
+          router.replace('/dashboard/orders');
+        }
+      } catch (error) {
+        console.error('Error checking role:', error);
+      }
+    };
+    checkRole();
+    return () => { mounted = false; };
+  }, [router]);
 
   // Fetch products from API
   useEffect(() => {

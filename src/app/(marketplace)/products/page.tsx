@@ -115,20 +115,27 @@ export default async function ProductsPage({
   }
 
   // Transform products to include stock and category
-  const productsWithStock = (products || []).map((product: any) => {
-    const category = product.category_id
-      ? categoryMap.get(product.category_id)
-      : null;
-    const stock = inventoryMap.get(product.id);
-    return {
-      ...product,
-      // Only set available_stock if we have inventory data
-      available_stock: stock !== undefined ? stock : undefined,
-      categories: category
-        ? { name: category.name }
-        : { name: "Uncategorized" },
-    };
-  });
+  // Filter out products with 0 stock - only show products with stock > 0
+  const productsWithStock = (products || [])
+    .map((product: any) => {
+      const category = product.category_id
+        ? categoryMap.get(product.category_id)
+        : null;
+      const stock = inventoryMap.get(product.id);
+      return {
+        ...product,
+        // Only set available_stock if we have inventory data
+        available_stock: stock !== undefined ? stock : undefined,
+        categories: category
+          ? { name: category.name }
+          : { name: "Uncategorized" },
+      };
+    })
+    .filter((product: any) => {
+      // Filter out products with 0 stock
+      // Keep products with undefined stock (inventory not set up yet) or stock > 0
+      return product.available_stock === undefined || product.available_stock > 0;
+    });
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">

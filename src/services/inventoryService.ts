@@ -1,24 +1,47 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { Inventory } from '@/types';
 
 export class InventoryService {
   /**
    * Get current stock for a product
+   * Aggregates stock from both inventory (general) and product_sizes (size-based) tables
    */
   static async getStock(productId: string): Promise<number> {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    // Get general inventory stock
+    const { data: inventoryData, error: inventoryError } = await supabase
       .from('inventory')
       .select('stock_quantity, reserved_quantity')
       .eq('product_id', productId)
       .single();
 
-    if (error || !data) {
-      return 0;
+    let generalStock = 0;
+    let generalReserved = 0;
+    if (!inventoryError && inventoryData) {
+      generalStock = inventoryData.stock_quantity || 0;
+      generalReserved = inventoryData.reserved_quantity || 0;
     }
 
-    return data.stock_quantity - data.reserved_quantity;
+    // Get size-based inventory stock
+    const { data: sizeData, error: sizeError } = await supabase
+      .from('product_sizes')
+      .select('stock_quantity, reserved_quantity')
+      .eq('product_id', productId);
+
+    let sizeStock = 0;
+    let sizeReserved = 0;
+    if (!sizeError && sizeData) {
+      sizeStock = sizeData.reduce((sum, item) => sum + (item.stock_quantity || 0), 0);
+      sizeReserved = sizeData.reduce((sum, item) => sum + (item.reserved_quantity || 0), 0);
+    }
+
+    // Total available stock = (general stock + size stock) - (general reserved + size reserved)
+    const totalStock = generalStock + sizeStock;
+    const totalReserved = generalReserved + sizeReserved;
+    
+    return Math.max(0, totalStock - totalReserved);
   }
 
   /**
@@ -68,6 +91,7 @@ export class InventoryService {
   /**
    * Deduct stock atomically (for completed sales)
    * This is critical for POS and online sales synchronization
+   * Handles both general inventory and size-based inventory
    */
   static async deductStock(
     productId: string,
@@ -76,18 +100,119 @@ export class InventoryService {
   ): Promise<boolean> {
     const supabase = await createClient();
 
-    // Use a database function to ensure atomicity
-    const { data, error } = await supabase.rpc('deduct_inventory', {
-      p_product_id: productId,
-      p_quantity: quantity,
-    });
+    // First, check if we have general inventory
+    const { data: inventoryData, error: inventoryCheckError } = await supabase
+      .from('inventory')
+      .select('stock_quantity, reserved_quantity')
+      .eq('product_id', productId)
+      .single();
 
-    if (error) {
-      console.error('Stock deduction error:', error);
+    // If general inventory exists and has stock, try to deduct from it
+    if (!inventoryCheckError && inventoryData) {
+      const availableGeneralStock = Math.max(0, (inventoryData.stock_quantity || 0) - (inventoryData.reserved_quantity || 0));
+      
+      if (availableGeneralStock >= quantity) {
+        // Try to deduct from general inventory using the database function
+        const { data: generalResult, error: generalError } = await supabase.rpc('deduct_inventory', {
+          p_product_id: productId,
+          p_quantity: quantity,
+        });
+
+        if (generalError) {
+          console.error('Error calling deduct_inventory function:', generalError);
+          // Fall through to try direct update
+        } else if (generalResult) {
+          console.log('Successfully deducted from general inventory');
+          return true;
+        }
+
+        // If function failed, try direct update as fallback using admin client to bypass RLS
+        const adminClient = createAdminClient();
+        const { error: directUpdateError } = await adminClient
+          .from('inventory')
+          .update({
+            stock_quantity: Math.max(0, (inventoryData.stock_quantity || 0) - quantity),
+            reserved_quantity: Math.max(0, (inventoryData.reserved_quantity || 0) - quantity),
+            last_updated: new Date().toISOString(),
+          })
+          .eq('product_id', productId)
+          .gte('stock_quantity', quantity); // Only update if enough stock
+
+        if (!directUpdateError) {
+          console.log('Successfully deducted from general inventory (direct update with admin client)');
+          return true;
+        } else {
+          console.error('Direct update failed:', directUpdateError);
+        }
+      }
+    }
+
+    // If general inventory doesn't exist or doesn't have enough stock,
+    // try to deduct from size-based inventory
+    const { data: sizeRecords, error: sizeError } = await supabase
+      .from('product_sizes')
+      .select('id, size, stock_quantity, reserved_quantity')
+      .eq('product_id', productId)
+      .order('stock_quantity', { ascending: false }); // Start with sizes that have most stock
+
+    if (sizeError) {
+      console.error('Error fetching size records:', sizeError);
+    }
+
+    if (!sizeRecords || sizeRecords.length === 0) {
+      console.error('No inventory found in general or size-based tables for product:', productId);
       return false;
     }
 
-    return data;
+    // Calculate total available size stock
+    const totalSizeStock = sizeRecords.reduce(
+      (sum, record) => sum + Math.max(0, (record.stock_quantity || 0) - (record.reserved_quantity || 0)),
+      0
+    );
+
+    if (totalSizeStock < quantity) {
+      console.error(`Insufficient stock in size-based inventory. Available: ${totalSizeStock}, Requested: ${quantity}`);
+      return false;
+    }
+
+    // Deduct from size records, starting with the ones that have the most stock
+    let remainingQuantity = quantity;
+    for (const sizeRecord of sizeRecords) {
+      if (remainingQuantity <= 0) break;
+
+      const availableStock = Math.max(0, (sizeRecord.stock_quantity || 0) - (sizeRecord.reserved_quantity || 0));
+      const deductFromThisSize = Math.min(remainingQuantity, availableStock);
+
+      if (deductFromThisSize > 0) {
+        // Use admin client to bypass RLS for size-based inventory updates
+        const adminClient = createAdminClient();
+        const { error: updateError } = await adminClient
+          .from('product_sizes')
+          .update({
+            stock_quantity: (sizeRecord.stock_quantity || 0) - deductFromThisSize,
+            reserved_quantity: Math.max(0, (sizeRecord.reserved_quantity || 0) - deductFromThisSize),
+            last_updated: new Date().toISOString(),
+          })
+          .eq('id', sizeRecord.id);
+
+        if (updateError) {
+          console.error(`Error deducting from size ${sizeRecord.size}:`, updateError);
+          return false;
+        }
+
+        console.log(`Deducted ${deductFromThisSize} from size ${sizeRecord.size}`);
+        remainingQuantity -= deductFromThisSize;
+      }
+    }
+
+    // If we still have remaining quantity, it means we couldn't deduct enough
+    if (remainingQuantity > 0) {
+      console.error(`Could not deduct full quantity from size-based inventory. Remaining: ${remainingQuantity}`);
+      return false;
+    }
+
+    console.log('Successfully deducted from size-based inventory');
+    return true;
   }
 
   /**

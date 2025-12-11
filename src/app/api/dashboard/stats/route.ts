@@ -281,6 +281,133 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fetch low stock products (stock > 0 and < 10) and out of stock products (stock = 0)
+    let lowStockProducts: any[] = [];
+    let outOfStockProducts: any[] = [];
+    try {
+      // Fetch all products (including inactive to catch all inventory issues)
+      const { data: allProducts, error: productsError } = await adminClient
+        .from('products')
+        .select('id, name, status');
+
+      if (productsError) {
+        console.error('Error fetching products for low stock:', productsError);
+      } else if (allProducts && allProducts.length > 0) {
+        const productIds = allProducts.map((p: any) => p.id);
+        
+        // Fetch inventory for all products (general stock)
+        const { data: inventory, error: inventoryError } = await adminClient
+          .from('inventory')
+          .select('product_id, stock_quantity, reserved_quantity')
+          .in('product_id', productIds);
+
+        // Fetch size-based inventory
+        const { data: productSizes, error: sizesError } = await adminClient
+          .from('product_sizes')
+          .select('product_id, stock_quantity, reserved_quantity')
+          .in('product_id', productIds);
+
+        if (inventoryError) {
+          console.error('Error fetching inventory for low stock:', inventoryError);
+        }
+
+        // Create a map to aggregate total stock per product
+        const productStockMap = new Map<string, { stock: number; reserved: number }>();
+
+        // Add general inventory
+        if (inventory) {
+          inventory.forEach((inv: any) => {
+            const existing = productStockMap.get(inv.product_id) || { stock: 0, reserved: 0 };
+            productStockMap.set(inv.product_id, {
+              stock: existing.stock + (inv.stock_quantity || 0),
+              reserved: existing.reserved + (inv.reserved_quantity || 0),
+            });
+          });
+        }
+
+        // Add size-based inventory
+        if (productSizes) {
+          productSizes.forEach((size: any) => {
+            const existing = productStockMap.get(size.product_id) || { stock: 0, reserved: 0 };
+            productStockMap.set(size.product_id, {
+              stock: existing.stock + (size.stock_quantity || 0),
+              reserved: existing.reserved + (size.reserved_quantity || 0),
+            });
+          });
+        }
+
+        // Calculate available stock and categorize products
+        productStockMap.forEach((stockData, productId) => {
+          const available = Math.max(0, stockData.stock - stockData.reserved);
+          const product = allProducts.find((p: any) => p.id === productId);
+          
+          if (product) {
+            if (available === 0) {
+              // Out of stock
+              outOfStockProducts.push({
+                id: productId,
+                name: product.name,
+                stock_quantity: 0,
+                status: 'out_of_stock',
+              });
+            } else if (available > 0 && available < 10) {
+              // Low stock
+              lowStockProducts.push({
+                id: productId,
+                name: product.name,
+                stock_quantity: available,
+                status: 'low_stock',
+              });
+            }
+          }
+        });
+
+        // Also check products that have no inventory record at all
+        allProducts.forEach((product: any) => {
+          if (!productStockMap.has(product.id)) {
+            // Product has no inventory record - treat as out of stock
+            outOfStockProducts.push({
+              id: product.id,
+              name: product.name,
+              stock_quantity: 0,
+              status: 'no_inventory',
+            });
+          }
+        });
+
+        // Sort by stock quantity (lowest first) and combine
+        lowStockProducts = lowStockProducts
+          .sort((a, b) => a.stock_quantity - b.stock_quantity);
+        
+        outOfStockProducts = outOfStockProducts
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        // Combine low stock and out of stock, limit to top 15 total
+        const allStockAlerts = [...lowStockProducts, ...outOfStockProducts].slice(0, 15);
+        
+        console.log('Low stock products found:', {
+          totalProducts: allProducts.length,
+          productsWithInventory: productStockMap.size,
+          lowStock: lowStockProducts.length,
+          outOfStock: outOfStockProducts.length,
+          total: allStockAlerts.length,
+          sample: allStockAlerts.slice(0, 3).map((item: any) => ({
+            name: item.name,
+            stock: item.stock_quantity,
+            status: item.status,
+          })),
+        });
+
+        // Return combined list
+        lowStockProducts = allStockAlerts;
+      } else {
+        console.log('No products found for low stock check');
+      }
+    } catch (error) {
+      console.error('Error fetching low stock products:', error);
+      lowStockProducts = [];
+    }
+
     // Calculate today's sales and orders
     const todayStart = new Date(today);
     todayStart.setHours(0, 0, 0, 0);
@@ -326,6 +453,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       salesByDay: formattedSalesByDay || [],
       topProducts: topProducts || [],
+      lowStock: lowStockProducts || [],
       totalSales: totalSalesAmount,
       totalOrders: totalOrdersCount,
       totalProducts: finalProductsCount,

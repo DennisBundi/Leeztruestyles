@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Employee {
   id: string;
@@ -15,6 +16,7 @@ interface Employee {
 }
 
 export default function EmployeesPage() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,6 +25,24 @@ export default function EmployeesPage() {
   const [formData, setFormData] = useState({ email: '', role: 'seller' });
   const [submitting, setSubmitting] = useState(false);
   const [successModal, setSuccessModal] = useState(false);
+
+  // Check role and redirect non-admins (only once)
+  useEffect(() => {
+    let mounted = true;
+    const checkRole = async () => {
+      try {
+        const response = await fetch('/api/auth/role');
+        const { role } = await response.json();
+        if (mounted && role !== 'admin') {
+          router.replace('/dashboard/orders');
+        }
+      } catch (error) {
+        console.error('Error checking role:', error);
+      }
+    };
+    checkRole();
+    return () => { mounted = false; };
+  }, [router]);
 
   // Fetch employees from API
   useEffect(() => {

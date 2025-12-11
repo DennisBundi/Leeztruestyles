@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatOrderId } from '@/lib/utils/orderId';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Dot } from 'recharts';
 
 // Dummy data for preview (keeping original structure)
 const dummyStats = {
@@ -37,6 +39,7 @@ interface TopProduct {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,11 +55,25 @@ export default function DashboardPage() {
   const [totalProducts, setTotalProducts] = useState<number>(0);
   const [todaySales, setTodaySales] = useState<number>(0);
   const [todayOrders, setTodayOrders] = useState<number>(0);
+  const [lowStock, setLowStock] = useState<Array<{ id: string; name: string; stock_quantity: number }>>([]);
 
-  // Use dummy data for other stats (not yet implemented)
-  const {
-    lowStock,
-  } = dummyStats;
+  // Check role and redirect sellers (only once)
+  useEffect(() => {
+    let mounted = true;
+    const checkRole = async () => {
+      try {
+        const response = await fetch('/api/auth/role');
+        const { role } = await response.json();
+        if (mounted && role === 'seller') {
+          router.replace('/dashboard/orders');
+        }
+      } catch (error) {
+        console.error('Error checking role:', error);
+      }
+    };
+    checkRole();
+    return () => { mounted = false; };
+  }, [router]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -73,6 +90,7 @@ export default function DashboardPage() {
         console.log('Dashboard stats received:', {
           salesByDay: data.salesByDay?.length || 0,
           topProducts: data.topProducts?.length || 0,
+          lowStock: data.lowStock?.length || 0,
           totalSales: data.totalSales || 0,
           totalOrders: data.totalOrders || 0,
           totalProducts: data.totalProducts || 0,
@@ -92,8 +110,15 @@ export default function DashboardPage() {
         setCompletedOrders(data.completedOrders || 0);
         setPendingOrders(data.pendingOrders || 0);
         setTotalCustomers(data.totalCustomers || 0);
+        const lowStockData = data.lowStock || [];
+        console.log('Low stock data received:', {
+          count: lowStockData.length,
+          items: lowStockData.slice(0, 5), // Log first 5 items
+        });
+        setLowStock(lowStockData);
       } else {
         console.error('Dashboard stats API error:', data.error, data.details);
+        setLowStock([]);
       }
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -249,26 +274,36 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Low Stock Alerts */}
-      {lowStock && lowStock.length > 0 && (
+      {/* Low Stock & Out of Stock Alerts */}
+      {!loading && lowStock && lowStock.length > 0 && (
         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6 shadow-lg animate-slide-up">
           <div className="flex items-center gap-3 mb-4">
             <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <h2 className="text-2xl font-bold text-yellow-800">Low Stock Alerts</h2>
+            <h2 className="text-2xl font-bold text-yellow-800">Stock Alerts</h2>
+            <span className="ml-auto bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">
+              {lowStock.length}
+            </span>
           </div>
           <div className="space-y-3">
-            {lowStock.map((item) => (
-              <div key={item.id} className="flex justify-between items-center bg-white/50 p-3 rounded-lg">
-                <span className="text-gray-800 font-medium">
-                  {item.name || 'Unknown Product'}
-                </span>
-                <span className="font-bold text-yellow-700 bg-yellow-100 px-3 py-1 rounded-full">
-                  {item.stock_quantity} units
-                </span>
-              </div>
-            ))}
+            {lowStock.map((item: any) => {
+              const isOutOfStock = item.stock_quantity === 0 || item.status === 'out_of_stock' || item.status === 'no_inventory';
+              return (
+                <div key={item.id} className="flex justify-between items-center bg-white/50 p-3 rounded-lg">
+                  <span className="text-gray-800 font-medium">
+                    {item.name || 'Unknown Product'}
+                  </span>
+                  <span className={`font-bold px-3 py-1 rounded-full ${
+                    isOutOfStock
+                      ? 'text-red-700 bg-red-100'
+                      : 'text-yellow-700 bg-yellow-100'
+                  }`}>
+                    {isOutOfStock ? 'Out of Stock' : `${item.stock_quantity} units`}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -288,25 +323,56 @@ export default function DashboardPage() {
               <p className="text-xs mt-1">Check console for details</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {salesByDay.map((day, index) => {
-                const maxSales = Math.max(...salesByDay.map(d => d.sales), 1); // Avoid division by zero
-                const percentage = maxSales > 0 ? (day.sales / maxSales) * 100 : 0;
-                return (
-                  <div key={index} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-gray-700">{day.day}</span>
-                      <span className="font-semibold text-gray-900">KES {(day.sales || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-primary to-primary-dark h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="w-full">
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart
+                  data={salesByDay.map((day) => ({
+                    day: day.day,
+                    sales: day.sales || 0,
+                  }))}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="day" 
+                    stroke="#6b7280"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) => `KES ${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                    }}
+                    formatter={(value: any) => [`KES ${Number(value).toLocaleString()}`, 'Sales']}
+                    labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '4px' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="sales" 
+                    stroke="#f9a8d4"
+                    strokeWidth={3}
+                    dot={{ fill: '#f9a8d4', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 7, fill: '#f472b6', stroke: '#fff', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between text-xs text-gray-600">
+                  <span>Total Week Sales:</span>
+                  <span className="font-semibold text-gray-900">
+                    KES {salesByDay.reduce((sum, day) => sum + (day.sales || 0), 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </div>
