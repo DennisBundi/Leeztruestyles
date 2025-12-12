@@ -61,3 +61,4 @@ If size stocks are not saving:
 - Verify the `product_sizes` table was created
 - Check that the `initialize_product_inventory` function exists
 
+

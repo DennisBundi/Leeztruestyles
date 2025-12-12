@@ -38,3 +38,4 @@ WHERE routine_name = 'initialize_product_inventory';
 -- Expected result:
 -- initialize_product_inventory
 
+

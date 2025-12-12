@@ -88,3 +88,4 @@ Share the error messages if you see any!
 3. **Check products dashboard** - stock should appear
 4. **If still not working**, check terminal for error messages
 
+

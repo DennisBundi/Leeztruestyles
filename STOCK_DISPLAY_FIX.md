@@ -78,3 +78,4 @@ The stock should now display correctly. If you still see issues:
 1. Refresh the products page
 2. Check the browser console for any errors
 3. Verify the inventory exists in the database using the SQL query above
+

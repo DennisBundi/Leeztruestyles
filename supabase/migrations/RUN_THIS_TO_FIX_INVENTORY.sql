@@ -118,3 +118,4 @@ CREATE POLICY "Admins and managers can delete product sizes"
 -- Should show: security_type = 'DEFINER'
 -- ============================================
 
+

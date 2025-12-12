@@ -60,3 +60,4 @@ If you still see errors after running the migration:
 2. Make sure you're running the SQL in the correct project
 3. Try refreshing your browser after running the migration
 
+

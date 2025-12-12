@@ -29,3 +29,4 @@ WHERE table_name = 'orders'
 -- Expected result: Should show one row with commission column details
 -- If you see the row, the migration was successful!
 
+

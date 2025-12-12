@@ -10,3 +10,4 @@ CREATE INDEX IF NOT EXISTS idx_orders_seller_commission ON orders(seller_id, com
 -- Add comment
 COMMENT ON COLUMN orders.commission IS 'Commission earned by seller (3% of total_amount for POS sales)';
 
+

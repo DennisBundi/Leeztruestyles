@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 interface FlashSaleCountdownProps {
-  endDate: Date;
+  endDate: Date | string;
 }
 
 export default function FlashSaleCountdown({ endDate }: FlashSaleCountdownProps) {

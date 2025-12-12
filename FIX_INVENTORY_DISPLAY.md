@@ -80,3 +80,4 @@ And the products dashboard should show the stock quantity!
 3. **Check Supabase logs**: Go to Logs → Postgres Logs to see function errors
 4. **Share the error messages** and I'll help debug!
 
+

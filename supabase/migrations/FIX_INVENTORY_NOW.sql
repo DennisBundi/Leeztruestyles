@@ -75,3 +75,4 @@ ON CONFLICT (product_id) DO NOTHING;
 -- Should show: security_type = 'DEFINER'
 -- ============================================
 
+

@@ -95,3 +95,4 @@ After running the migration:
 - Commission is stored at the order level, not per item
 - Historical orders (created before this update) will have `commission = 0` by default
 
+
