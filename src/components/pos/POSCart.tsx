@@ -27,6 +27,7 @@ export default function POSCart({
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "mpesa" | "card">(
     "cash"
   );
+  const [socialPlatform, setSocialPlatform] = useState<"tiktok" | "instagram" | "whatsapp" | "walkin" | "">("");
   const [customerName, setCustomerName] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -50,6 +51,12 @@ export default function POSCart({
       return;
     }
 
+    // Validate social platform is selected
+    if (!socialPlatform) {
+      alert("Please select a social platform before completing the sale.");
+      return;
+    }
+
     setProcessing(true);
 
     try {
@@ -70,6 +77,7 @@ export default function POSCart({
         clearCart();
         setCustomerName("");
         setPaymentMethod("cash");
+        setSocialPlatform("");
 
         setProcessing(false);
         return;
@@ -174,6 +182,7 @@ export default function POSCart({
           address: "In-store",
         },
         sale_type: "pos",
+        social_platform: socialPlatform, // Include social platform
       };
 
       // Include seller_id if employeeId is a valid UUID
@@ -314,6 +323,7 @@ export default function POSCart({
       clearCart();
       setCustomerName("");
       setPaymentMethod("cash"); // Reset to default
+      setSocialPlatform(""); // Reset social platform
 
       // Refresh products to show updated inventory
       if (onOrderComplete) {
@@ -568,6 +578,25 @@ export default function POSCart({
               </div>
             </div>
 
+            {/* Social Platform */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Social Platform <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={socialPlatform}
+                onChange={(e) => setSocialPlatform(e.target.value as "tiktok" | "instagram" | "whatsapp" | "walkin" | "")}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                required
+              >
+                <option value="">Select platform...</option>
+                <option value="tiktok">TikTok</option>
+                <option value="instagram">Instagram</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="walkin">Walk-in</option>
+              </select>
+            </div>
+
             {/* Payment Method */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -610,7 +639,7 @@ export default function POSCart({
             {/* Complete Sale Button */}
             <button
               onClick={handleCompleteSale}
-              disabled={processing}
+              disabled={processing || !socialPlatform}
               className="w-full py-4 px-6 bg-primary text-white rounded-none font-bold text-lg hover:bg-primary-dark hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {processing ? (

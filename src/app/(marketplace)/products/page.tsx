@@ -72,6 +72,7 @@ export default async function ProductsPage({
   });
 
   // Fetch inventory for products with error handling
+  // Use only the inventory table (not product_sizes) for stock display
   let inventoryMap = new Map();
   if (products && products.length > 0) {
     const productIds = products.map((p: any) => p.id);

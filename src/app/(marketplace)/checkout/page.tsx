@@ -27,12 +27,54 @@ export default function CheckoutPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showMpesaModal, setShowMpesaModal] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [productSizes, setProductSizes] = useState<{ [productId: string]: Array<{ size: string; available: number }> }>({});
+  const [loadingSizes, setLoadingSizes] = useState(false);
 
   const total = getTotal();
 
 
 
   // Check authentication on mount
+  // Fetch product sizes for validation
+  useEffect(() => {
+    const fetchSizes = async () => {
+      if (items.length === 0) return;
+      
+      setLoadingSizes(true);
+      const sizesMap: { [productId: string]: Array<{ size: string; available: number }> } = {};
+      
+      for (const item of items) {
+        // Skip if already loaded
+        if (productSizes[item.product.id]) {
+          continue;
+        }
+
+        try {
+          const response = await fetch(`/api/products/${item.product.id}/sizes`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.sizes && data.sizes.length > 0) {
+              sizesMap[item.product.id] = data.sizes.map((s: any) => ({
+                size: s.size,
+                available: s.available,
+              }));
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching sizes for product ${item.product.id}:`, error);
+        }
+      }
+
+      if (Object.keys(sizesMap).length > 0) {
+        setProductSizes(prev => ({ ...prev, ...sizesMap }));
+      }
+      setLoadingSizes(false);
+    };
+
+    fetchSizes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.map(i => i.product.id).join(',')]);
+
   useEffect(() => {
     let mounted = true;
     const supabase = createClient();
@@ -152,6 +194,28 @@ export default function CheckoutPage() {
     setError("");
 
     try {
+      // Validate that all products with sizes have size selected
+      const itemsWithMissingSizes: string[] = [];
+      
+      for (const item of items) {
+        // Check if this product has sizes available
+        const hasSizes = productSizes[item.product.id] && productSizes[item.product.id].length > 0;
+        
+        if (hasSizes && !item.size) {
+          itemsWithMissingSizes.push(item.product.name);
+        }
+      }
+
+      if (itemsWithMissingSizes.length > 0) {
+        setError(
+          `Please select a size for: ${itemsWithMissingSizes.join(', ')}`
+        );
+        setLoading(false);
+        // Scroll to error message
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       // Require authentication for checkout
       const supabase = createClient();
       const {
@@ -191,6 +255,7 @@ export default function CheckoutPage() {
             product_id: item.product.id,
             quantity: item.quantity,
             price: item.product.price,
+            size: item.size || undefined, // Include size if selected
           })),
           customer_info: customerInfo,
           sale_type: "online",
@@ -240,6 +305,19 @@ export default function CheckoutPage() {
   const handleMpesaComplete = () => {
     clearCart();
     router.push(`/checkout/success?order_id=${createdOrderId}`);
+  };
+
+  // Check if any products with sizes are missing size selection
+  const hasMissingSizes = () => {
+    if (loadingSizes) return true; // Wait for sizes to load
+    
+    for (const item of items) {
+      const hasSizes = productSizes[item.product.id] && productSizes[item.product.id].length > 0;
+      if (hasSizes && !item.size) {
+        return true;
+      }
+    }
+    return false;
   };
 
   // Show loading state while checking auth
@@ -465,7 +543,7 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || hasMissingSizes()}
             className="w-full py-4 px-6 bg-primary text-white rounded-none font-semibold text-lg hover:bg-primary-dark hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {loading ? (
@@ -491,6 +569,8 @@ export default function CheckoutPage() {
                 </svg>
                 Processing...
               </span>
+            ) : hasMissingSizes() ? (
+              'Please Select Sizes'
             ) : (
               `Pay KES ${(total || 0).toLocaleString()}`
             )}

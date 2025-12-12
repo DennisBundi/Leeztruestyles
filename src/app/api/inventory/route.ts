@@ -7,45 +7,88 @@ export async function GET(request: NextRequest) {
     try {
         const supabase = await createClient();
 
-        // Fetch all inventory with product details
-        const { data: inventory, error: inventoryError } = await supabase
-            .from('inventory')
+        // Fetch all products with their categories from Supabase
+        const { data: products, error: productsError } = await supabase
+            .from('products')
             .select(`
-        *,
-        products (
-          id,
-          name,
-          category_id,
-          categories (
-            name
-          )
-        )
-      `)
-            .order('last_updated', { ascending: false });
+                id,
+                name,
+                category_id,
+                categories (
+                    name
+                )
+            `)
+            .order('name', { ascending: true });
 
-        if (inventoryError) {
-            console.error('Inventory fetch error:', inventoryError);
+        if (productsError) {
+            console.error('❌ Products fetch error from Supabase:', productsError);
             return NextResponse.json(
-                { error: 'Failed to fetch inventory', details: inventoryError.message },
+                { error: 'Failed to fetch products', details: productsError.message },
                 { status: 500 }
             );
         }
 
-        // Transform the data for the frontend
-        const inventoryData = (inventory || []).map((item: any) => ({
-            id: item.id,
-            product_id: item.product_id,
-            product_name: item.products?.name || 'Unknown Product',
-            category: item.products?.categories?.name || 'Uncategorized',
-            stock_quantity: item.stock_quantity || 0,
-            reserved_quantity: item.reserved_quantity || 0,
-            available: Math.max(0, (item.stock_quantity || 0) - (item.reserved_quantity || 0)),
-            last_updated: item.last_updated,
-        }));
+        if (!products || products.length === 0) {
+            console.log('ℹ️ No products found in Supabase');
+            return NextResponse.json({ inventory: [] });
+        }
+
+        console.log(`✅ Fetched ${products.length} products from Supabase`);
+
+        const productIds = products.map((p: any) => p.id);
+
+        // Fetch inventory for all products from Supabase inventory table only
+        // (same approach as products page and home page)
+        const { data: inventory, error: inventoryError } = await supabase
+            .from('inventory')
+            .select('id, product_id, stock_quantity, reserved_quantity, last_updated')
+            .in('product_id', productIds);
+
+        if (inventoryError) {
+            console.error('❌ Inventory fetch error from Supabase:', inventoryError);
+            // Continue with empty inventory map if there's an error
+        } else {
+            console.log(`✅ Fetched inventory data for ${inventory?.length || 0} products from Supabase`);
+        }
+
+        // Create map for quick lookup
+        const inventoryMap = new Map<string, any>();
+        (inventory || []).forEach((item: any) => {
+            inventoryMap.set(item.product_id, item);
+        });
+
+        // Transform the data for the frontend, using only inventory table data from Supabase
+        const inventoryData = products.map((product: any) => {
+            const generalInventory = inventoryMap.get(product.id);
+
+            // Use only inventory table stock quantities from Supabase
+            const stockQuantity = generalInventory?.stock_quantity || 0;
+            const reservedQuantity = generalInventory?.reserved_quantity || 0;
+            const available = Math.max(0, stockQuantity - reservedQuantity);
+
+            // Use the last_updated date from inventory if available, otherwise use current date
+            const lastUpdated = generalInventory?.last_updated || new Date().toISOString();
+
+            return {
+                id: generalInventory?.id || product.id, // Use inventory ID if available, otherwise product ID
+                product_id: product.id,
+                product_name: product.name || 'Unknown Product',
+                category: product.categories?.name || 'Uncategorized',
+                stock_quantity: stockQuantity,
+                reserved_quantity: reservedQuantity,
+                available: available,
+                last_updated: lastUpdated,
+            };
+        }).sort((a, b) => {
+            // Sort by last_updated descending (most recently updated first)
+            return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
+        });
+
+        console.log(`✅ Returning ${inventoryData.length} inventory items to dashboard`);
 
         return NextResponse.json({ inventory: inventoryData });
     } catch (error) {
-        console.error('Inventory fetch error:', error);
+        console.error('❌ Inventory fetch error:', error);
         return NextResponse.json(
             { error: 'Failed to fetch inventory', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500 }

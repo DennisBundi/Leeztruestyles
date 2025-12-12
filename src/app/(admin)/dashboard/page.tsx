@@ -275,38 +275,85 @@ export default function DashboardPage() {
       </div>
 
       {/* Low Stock & Out of Stock Alerts */}
-      {!loading && lowStock && lowStock.length > 0 && (
-        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6 shadow-lg animate-slide-up">
-          <div className="flex items-center gap-3 mb-4">
-            <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <h2 className="text-2xl font-bold text-yellow-800">Stock Alerts</h2>
-            <span className="ml-auto bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">
-              {lowStock.length}
-            </span>
-          </div>
-          <div className="space-y-3">
-            {lowStock.map((item: any) => {
-              const isOutOfStock = item.stock_quantity === 0 || item.status === 'out_of_stock' || item.status === 'no_inventory';
-              return (
-                <div key={item.id} className="flex justify-between items-center bg-white/50 p-3 rounded-lg">
-                  <span className="text-gray-800 font-medium">
-                    {item.name || 'Unknown Product'}
-                  </span>
-                  <span className={`font-bold px-3 py-1 rounded-full ${
-                    isOutOfStock
-                      ? 'text-red-700 bg-red-100'
-                      : 'text-yellow-700 bg-yellow-100'
-                  }`}>
-                    {isOutOfStock ? 'Out of Stock' : `${item.stock_quantity} units`}
+      {!loading && lowStock && Array.isArray(lowStock) && lowStock.length > 0 && (() => {
+        // Separate low stock from out of stock
+        const lowStockItems = lowStock.filter((item: any) => {
+          const isOutOfStock = item.stock_quantity === 0 || item.status === 'out_of_stock' || item.status === 'no_inventory';
+          return !isOutOfStock;
+        });
+        const outOfStockItems = lowStock.filter((item: any) => {
+          const isOutOfStock = item.stock_quantity === 0 || item.status === 'out_of_stock' || item.status === 'no_inventory';
+          return isOutOfStock;
+        });
+        const outOfStockCount = outOfStockItems.length;
+        const hasAlerts = lowStockItems.length > 0 || outOfStockCount > 0;
+
+        if (!hasAlerts) return null;
+
+        return (
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6 shadow-lg animate-slide-up">
+            <div className="flex items-center gap-3 mb-4">
+              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h2 className="text-2xl font-bold text-yellow-800">Stock Alerts</h2>
+              <span className="ml-auto bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">
+                {lowStockItems.length + outOfStockCount}
+              </span>
+            </div>
+
+            {/* Out of Stock Summary */}
+            {outOfStockCount > 0 && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span className="text-red-800 font-semibold">
+                    Out of Stock: {outOfStockCount} {outOfStockCount === 1 ? 'product' : 'products'}
                   </span>
                 </div>
-              );
-            })}
+              </div>
+            )}
+
+            {/* Low Stock Products - Scrollable List */}
+            {lowStockItems.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Low Stock Products:</h3>
+                <div 
+                  className="overflow-y-auto pr-2 space-y-3"
+                  style={{
+                    maxHeight: '180px', // Shows approximately 3 products (60px each)
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#fcd34d #fef3c7',
+                  }}
+                >
+                  {lowStockItems.map((item: any) => (
+                    <div key={item.id} className="flex justify-between items-center bg-white/50 p-3 rounded-lg">
+                      <span className="text-gray-800 font-medium">
+                        {item.name || 'Unknown Product'}
+                      </span>
+                      <span className="font-bold px-3 py-1 rounded-full text-yellow-700 bg-yellow-100">
+                        {item.stock_quantity} units
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {lowStockItems.length > 3 && (
+                  <p className="text-xs text-gray-500 italic text-center mt-2">
+                    Scroll to see {lowStockItems.length - 3} more {lowStockItems.length - 3 === 1 ? 'product' : 'products'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Show message if no low stock items but has out of stock */}
+            {lowStockItems.length === 0 && outOfStockCount > 0 && (
+              <p className="text-sm text-gray-600 italic">All alerts are out of stock items.</p>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Charts and Analytics Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

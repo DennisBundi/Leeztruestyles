@@ -17,6 +17,7 @@ interface CustomProductModalProps {
     size?: string;
     category_id?: string;
     description?: string;
+    social_platform?: string;
   }) => void;
   categories?: Category[];
 }
@@ -33,6 +34,7 @@ export default function CustomProductModal({
     size: "",
     category_id: "",
     description: "",
+    social_platform: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -46,6 +48,7 @@ export default function CustomProductModal({
         size: "",
         category_id: "",
         description: "",
+        social_platform: "",
       });
       setErrors({});
     }
@@ -61,6 +64,10 @@ export default function CustomProductModal({
     const price = parseFloat(formData.price);
     if (!formData.price || isNaN(price) || price <= 0) {
       newErrors.price = "Valid price is required";
+    }
+
+    if (!formData.social_platform) {
+      newErrors.social_platform = "Social platform is required";
     }
 
     setErrors(newErrors);
@@ -82,6 +89,7 @@ export default function CustomProductModal({
       size: formData.size || undefined,
       category_id: formData.category_id || undefined,
       description: formData.description.trim() || undefined,
+      social_platform: formData.social_platform || undefined,
     };
 
     onAdd(productData);
@@ -226,6 +234,34 @@ export default function CustomProductModal({
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
               placeholder="Enter product description"
             />
+          </div>
+
+          {/* Social Platform */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Social Platform <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.social_platform}
+              onChange={(e) =>
+                setFormData({ ...formData, social_platform: e.target.value })
+              }
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${
+                errors.social_platform
+                  ? "border-red-300 focus:border-red-500"
+                  : "border-gray-200 focus:border-primary"
+              }`}
+              required
+            >
+              <option value="">Select platform...</option>
+              <option value="tiktok">TikTok</option>
+              <option value="instagram">Instagram</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="walkin">Walk-in</option>
+            </select>
+            {errors.social_platform && (
+              <p className="text-red-500 text-xs mt-1">{errors.social_platform}</p>
+            )}
           </div>
 
           {/* Buttons */}

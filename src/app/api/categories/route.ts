@@ -122,6 +122,76 @@ export async function PUT(request: NextRequest) {
     }
 }
 
+export async function DELETE(request: NextRequest) {
+    try {
+        const supabase = await createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const userRole = await getUserRole(user.id);
+        if (!userRole || (userRole !== 'admin' && userRole !== 'manager')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        // Get category ID from query parameters
+        const { searchParams } = new URL(request.url);
+        const categoryId = searchParams.get('id');
+
+        if (!categoryId) {
+            return NextResponse.json({ error: 'Category ID required' }, { status: 400 });
+        }
+
+        // Check if category is in use by any products
+        const { data: productsUsingCategory, error: productsError } = await supabase
+            .from('products')
+            .select('id, name')
+            .eq('category_id', categoryId)
+            .limit(1);
+
+        if (productsError) {
+            console.error('Error checking products using category:', productsError);
+        }
+
+        if (productsUsingCategory && productsUsingCategory.length > 0) {
+            return NextResponse.json(
+                { 
+                    error: 'Cannot delete category', 
+                    details: 'This category is in use by one or more products. Please reassign or remove those products first.',
+                    productsCount: productsUsingCategory.length
+                },
+                { status: 400 }
+            );
+        }
+
+        // Delete the category
+        const { error: deleteError } = await supabase
+            .from('categories')
+            .delete()
+            .eq('id', categoryId);
+
+        if (deleteError) {
+            console.error('Category deletion error:', deleteError);
+            return NextResponse.json(
+                { error: 'Failed to delete category', details: deleteError.message || 'Unknown error' },
+                { status: 500 }
+            );
+        }
+
+        return NextResponse.json({ success: true, message: 'Category deleted successfully' });
+    } catch (error) {
+        console.error('Category deletion error:', error);
+        return NextResponse.json(
+            { error: 'Failed to delete category', details: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500 }
+        );
+    }
+}
+
 export async function GET(request: NextRequest) {
     try {
         const supabase = await createClient();

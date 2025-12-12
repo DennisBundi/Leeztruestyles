@@ -7,10 +7,21 @@ interface CategoryFormProps {
   category?: Category | null;
   onSuccess?: () => void;
   onClose?: () => void;
+  isOpen?: boolean;
+  showButton?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function CategoryForm({ category, onSuccess, onClose }: CategoryFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function CategoryForm({ 
+  category, 
+  onSuccess, 
+  onClose, 
+  isOpen: externalIsOpen,
+  showButton = true,
+  onOpenChange
+}: CategoryFormProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: category?.name || '',
@@ -25,8 +36,15 @@ export default function CategoryForm({ category, onSuccess, onClose }: CategoryF
         slug: category.slug || '',
         description: category.description || '',
       });
+    } else if (isOpen && !category) {
+      // Reset form when opening for new category
+      setFormData({
+        name: '',
+        slug: '',
+        description: '',
+      });
     }
-  }, [category]);
+  }, [category, isOpen]);
 
   // Auto-generate slug from name
   useEffect(() => {
@@ -51,8 +69,7 @@ export default function CategoryForm({ category, onSuccess, onClose }: CategoryF
         // Preview mode - simulate success
         alert(category ? 'Category updated successfully! (Preview Mode)' : 'Category created successfully! (Preview Mode)');
         if (onSuccess) onSuccess();
-        setIsOpen(false);
-        if (onClose) onClose();
+        closeModal();
         return;
       }
 
@@ -65,12 +82,18 @@ export default function CategoryForm({ category, onSuccess, onClose }: CategoryF
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save category');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save category');
+      }
 
       if (onSuccess) onSuccess();
-      setIsOpen(false);
-      if (onClose) onClose();
-      window.location.reload();
+      closeModal();
+      
+      // Only reload if no onSuccess callback is provided (for backward compatibility)
+      if (!onSuccess) {
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error saving category:', error);
       alert('Failed to save category');
@@ -80,7 +103,11 @@ export default function CategoryForm({ category, onSuccess, onClose }: CategoryF
   };
 
   const openModal = () => {
-    setIsOpen(true);
+    if (onOpenChange) {
+      onOpenChange(true);
+    } else {
+      setInternalIsOpen(true);
+    }
     if (!category) {
       setFormData({
         name: '',
@@ -90,14 +117,25 @@ export default function CategoryForm({ category, onSuccess, onClose }: CategoryF
     }
   };
 
+  const closeModal = () => {
+    if (onOpenChange) {
+      onOpenChange(false);
+    } else {
+      setInternalIsOpen(false);
+    }
+    if (onClose) onClose();
+  };
+
   return (
     <>
-      <button
-        onClick={openModal}
-        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-none font-medium transition-colors"
-      >
-        {category ? '✏️ Edit' : '+ Add Category'}
-      </button>
+      {showButton && (
+        <button
+          onClick={openModal}
+          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-none font-medium transition-colors"
+        >
+          {category ? '✏️ Edit' : '+ Add Category'}
+        </button>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
@@ -108,10 +146,7 @@ export default function CategoryForm({ category, onSuccess, onClose }: CategoryF
                 {category ? 'Edit Category' : 'Add New Category'}
               </h2>
               <button
-                onClick={() => {
-                  setIsOpen(false);
-                  if (onClose) onClose();
-                }}
+                onClick={closeModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,10 +212,7 @@ export default function CategoryForm({ category, onSuccess, onClose }: CategoryF
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsOpen(false);
-                    if (onClose) onClose();
-                  }}
+                  onClick={closeModal}
                   className="px-6 py-3 bg-gray-200 text-gray-700 rounded-none font-semibold hover:bg-gray-300 transition-all"
                 >
                   Cancel

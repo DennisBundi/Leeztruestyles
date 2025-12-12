@@ -3,15 +3,70 @@
 import Image from 'next/image';
 import { useCartStore } from '@/store/cartStore';
 import type { CartItem } from '@/types';
+import { useState, useEffect } from 'react';
 
 interface OrderSummaryProps {
   items: CartItem[];
   total: number;
 }
 
+interface ProductSizes {
+  [productId: string]: Array<{
+    size: string;
+    available: number;
+  }>;
+}
+
 export default function OrderSummary({ items, total }: OrderSummaryProps) {
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
+  const updateSize = useCartStore((state) => state.updateSize);
+  const [productSizes, setProductSizes] = useState<ProductSizes>({});
+  const [loadingSizes, setLoadingSizes] = useState<{ [key: string]: boolean }>({});
+
+  // Fetch sizes for each product
+  useEffect(() => {
+    const fetchSizes = async () => {
+      const sizesMap: ProductSizes = {};
+      
+      for (const item of items) {
+        // Skip if already loading or loaded
+        if (loadingSizes[item.product.id] || productSizes[item.product.id]) {
+          continue;
+        }
+
+        setLoadingSizes(prev => ({ ...prev, [item.product.id]: true }));
+
+        try {
+          const response = await fetch(`/api/products/${item.product.id}/sizes`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.sizes && data.sizes.length > 0) {
+              sizesMap[item.product.id] = data.sizes.map((s: any) => ({
+                size: s.size,
+                available: s.available,
+              }));
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching sizes for product ${item.product.id}:`, error);
+        } finally {
+          setLoadingSizes(prev => {
+            const newState = { ...prev };
+            delete newState[item.product.id];
+            return newState;
+          });
+        }
+      }
+
+      if (Object.keys(sizesMap).length > 0) {
+        setProductSizes(prev => ({ ...prev, ...sizesMap }));
+      }
+    };
+
+    fetchSizes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length]); // Re-fetch if items change
   return (
     <div className="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100 sticky top-4 animate-slide-up">
       <h2 className="text-2xl font-bold mb-6 text-gray-900">Order Summary</h2>
@@ -54,6 +109,34 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
                   </span>
                 )}
               </div>
+              
+              {/* Size Selection */}
+              {productSizes[item.product.id] && productSizes[item.product.id].length > 0 && (
+                <div className="mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Size
+                  </label>
+                  <select
+                    value={item.size || ''}
+                    onChange={(e) => updateSize(item.product.id, e.target.value || undefined)}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Select Size</option>
+                    {productSizes[item.product.id].map((sizeOption) => (
+                      <option
+                        key={sizeOption.size}
+                        value={sizeOption.size}
+                        disabled={sizeOption.available <= 0}
+                      >
+                        {sizeOption.size} {sizeOption.available <= 0 ? '(Out of Stock)' : `(${sizeOption.available} available)`}
+                      </option>
+                    ))}
+                  </select>
+                  {!item.size && (
+                    <p className="text-xs text-red-600 mt-1">Please select a size</p>
+                  )}
+                </div>
+              )}
               
               {/* Quantity Controls */}
               <div className="flex items-center gap-2">

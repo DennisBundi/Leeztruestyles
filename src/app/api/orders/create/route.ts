@@ -13,6 +13,7 @@ const createOrderSchema = z.object({
         product_id: z.string().uuid(),
         quantity: z.number().positive().int(),
         price: z.number().positive(),
+        size: z.string().optional(), // Optional size (S, M, L, XL)
       }),
       // Custom product with product_data
       z.object({
@@ -36,7 +37,20 @@ const createOrderSchema = z.object({
   }),
   sale_type: z.enum(["online", "pos"]).default("online"),
   seller_id: z.string().uuid().optional(), // Optional seller_id for POS orders
-});
+  social_platform: z.enum(["tiktok", "instagram", "whatsapp", "walkin"]).optional(), // Required for POS orders
+}).refine(
+  (data) => {
+    // If sale_type is "pos", social_platform is required
+    if (data.sale_type === "pos") {
+      return data.social_platform !== undefined && data.social_platform !== null;
+    }
+    return true; // Optional for online orders
+  },
+  {
+    message: "Social platform is required for POS sales",
+    path: ["social_platform"],
+  }
+);
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,6 +85,7 @@ export async function POST(request: NextRequest) {
       product_id: string;
       quantity: number;
       price: number;
+      size?: string;
     }> = [];
     const customProductItems: Array<{
       product_data: {
@@ -181,6 +196,7 @@ export async function POST(request: NextRequest) {
       product_id: string;
       quantity: number;
       price: number;
+      size?: string;
     }> = [];
 
     // Add existing product items
@@ -189,6 +205,7 @@ export async function POST(request: NextRequest) {
         product_id: item.product_id,
         quantity: item.quantity,
         price: item.price,
+        size: item.size,
       });
     });
 
@@ -243,6 +260,11 @@ export async function POST(request: NextRequest) {
       status: validated.sale_type === "pos" ? "completed" : "pending", // POS orders are completed immediately
     };
 
+    // Add social_platform if provided
+    if (validated.social_platform) {
+      orderData.social_platform = validated.social_platform;
+    }
+
     // Set seller_id for POS orders
     if (sellerId) {
       orderData.seller_id = sellerId;
@@ -267,12 +289,15 @@ export async function POST(request: NextRequest) {
       order = result.data;
       orderError = result.error;
 
-      // If error is about missing commission column, retry without it
-      if (orderError && orderError.message && orderError.message.includes("commission")) {
-        console.warn("⚠️ Commission column not found. Order created without commission. Please run migration: RUN_COMMISSION_MIGRATION_NOW.sql");
+      // If error is about missing commission or social_platform column, retry without it
+      if (orderError && orderError.message && 
+          (orderError.message.includes("commission") || orderError.message.includes("social_platform"))) {
+        console.warn("⚠️ Commission or social_platform column not found. Retrying without it. Please run migration: add_social_platform_to_orders.sql");
+        // Remove commission and social_platform for retry
+        const { commission: _, social_platform: __, ...orderDataWithoutOptional } = orderDataWithCommission;
         const retryResult = await supabase
           .from("orders")
-          .insert(orderData)
+          .insert(orderDataWithoutOptional)
           .select()
           .single();
         order = retryResult.data;
@@ -287,6 +312,19 @@ export async function POST(request: NextRequest) {
         .single();
       order = result.data;
       orderError = result.error;
+
+      // If error is about missing social_platform column, retry without it
+      if (orderError && orderError.message && orderError.message.includes("social_platform")) {
+        console.warn("⚠️ Social platform column not found. Retrying without it. Please run migration: add_social_platform_to_orders.sql");
+        const { social_platform: _, ...orderDataWithoutSocialPlatform } = orderData;
+        const retryResult = await supabase
+          .from("orders")
+          .insert(orderDataWithoutSocialPlatform)
+          .select()
+          .single();
+        order = retryResult.data;
+        orderError = retryResult.error;
+      }
     }
 
     if (orderError || !order) {
@@ -303,6 +341,7 @@ export async function POST(request: NextRequest) {
       product_id: item.product_id,
       quantity: item.quantity,
       price: item.price,
+      size: item.size || null, // Include size if provided
     }));
 
     const { error: itemsError } = await supabase

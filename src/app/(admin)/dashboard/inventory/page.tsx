@@ -71,6 +71,8 @@ export default function InventoryPage() {
   }, []);
 
   // Filter inventory based on search, category, and stock status
+  // By default (when 'all' is selected), only show products with stock > 0 (not out of stock)
+  // When 'out_of_stock' filter is selected, show only out-of-stock products
   const filteredInventory = useMemo(() => {
     return inventory.filter((item) => {
       const matchesSearch = item.product_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -83,6 +85,9 @@ export default function InventoryPage() {
         matchesStockStatus = item.available > 0 && item.available <= 10;
       } else if (selectedStockStatus === 'out_of_stock') {
         matchesStockStatus = item.available === 0;
+      } else if (selectedStockStatus === 'all') {
+        // By default, only show products that are NOT out of stock (stock > 0)
+        matchesStockStatus = item.available > 0;
       }
 
       return matchesSearch && matchesCategory && matchesStockStatus;

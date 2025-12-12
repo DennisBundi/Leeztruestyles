@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
                     };
                   })
                   .sort((a, b) => b.sales - a.sales) // Sort by sales count (highest to lowest)
-                  .slice(0, 10); // Top 10 products
+                  .slice(0, 5); // Top 5 products
                 
                 console.log('Top products - final result:', topProducts.length, 'products');
               } else {
@@ -261,151 +261,197 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching customers count:', customersError);
     }
 
-    // Fetch total products count (active products)
-    const { count: productsCount, error: productsError } = await adminClient
+    // Fetch all products and calculate stock (aggregated from both inventory and product_sizes)
+    // This will be used for both total products count and low stock alerts
+    const { data: allProducts, error: allProductsError } = await adminClient
       .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
+      .select('id, name, image, image_url, images, status');
 
-    // If no active products found, try without status filter
-    let finalProductsCount = productsCount || 0;
-    if (productsError || finalProductsCount === 0) {
-      const { count: allProductsCount, error: allProductsError } = await adminClient
-        .from('products')
-        .select('*', { count: 'exact', head: true });
-      
-      if (!allProductsError) {
-        finalProductsCount = allProductsCount || 0;
-      } else {
-        console.error('Error fetching products count:', allProductsError);
-      }
-    }
-
-    // Fetch low stock products (stock > 0 and < 10) and out of stock products (stock = 0)
+    let productStockMap = new Map<string, { stock: number; reserved: number; available: number }>();
+    let finalProductsCount = 0;
     let lowStockProducts: any[] = [];
     let outOfStockProducts: any[] = [];
-    try {
-      // Fetch all products (including inactive to catch all inventory issues)
-      const { data: allProducts, error: productsError } = await adminClient
-        .from('products')
-        .select('id, name, status');
 
-      if (productsError) {
-        console.error('Error fetching products for low stock:', productsError);
-      } else if (allProducts && allProducts.length > 0) {
-        const productIds = allProducts.map((p: any) => p.id);
-        
-        // Fetch inventory for all products (general stock)
-        const { data: inventory, error: inventoryError } = await adminClient
-          .from('inventory')
-          .select('product_id, stock_quantity, reserved_quantity')
-          .in('product_id', productIds);
+    if (allProducts && allProducts.length > 0) {
+      const productIds = allProducts.map((p: any) => p.id);
+      
+      // Fetch inventory for all products (general stock)
+      const { data: inventory, error: inventoryError } = await adminClient
+        .from('inventory')
+        .select('product_id, stock_quantity, reserved_quantity')
+        .in('product_id', productIds);
 
-        // Fetch size-based inventory
-        const { data: productSizes, error: sizesError } = await adminClient
-          .from('product_sizes')
-          .select('product_id, stock_quantity, reserved_quantity')
-          .in('product_id', productIds);
+      // Fetch size-based inventory
+      const { data: productSizes, error: sizesError } = await adminClient
+        .from('product_sizes')
+        .select('product_id, stock_quantity, reserved_quantity')
+        .in('product_id', productIds);
 
-        if (inventoryError) {
-          console.error('Error fetching inventory for low stock:', inventoryError);
-        }
-
-        // Create a map to aggregate total stock per product
-        const productStockMap = new Map<string, { stock: number; reserved: number }>();
-
-        // Add general inventory
-        if (inventory) {
-          inventory.forEach((inv: any) => {
-            const existing = productStockMap.get(inv.product_id) || { stock: 0, reserved: 0 };
-            productStockMap.set(inv.product_id, {
-              stock: existing.stock + (inv.stock_quantity || 0),
-              reserved: existing.reserved + (inv.reserved_quantity || 0),
-            });
-          });
-        }
-
-        // Add size-based inventory
-        if (productSizes) {
-          productSizes.forEach((size: any) => {
-            const existing = productStockMap.get(size.product_id) || { stock: 0, reserved: 0 };
-            productStockMap.set(size.product_id, {
-              stock: existing.stock + (size.stock_quantity || 0),
-              reserved: existing.reserved + (size.reserved_quantity || 0),
-            });
-          });
-        }
-
-        // Calculate available stock and categorize products
-        productStockMap.forEach((stockData, productId) => {
-          const available = Math.max(0, stockData.stock - stockData.reserved);
-          const product = allProducts.find((p: any) => p.id === productId);
-          
-          if (product) {
-            if (available === 0) {
-              // Out of stock
-              outOfStockProducts.push({
-                id: productId,
-                name: product.name,
-                stock_quantity: 0,
-                status: 'out_of_stock',
-              });
-            } else if (available > 0 && available < 10) {
-              // Low stock
-              lowStockProducts.push({
-                id: productId,
-                name: product.name,
-                stock_quantity: available,
-                status: 'low_stock',
-              });
-            }
-          }
-        });
-
-        // Also check products that have no inventory record at all
-        allProducts.forEach((product: any) => {
-          if (!productStockMap.has(product.id)) {
-            // Product has no inventory record - treat as out of stock
-            outOfStockProducts.push({
-              id: product.id,
-              name: product.name,
-              stock_quantity: 0,
-              status: 'no_inventory',
-            });
-          }
-        });
-
-        // Sort by stock quantity (lowest first) and combine
-        lowStockProducts = lowStockProducts
-          .sort((a, b) => a.stock_quantity - b.stock_quantity);
-        
-        outOfStockProducts = outOfStockProducts
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        // Combine low stock and out of stock, limit to top 15 total
-        const allStockAlerts = [...lowStockProducts, ...outOfStockProducts].slice(0, 15);
-        
-        console.log('Low stock products found:', {
-          totalProducts: allProducts.length,
-          productsWithInventory: productStockMap.size,
-          lowStock: lowStockProducts.length,
-          outOfStock: outOfStockProducts.length,
-          total: allStockAlerts.length,
-          sample: allStockAlerts.slice(0, 3).map((item: any) => ({
-            name: item.name,
-            stock: item.stock_quantity,
-            status: item.status,
-          })),
-        });
-
-        // Return combined list
-        lowStockProducts = allStockAlerts;
-      } else {
-        console.log('No products found for low stock check');
+      if (inventoryError) {
+        console.error('Error fetching inventory:', inventoryError);
       }
-    } catch (error) {
-      console.error('Error fetching low stock products:', error);
-      lowStockProducts = [];
+      if (sizesError) {
+        console.error('Error fetching product sizes:', sizesError);
+      }
+
+      // Aggregate stock from both sources
+      if (inventory) {
+        inventory.forEach((inv: any) => {
+          const existing = productStockMap.get(inv.product_id) || { stock: 0, reserved: 0, available: 0 };
+          productStockMap.set(inv.product_id, {
+            stock: existing.stock + (inv.stock_quantity || 0),
+            reserved: existing.reserved + (inv.reserved_quantity || 0),
+            available: 0, // Will calculate after
+          });
+        });
+      }
+
+      if (productSizes) {
+        productSizes.forEach((size: any) => {
+          const existing = productStockMap.get(size.product_id) || { stock: 0, reserved: 0, available: 0 };
+          productStockMap.set(size.product_id, {
+            stock: existing.stock + (size.stock_quantity || 0),
+            reserved: existing.reserved + (size.reserved_quantity || 0),
+            available: 0, // Will calculate after
+          });
+        });
+      }
+
+      // Calculate available stock for each product and categorize
+      productStockMap.forEach((stockData, productId) => {
+        stockData.available = Math.max(0, stockData.stock - stockData.reserved);
+      });
+
+      // Count products that have images AND stock > 0 (in stock or low stock, not out of stock)
+      // First, let's check what we have
+      const productsWithImages = allProducts.filter((product: any) => {
+        // Check if product has a valid image
+        const hasImage = product.image || product.image_url || 
+          (Array.isArray(product.images) && product.images.length > 0 && product.images[0]);
+        return hasImage;
+      });
+      
+      const productsWithStock = allProducts.filter((product: any) => {
+        const stockData = productStockMap.get(product.id);
+        const availableStock = stockData ? stockData.available : 0;
+        return availableStock > 0;
+      });
+      
+      finalProductsCount = allProducts.filter((product: any) => {
+        // Check if product has a valid image
+        const hasImage = product.image || product.image_url || 
+          (Array.isArray(product.images) && product.images.length > 0 && product.images[0]);
+        
+        if (!hasImage) return false;
+
+        // Check if product has stock > 0 (in stock or low stock, not out of stock)
+        const stockData = productStockMap.get(product.id);
+        const availableStock = stockData ? stockData.available : 0;
+        
+        return availableStock > 0;
+      }).length;
+      
+      // Debug logging - always log to help diagnose
+      console.log('📊 Dashboard total products calculation:', {
+        totalProducts: allProducts.length,
+        productsWithInventory: productStockMap.size,
+        productsWithImages: productsWithImages.length,
+        productsWithStock: productsWithStock.length,
+        finalCount: finalProductsCount,
+        sampleProducts: allProducts.slice(0, 5).map((p: any) => {
+          const stockData = productStockMap.get(p.id);
+          const hasImage = !!(p.image || p.image_url || (Array.isArray(p.images) && p.images.length > 0 && p.images[0]));
+          return {
+            name: p.name,
+            hasImage,
+            stock: stockData?.available ?? 0,
+            totalStock: stockData?.stock ?? 0,
+            reserved: stockData?.reserved ?? 0,
+          };
+        }),
+      });
+      
+      // If finalProductsCount is 0 but we have products, log more details
+      if (finalProductsCount === 0 && allProducts.length > 0) {
+        console.warn('⚠️ Total products count is 0 but we have products. Checking why...');
+        const noImageCount = allProducts.filter((p: any) => {
+          return !(p.image || p.image_url || (Array.isArray(p.images) && p.images.length > 0 && p.images[0]));
+        }).length;
+        const noStockCount = allProducts.filter((p: any) => {
+          const stockData = productStockMap.get(p.id);
+          return !stockData || stockData.available <= 0;
+        }).length;
+        console.warn('Products breakdown:', {
+          total: allProducts.length,
+          noImage: noImageCount,
+          noStock: noStockCount,
+          hasBoth: allProducts.filter((p: any) => {
+            const hasImage = !!(p.image || p.image_url || (Array.isArray(p.images) && p.images.length > 0 && p.images[0]));
+            const stockData = productStockMap.get(p.id);
+            const hasStock = stockData && stockData.available > 0;
+            return hasImage && hasStock;
+          }).length,
+        });
+      }
+
+      // Categorize products for low stock alerts
+      allProducts.forEach((product: any) => {
+        const stockData = productStockMap.get(product.id);
+        const available = stockData ? stockData.available : 0;
+        
+        if (available === 0) {
+          // Out of stock
+          outOfStockProducts.push({
+            id: product.id,
+            name: product.name,
+            stock_quantity: 0,
+            status: 'out_of_stock',
+          });
+        } else if (available > 0 && available < 10) {
+          // Low stock
+          lowStockProducts.push({
+            id: product.id,
+            name: product.name,
+            stock_quantity: available,
+            status: 'low_stock',
+          });
+        }
+      });
+
+      // Sort by stock quantity (lowest first) for low stock
+      lowStockProducts = lowStockProducts
+        .sort((a, b) => a.stock_quantity - b.stock_quantity);
+      
+      // Sort by name for out of stock
+      outOfStockProducts = outOfStockProducts
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      // Combine low stock and out of stock, limit to top 15 total
+      const allStockAlerts = [...lowStockProducts, ...outOfStockProducts].slice(0, 15);
+      
+      console.log('📦 Stock products found:', {
+        totalProducts: allProducts.length,
+        productsWithInventory: productStockMap.size,
+        lowStock: lowStockProducts.length,
+        outOfStock: outOfStockProducts.length,
+        totalAlerts: allStockAlerts.length,
+        totalProductsWithStock: finalProductsCount,
+        sampleLowStock: lowStockProducts.slice(0, 3).map((item: any) => ({
+          name: item.name,
+          stock: item.stock_quantity,
+          status: item.status,
+        })),
+        sampleOutOfStock: outOfStockProducts.slice(0, 3).map((item: any) => ({
+          name: item.name,
+          stock: item.stock_quantity,
+          status: item.status,
+        })),
+      });
+
+      // Return combined list for low stock alerts
+      lowStockProducts = allStockAlerts;
+    } else if (allProductsError) {
+      console.error('Error fetching products:', allProductsError);
     }
 
     // Calculate today's sales and orders

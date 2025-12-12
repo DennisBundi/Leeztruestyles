@@ -10,6 +10,7 @@ const updateOrderSchema = z.object({
   seller_id: z.string().uuid().optional(),
   payment_method: z.enum(['mpesa', 'card', 'cash']).optional(),
   status: z.enum(['pending', 'processing', 'completed', 'cancelled', 'refunded']).optional(),
+  social_platform: z.enum(['tiktok', 'instagram', 'whatsapp', 'walkin']).optional(),
 });
 
 export async function PUT(request: NextRequest) {
@@ -36,6 +37,7 @@ export async function PUT(request: NextRequest) {
       seller_id: body.seller_id,
       payment_method: body.payment_method,
       status: body.status,
+      social_platform: body.social_platform,
     });
     
     // Clean up the body - remove undefined/null seller_id
@@ -49,11 +51,33 @@ export async function PUT(request: NextRequest) {
     if (validated.seller_id !== undefined) updateData.seller_id = validated.seller_id;
     if (validated.payment_method !== undefined) updateData.payment_method = validated.payment_method;
     if (validated.status !== undefined) updateData.status = validated.status;
+    if (validated.social_platform !== undefined) updateData.social_platform = validated.social_platform;
 
     const { error } = await supabase
       .from('orders')
       .update(updateData)
       .eq('id', validated.order_id);
+
+    // If error is about missing social_platform column, log warning but don't fail
+    if (error && error.message && error.message.includes("social_platform")) {
+      console.warn("⚠️ Social platform column not found. Please run migration: add_social_platform_to_orders.sql");
+      // Remove social_platform from update and retry
+      if (updateData.social_platform) {
+        delete updateData.social_platform;
+        const { error: retryError } = await supabase
+          .from('orders')
+          .update(updateData)
+          .eq('id', validated.order_id);
+        if (retryError) {
+          console.error('Order update error:', retryError);
+          return NextResponse.json(
+            { error: 'Failed to update order' },
+            { status: 500 }
+          );
+        }
+        return NextResponse.json({ success: true, warning: 'Social platform column not found, order updated without it' });
+      }
+    }
 
     if (error) {
       console.error('Order update error:', error);

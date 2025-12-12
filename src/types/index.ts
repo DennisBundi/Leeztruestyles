@@ -101,6 +101,7 @@ export interface PaymentResponse {
 export interface CartItem {
   product: Product;
   quantity: number;
+  size?: string; // Optional size selection (S, M, L, XL)
 }
 
 // API Response Types

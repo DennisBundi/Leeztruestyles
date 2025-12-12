@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import ProductForm from '@/components/admin/ProductForm';
 import CategoryForm from '@/components/admin/CategoryForm';
+import CategoriesPanel from '@/components/admin/CategoriesPanel';
 import type { Product, Category } from '@/types';
 
 // Dummy categories for preview
@@ -131,6 +132,7 @@ export default function ProductsPage() {
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; product: { id: string; name: string } | null }>({ isOpen: false, product: null });
   const [successModal, setSuccessModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
 
   // Check role and redirect sellers (only once)
   useEffect(() => {
@@ -304,11 +306,15 @@ export default function ProductsPage() {
           <p className="text-gray-600">Manage your product catalog</p>
         </div>
         <div className="flex gap-3">
-          <CategoryForm
-            category={selectedCategory}
-            onSuccess={handleCategorySuccess}
-            onClose={() => setSelectedCategory(null)}
-          />
+          <button
+            onClick={() => setShowCategoriesPanel(!showCategoriesPanel)}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            {showCategoriesPanel ? 'Hide Categories' : 'Show Categories'}
+          </button>
           <ProductForm
             categories={categories}
             product={selectedProduct}
@@ -317,6 +323,16 @@ export default function ProductsPage() {
           />
         </div>
       </div>
+
+      {/* Categories Panel */}
+      {showCategoriesPanel && (
+        <CategoriesPanel
+          categories={categories}
+          loading={loadingCategories}
+          onRefresh={handleCategorySuccess}
+          onClose={() => setShowCategoriesPanel(false)}
+        />
+      )}
 
       {/* Search and Filters */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">

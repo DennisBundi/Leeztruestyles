@@ -167,7 +167,7 @@ export default async function HomePage() {
   let products = featuredProducts;
 
   // Fetch inventory separately with error handling
-  // Aggregate stock from both inventory (general) and product_sizes (size-based) tables
+  // Fetch stock from inventory table only (not aggregated with product_sizes)
   let inventoryMap = new Map();
   if (products && products.length > 0) {
     const productIds = products.map((p) => p.id);
@@ -178,55 +178,20 @@ export default async function HomePage() {
       .select("product_id, stock_quantity, reserved_quantity")
       .in("product_id", productIds);
 
-    // Fetch from product_sizes table (size-based stock)
-    const { data: productSizes, error: sizesError } = await supabase
-      .from("product_sizes")
-      .select("product_id, stock_quantity, reserved_quantity")
-      .in("product_id", productIds);
-
     if (inventoryError) {
       console.error("Error fetching inventory:", inventoryError);
     }
-    if (sizesError) {
-      console.error("Error fetching product sizes:", sizesError);
-    }
 
-    // Aggregate stock from both sources
-    const stockMap = new Map<string, { stock: number; reserved: number }>();
-
-    // Add general inventory
+    // Calculate available stock from inventory table only
     if (inventory) {
       inventory.forEach((inv: any) => {
-        const existing = stockMap.get(inv.product_id) || {
-          stock: 0,
-          reserved: 0,
-        };
-        stockMap.set(inv.product_id, {
-          stock: existing.stock + (inv.stock_quantity || 0),
-          reserved: existing.reserved + (inv.reserved_quantity || 0),
-        });
+        const available = Math.max(
+          0,
+          (inv.stock_quantity || 0) - (inv.reserved_quantity || 0)
+        );
+        inventoryMap.set(inv.product_id, available);
       });
     }
-
-    // Add size-based inventory
-    if (productSizes) {
-      productSizes.forEach((size: any) => {
-        const existing = stockMap.get(size.product_id) || {
-          stock: 0,
-          reserved: 0,
-        };
-        stockMap.set(size.product_id, {
-          stock: existing.stock + (size.stock_quantity || 0),
-          reserved: existing.reserved + (size.reserved_quantity || 0),
-        });
-      });
-    }
-
-    // Calculate available stock for each product
-    stockMap.forEach((value, productId) => {
-      const available = Math.max(0, value.stock - value.reserved);
-      inventoryMap.set(productId, available);
-    });
   }
 
   // Fetch flash sale products
@@ -272,23 +237,17 @@ export default async function HomePage() {
   }
 
   // Fetch inventory for flash sale products with error handling
-  // Aggregate stock from both inventory (general) and product_sizes (size-based) tables
+  // Fetch stock from inventory table only (same as products page)
   let flashSaleInventoryMap = new Map();
   if (flashSaleProducts && flashSaleProducts.length > 0) {
     const flashSaleIds = flashSaleProducts.map((p) => p.id);
 
-    // Fetch from inventory table (general stock)
+    // Fetch from inventory table only
     const { data: flashSaleInventory, error: flashSaleInventoryError } =
       await supabase
         .from("inventory")
         .select("product_id, stock_quantity, reserved_quantity")
         .in("product_id", flashSaleIds);
-
-    // Fetch from product_sizes table (size-based stock)
-    const { data: flashSaleSizes, error: flashSaleSizesError } = await supabase
-      .from("product_sizes")
-      .select("product_id, stock_quantity, reserved_quantity")
-      .in("product_id", flashSaleIds);
 
     if (flashSaleInventoryError) {
       console.error(
@@ -296,46 +255,17 @@ export default async function HomePage() {
         flashSaleInventoryError
       );
     }
-    if (flashSaleSizesError) {
-      console.error("Error fetching flash sale sizes:", flashSaleSizesError);
-    }
 
-    // Aggregate stock from both sources
-    const stockMap = new Map<string, { stock: number; reserved: number }>();
-
-    // Add general inventory
+    // Calculate available stock from inventory table only (same as products page)
     if (flashSaleInventory) {
       flashSaleInventory.forEach((inv: any) => {
-        const existing = stockMap.get(inv.product_id) || {
-          stock: 0,
-          reserved: 0,
-        };
-        stockMap.set(inv.product_id, {
-          stock: existing.stock + (inv.stock_quantity || 0),
-          reserved: existing.reserved + (inv.reserved_quantity || 0),
-        });
+        const available = Math.max(
+          0,
+          (inv.stock_quantity || 0) - (inv.reserved_quantity || 0)
+        );
+        flashSaleInventoryMap.set(inv.product_id, available);
       });
     }
-
-    // Add size-based inventory
-    if (flashSaleSizes) {
-      flashSaleSizes.forEach((size: any) => {
-        const existing = stockMap.get(size.product_id) || {
-          stock: 0,
-          reserved: 0,
-        };
-        stockMap.set(size.product_id, {
-          stock: existing.stock + (size.stock_quantity || 0),
-          reserved: existing.reserved + (size.reserved_quantity || 0),
-        });
-      });
-    }
-
-    // Calculate available stock for each product
-    stockMap.forEach((value, productId) => {
-      const available = Math.max(0, value.stock - value.reserved);
-      flashSaleInventoryMap.set(productId, available);
-    });
   }
 
   // Fetch New Arrivals - Latest products added
@@ -382,23 +312,15 @@ export default async function HomePage() {
     }
   }
 
-  // Fetch inventory for new arrivals
-  // Aggregate stock from both inventory (general) and product_sizes (size-based) tables
+  // Fetch stock from inventory table only (same as products page)
   let newArrivalsInventoryMap = new Map();
   if (newArrivals && newArrivals.length > 0) {
     const newArrivalIds = newArrivals.map((p) => p.id);
 
-    // Fetch from inventory table (general stock)
+    // Fetch from inventory table only
     const { data: newArrivalsInventory, error: newArrivalsInventoryError } =
       await supabase
         .from("inventory")
-        .select("product_id, stock_quantity, reserved_quantity")
-        .in("product_id", newArrivalIds);
-
-    // Fetch from product_sizes table (size-based stock)
-    const { data: newArrivalsSizes, error: newArrivalsSizesError } =
-      await supabase
-        .from("product_sizes")
         .select("product_id, stock_quantity, reserved_quantity")
         .in("product_id", newArrivalIds);
 
@@ -408,49 +330,17 @@ export default async function HomePage() {
         newArrivalsInventoryError
       );
     }
-    if (newArrivalsSizesError) {
-      console.error(
-        "Error fetching new arrivals sizes:",
-        newArrivalsSizesError
-      );
-    }
 
-    // Aggregate stock from both sources
-    const stockMap = new Map<string, { stock: number; reserved: number }>();
-
-    // Add general inventory
+    // Calculate available stock from inventory table only (same as products page)
     if (newArrivalsInventory) {
       newArrivalsInventory.forEach((inv: any) => {
-        const existing = stockMap.get(inv.product_id) || {
-          stock: 0,
-          reserved: 0,
-        };
-        stockMap.set(inv.product_id, {
-          stock: existing.stock + (inv.stock_quantity || 0),
-          reserved: existing.reserved + (inv.reserved_quantity || 0),
-        });
+        const available = Math.max(
+          0,
+          (inv.stock_quantity || 0) - (inv.reserved_quantity || 0)
+        );
+        newArrivalsInventoryMap.set(inv.product_id, available);
       });
     }
-
-    // Add size-based inventory
-    if (newArrivalsSizes) {
-      newArrivalsSizes.forEach((size: any) => {
-        const existing = stockMap.get(size.product_id) || {
-          stock: 0,
-          reserved: 0,
-        };
-        stockMap.set(size.product_id, {
-          stock: existing.stock + (size.stock_quantity || 0),
-          reserved: existing.reserved + (size.reserved_quantity || 0),
-        });
-      });
-    }
-
-    // Calculate available stock for each product
-    stockMap.forEach((value, productId) => {
-      const available = Math.max(0, value.stock - value.reserved);
-      newArrivalsInventoryMap.set(productId, available);
-    });
   }
 
   // Log detailed info about products AFTER inventory is fetched
@@ -495,12 +385,57 @@ export default async function HomePage() {
   // Handle errors gracefully - fallback to empty array
   // Filter out products with 0 stock and products without images
   // Featured products: Top 4 by sales count (sorted by sales count)
+  // First, get all product IDs that might be in featured products
+  const potentialFeaturedProductIds = (products || []).map((p: any) => p.id);
+
+  // Fetch stock from inventory table only (not aggregated with product_sizes)
+  let featuredInventoryMap = new Map();
+  if (potentialFeaturedProductIds.length > 0) {
+    // Fetch from inventory table (general stock)
+    const { data: featuredInventory, error: featuredInventoryError } =
+      await supabase
+        .from("inventory")
+        .select("product_id, stock_quantity, reserved_quantity")
+        .in("product_id", potentialFeaturedProductIds);
+
+    if (featuredInventoryError) {
+      console.error(
+        "Error fetching featured inventory:",
+        featuredInventoryError
+      );
+    }
+
+    // Calculate available stock from inventory table only
+    if (featuredInventory) {
+      featuredInventory.forEach((inv: any) => {
+        const available = Math.max(
+          0,
+          (inv.stock_quantity || 0) - (inv.reserved_quantity || 0)
+        );
+        featuredInventoryMap.set(inv.product_id, available);
+      });
+    }
+  }
+
   const productsForFeatured = (products || [])
     .map((product: any) => {
-      const stock = inventoryMap.get(product.id);
+      const stock = featuredInventoryMap.get(product.id);
+      const finalStock = stock !== undefined ? stock : undefined;
+
+      // Debug logging for stock calculation
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[Featured] Product: ${
+            product.name
+          }, Stock: ${finalStock}, Map has: ${featuredInventoryMap.has(
+            product.id
+          )}`
+        );
+      }
+
       return {
         ...product,
-        available_stock: stock !== undefined ? stock : undefined,
+        available_stock: finalStock,
         salesCount: productSalesCountMap.get(product.id) || 0, // Add sales count for sorting
       };
     })
@@ -610,10 +545,23 @@ export default async function HomePage() {
   const newArrivalsWithStock = (newArrivals || [])
     .map((product: any) => {
       const stock = newArrivalsInventoryMap.get(product.id);
+      const finalStock = stock !== undefined ? stock : undefined;
+
+      // Debug logging for stock calculation
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[Just In] Product: ${
+            product.name
+          }, Stock: ${finalStock}, Map has: ${newArrivalsInventoryMap.has(
+            product.id
+          )}`
+        );
+      }
+
       return {
         ...product,
         // Set available_stock: undefined means no inventory record, 0 means out of stock, >=1 means in stock
-        available_stock: stock !== undefined ? stock : undefined,
+        available_stock: finalStock,
       };
     })
     .filter((product: any) => {
