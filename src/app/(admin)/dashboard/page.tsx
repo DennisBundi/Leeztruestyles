@@ -182,7 +182,7 @@ export default function DashboardPage() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-primary/10 to-primary-light/10 p-5 rounded-xl shadow-md border border-primary/20 hover:shadow-lg transition-all">
+        <Link href="/dashboard/orders" className="bg-gradient-to-br from-primary/10 to-primary-light/10 p-5 rounded-xl shadow-md border border-primary/20 hover:shadow-lg transition-all cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide">Total Sales</h3>
             <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -193,9 +193,9 @@ export default function DashboardPage() {
             {loading ? '...' : `KES ${(totalSales || 0).toLocaleString()}`}
           </p>
           <p className="text-xs text-gray-500 mt-1">All time</p>
-        </div>
+        </Link>
         
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl shadow-md border border-blue-200 hover:shadow-lg transition-all">
+        <Link href="/dashboard/orders" className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl shadow-md border border-blue-200 hover:shadow-lg transition-all cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide">Total Orders</h3>
             <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +206,7 @@ export default function DashboardPage() {
             {loading ? '...' : totalOrders}
           </p>
           <p className="text-xs text-gray-500 mt-1">All time</p>
-        </div>
+        </Link>
         
         <div className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl shadow-md border border-green-200 hover:shadow-lg transition-all">
           <div className="flex items-center justify-between mb-3">
@@ -223,7 +223,7 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl shadow-md border border-purple-200 hover:shadow-lg transition-all">
+        <Link href="/dashboard/products" className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl shadow-md border border-purple-200 hover:shadow-lg transition-all cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide">Total Products</h3>
             <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,8 +233,8 @@ export default function DashboardPage() {
           <p className="text-2xl font-bold text-purple-600">
             {loading ? '...' : totalProducts}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Active products</p>
-        </div>
+          <p className="text-xs text-gray-500 mt-1">All products</p>
+        </Link>
       </div>
 
       {/* Secondary Stats */}

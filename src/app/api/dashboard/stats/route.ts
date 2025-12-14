@@ -261,11 +261,60 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching customers count:', customersError);
     }
 
-    // Fetch all products and calculate stock (aggregated from both inventory and product_sizes)
-    // This will be used for both total products count and low stock alerts
-    const { data: allProducts, error: allProductsError } = await adminClient
-      .from('products')
-      .select('id, name, image, image_url, images, status');
+    // Fetch all products - use the EXACT same approach as /api/products GET endpoint
+    // This ensures we get the same count as the products page
+    let allProducts: any[] = [];
+    let allProductsError: any = null;
+    
+    try {
+      // Use regular client (same as products API) - authenticated user should have access
+      const { data: allProductsData, error: productsError } = await supabase
+        .from('products')
+        .select('id, name, image, image_url, images, status')
+        .order('created_at', { ascending: false });
+      
+      if (!productsError && allProductsData) {
+        allProducts = allProductsData;
+        console.log('✅ Products fetched successfully, count:', allProducts.length);
+      } else {
+        allProductsError = productsError;
+        console.error('❌ Error fetching products:', {
+          message: productsError?.message,
+          details: productsError?.details,
+          hint: productsError?.hint,
+        });
+        allProducts = [];
+        
+        // Try admin client as fallback if regular client fails
+        try {
+          const { data: adminProductsData, error: adminError } = await adminClient
+            .from('products')
+            .select('id, name, image, image_url, images, status')
+            .order('created_at', { ascending: false });
+          
+          if (!adminError && adminProductsData) {
+            allProducts = adminProductsData;
+            allProductsError = null;
+            console.log('✅ Admin client fallback succeeded, count:', allProducts.length);
+          }
+        } catch (adminErr) {
+          console.error('❌ Admin client fallback also failed:', adminErr);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Exception fetching products:', err);
+      allProductsError = err;
+      allProducts = [];
+    }
+    
+    // Log for debugging
+    const totalProductsCount = allProducts.length;
+    console.log('📦 Dashboard products fetch result:', {
+      count: totalProductsCount,
+      hasError: !!allProductsError,
+      errorMessage: allProductsError?.message,
+      sampleProductIds: allProducts.slice(0, 3).map((p: any) => p?.id),
+    });
 
     let productStockMap = new Map<string, { stock: number; reserved: number; available: number }>();
     let finalProductsCount = 0;
@@ -452,7 +501,15 @@ export async function GET(request: NextRequest) {
       lowStockProducts = allStockAlerts;
     } else if (allProductsError) {
       console.error('Error fetching products:', allProductsError);
+      // If there's an error, allProducts is already set to empty array above
     }
+    
+    // Log products count for debugging
+    console.log('📦 Total products count for dashboard:', {
+      allProductsLength: allProducts.length,
+      allProductsError: allProductsError?.message,
+      sampleProductIds: allProducts.slice(0, 3).map((p: any) => p.id),
+    });
 
     // Calculate today's sales and orders
     const todayStart = new Date(today);
@@ -486,7 +543,7 @@ export async function GET(request: NextRequest) {
       weekTotalSales,
       totalSales: totalSalesAmount,
       totalOrders: totalOrdersCount,
-      totalProducts: finalProductsCount,
+      totalProducts: allProducts.length,
       todaySales,
       todayOrders: todayOrdersCount,
       completedOrders: completedCount || 0,
@@ -502,7 +559,7 @@ export async function GET(request: NextRequest) {
       lowStock: lowStockProducts || [],
       totalSales: totalSalesAmount,
       totalOrders: totalOrdersCount,
-      totalProducts: finalProductsCount,
+      totalProducts: allProducts.length,
       todaySales,
       todayOrders: todayOrdersCount,
       completedOrders: completedCount || 0,
