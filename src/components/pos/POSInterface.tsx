@@ -6,6 +6,7 @@ import POSProductGrid from './POSProductGrid';
 import POSCart from './POSCart';
 import CustomProductModal from './CustomProductModal';
 import { useCartStore } from '@/store/cartStore';
+import CartAnimationProvider from '@/components/cart/CartAnimationProvider';
 
 interface POSInterfaceProps {
   employeeId?: string;
@@ -133,8 +134,9 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
   });
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <CartAnimationProvider>
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Product Selection */}
         <div className="lg:col-span-2 space-y-4">
           {/* Search and Filters */}
@@ -235,7 +237,8 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
         onAdd={handleAddCustomProduct}
         categories={categories}
       />
-    </div>
+      </div>
+    </CartAnimationProvider>
   );
 }
 

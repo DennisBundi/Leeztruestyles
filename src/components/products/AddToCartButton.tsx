@@ -3,6 +3,7 @@
 import { useCartStore } from '@/store/cartStore';
 import type { Product } from '@/types';
 import { useState } from 'react';
+import { useCartAnimationContext } from '@/components/cart/CartAnimationProvider';
 
 interface AddToCartButtonProps {
   product: Product;
@@ -18,6 +19,7 @@ export default function AddToCartButton({
   selectedSize,
 }: AddToCartButtonProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const { triggerAnimation } = useCartAnimationContext();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -30,19 +32,6 @@ export default function AddToCartButton({
   const isOnSale = product.is_flash_sale && product.sale_price !== null && product.sale_price !== undefined;
   const displayPrice = isOnSale && product.sale_price ? product.sale_price : product.price;
 
-  const handleAddToCart = () => {
-    if (isOutOfStock || quantity > maxQuantity) return;
-
-    // Create product with sale price for cart if on sale
-    const productForCart = {
-      ...product,
-      price: displayPrice, // Use sale price if on sale
-    };
-
-    addItem(productForCart, quantity);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
-  };
 
   return (
     <div className="space-y-4">
@@ -97,7 +86,24 @@ export default function AddToCartButton({
       </div>
 
       <button
-        onClick={handleAddToCart}
+        onClick={(e) => {
+          if (isOutOfStock || quantity > maxQuantity) return;
+          
+          // Create product with sale price for cart if on sale
+          const productForCart = {
+            ...product,
+            price: displayPrice, // Use sale price if on sale
+          };
+
+          addItem(productForCart, quantity);
+          
+          // Trigger cart animation
+          const button = e.currentTarget;
+          triggerAnimation(productForCart, button);
+          
+          setAdded(true);
+          setTimeout(() => setAdded(false), 2000);
+        }}
         disabled={isOutOfStock || quantity > maxQuantity}
         className={`w-full py-4 px-6 rounded-none font-semibold text-lg transition-all ${
           isOutOfStock || quantity > maxQuantity

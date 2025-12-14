@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/types";
 import { useCartStore } from "@/store/cartStore";
+import { useCartAnimationContext } from "@/components/cart/CartAnimationProvider";
 
 interface ProductCardProps {
   product: Product & {
@@ -17,6 +18,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const { triggerAnimation } = useCartAnimationContext();
   // If available_stock is undefined, treat as in stock (inventory not set up yet)
   // If it's 0 or less, then it's out of stock
   const isOutOfStock =
@@ -123,15 +125,19 @@ export default function ProductCard({ product }: ProductCardProps) {
             )}
         </div>
         <button
-          onClick={() => {
+          onClick={(e) => {
             // Create product with sale price for cart
             const productForCart = {
               ...product,
               price: displayPrice, // Use sale price if on sale
             };
             addItem(productForCart);
+            
+            // Trigger cart animation
+            const button = e.currentTarget;
+            triggerAnimation(productForCart, button);
+            
             // Visual feedback
-            const button = document.activeElement as HTMLElement;
             if (button) {
               button.classList.add("animate-scale-in");
               setTimeout(

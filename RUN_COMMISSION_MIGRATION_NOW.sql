@@ -30,3 +30,4 @@ WHERE table_name = 'orders'
 -- If you see the row, the migration was successful!
 
 
+

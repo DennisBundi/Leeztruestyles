@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useCartAnimationContext } from "@/components/cart/CartAnimationProvider";
 
 interface Category {
   id: string;
@@ -28,6 +29,7 @@ export default function CustomProductModal({
   onAdd,
   categories = [],
 }: CustomProductModalProps) {
+  const { triggerAnimation } = useCartAnimationContext();
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -91,6 +93,24 @@ export default function CustomProductModal({
       description: formData.description.trim() || undefined,
       social_platform: formData.social_platform || undefined,
     };
+
+    // Create a mock product object for animation (custom products don't have images)
+    const mockProductForAnimation = {
+      id: `custom-${Date.now()}`,
+      name: productData.name,
+      description: productData.description || null,
+      price: productData.price,
+      images: [], // Custom products don't have images, will show placeholder
+      category_id: productData.category_id || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Trigger animation from submit button to POS cart
+    const submitButton = e.currentTarget.querySelector('button[type="submit"]') as HTMLElement;
+    if (submitButton) {
+      triggerAnimation(mockProductForAnimation, submitButton, 'pos', '[data-pos-cart]');
+    }
 
     onAdd(productData);
     setLoading(false);

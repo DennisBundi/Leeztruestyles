@@ -110,3 +110,4 @@ WHERE table_name = 'products' AND column_name = 'buying_price';
 If you still see errors, the migration didn't run. Check for red error messages in Supabase SQL Editor.
 
 
+

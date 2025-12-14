@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatOrderId } from '@/lib/utils/orderId';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Dot } from 'recharts';
+import SocialPlatformAnalytics from '@/components/dashboard/SocialPlatformAnalytics';
 
 // Dummy data for preview (keeping original structure)
 const dummyStats = {
@@ -354,6 +355,9 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+
+      {/* Social Platform Analytics */}
+      <SocialPlatformAnalytics />
 
       {/* Charts and Analytics Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

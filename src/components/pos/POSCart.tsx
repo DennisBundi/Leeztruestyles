@@ -417,7 +417,7 @@ export default function POSCart({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-4">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-4" data-pos-cart>
         <h2 className="text-2xl font-bold mb-6 text-gray-900">Cart</h2>
 
         {/* Customer Name (Optional) */}

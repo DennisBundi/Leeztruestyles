@@ -8,3 +8,4 @@ ADD COLUMN IF NOT EXISTS buying_price DECIMAL(10, 2) NULL;
 COMMENT ON COLUMN products.buying_price IS 'The cost price at which the product was purchased. Used for profit tracking.';
 
 
+

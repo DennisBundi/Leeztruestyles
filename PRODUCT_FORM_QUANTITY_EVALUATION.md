@@ -112,3 +112,4 @@ Check terminal logs - if `initial_stock` is 0 in the API logs but you entered 10
 If quantity is still not showing, the logs will tell us exactly where the issue is!
 
 
+

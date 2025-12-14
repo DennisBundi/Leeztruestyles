@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useCartStore } from '@/store/cartStore';
 import type { Product } from '@/types';
+import { useCartAnimationContext } from '@/components/cart/CartAnimationProvider';
 
 interface POSProductGridProps {
   products: (Product & { available_stock?: number })[];
@@ -10,6 +11,7 @@ interface POSProductGridProps {
 
 export default function POSProductGrid({ products }: POSProductGridProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const { triggerAnimation } = useCartAnimationContext();
 
   // Filter out products with 0 stock - only show products with stock > 0
   const availableProducts = products.filter((product) => {
@@ -24,7 +26,12 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
         return (
             <button
             key={product.id}
-            onClick={() => addItem(product, 1)}
+            onClick={(e) => {
+              addItem(product, 1);
+              // Trigger cart animation to POS cart
+              const button = e.currentTarget;
+              triggerAnimation(product, button, 'pos', '[data-pos-cart]');
+            }}
             className="group relative bg-white rounded-none shadow-md text-left hover:shadow-xl transition-all border-2 hover:scale-105 cursor-pointer border-transparent hover:border-primary/30 active:scale-95"
           >
             {/* Product Image */}

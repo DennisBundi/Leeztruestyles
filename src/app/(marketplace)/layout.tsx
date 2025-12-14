@@ -1,5 +1,6 @@
 import WhatsAppWidget from '@/components/whatsapp/WhatsAppWidget';
 import CartDrawer from '@/components/cart/CartDrawer';
+import CartAnimationProvider from '@/components/cart/CartAnimationProvider';
 
 export default function MarketplaceLayout({
   children,
@@ -7,11 +8,11 @@ export default function MarketplaceLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <CartAnimationProvider>
       {children}
       <WhatsAppWidget />
       <CartDrawer />
-    </>
+    </CartAnimationProvider>
   );
 }
 
