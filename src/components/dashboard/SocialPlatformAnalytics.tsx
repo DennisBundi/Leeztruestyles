@@ -198,22 +198,20 @@ export default function SocialPlatformAnalytics() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
                 data={chartData}
-                layout="vertical"
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis 
-                  type="number" 
+                  dataKey="name" 
                   stroke="#6b7280"
                   fontSize={12}
-                  tickFormatter={(value) => value.toString()}
+                  tickLine={false}
                 />
                 <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  width={120}
                   stroke="#6b7280"
                   fontSize={12}
+                  tickLine={false}
+                  tickFormatter={(value) => value.toString()}
                 />
                 <Tooltip
                   formatter={(value: number, name: string, props: any) => [
@@ -229,13 +227,19 @@ export default function SocialPlatformAnalytics() {
                   }}
                   labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '4px' }}
                 />
-                <Bar dataKey="count" radius={[0, 8, 8, 0]}>
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={getPlatformGradient(entry.platform)}
-                    />
-                  ))}
+                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                  {chartData.map((entry, index) => {
+                    // Use theme colors with varying shades based on rank
+                    // Top rank gets the darkest pink, others get progressively lighter
+                    const colors = ['#f472b6', '#f9a8d4', '#fbcfe8', '#fce7f3']; // Primary dark to light
+                    const color = colors[index] || '#f9a8d4'; // Default to primary if more than 4 platforms
+                    return (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={color}
+                      />
+                    );
+                  })}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
