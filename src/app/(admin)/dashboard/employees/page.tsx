@@ -9,10 +9,11 @@ interface Employee {
   employee_code: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager' | 'salesperson';
+  role: 'admin' | 'manager' | 'seller';
   created_at: string;
   sales_count: number;
   total_sales: number;
+  total_commission: number;
 }
 
 export default function EmployeesPage() {
@@ -25,6 +26,8 @@ export default function EmployeesPage() {
   const [formData, setFormData] = useState({ email: '', role: 'seller' });
   const [submitting, setSubmitting] = useState(false);
   const [successModal, setSuccessModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; employee: Employee | null }>({ show: false, employee: null });
+  const [deleting, setDeleting] = useState(false);
 
   // Check role and redirect non-admins (only once)
   useEffect(() => {
@@ -100,6 +103,36 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleDeleteEmployee = async () => {
+    if (!deleteModal.employee) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/employees?id=${deleteModal.employee.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete employee');
+      }
+
+      // Close delete modal
+      setDeleteModal({ show: false, employee: null });
+
+      // Refresh employees
+      await fetchEmployees();
+
+      // Show success message
+      alert('Employee deleted successfully');
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete employee');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Filter employees based on search and role
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
@@ -158,9 +191,9 @@ export default function EmployeesPage() {
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-              <div className="text-sm text-gray-600 mb-2">Active Salespeople</div>
+              <div className="text-sm text-gray-600 mb-2">Total Commission</div>
               <div className="text-3xl font-bold text-green-600">
-                {filteredEmployees.filter(e => e.role === 'salesperson').length}
+                KES {(filteredEmployees.reduce((sum, e) => sum + (e.total_commission || 0), 0) || 0).toLocaleString()}
               </div>
             </div>
           </div>
@@ -205,6 +238,7 @@ export default function EmployeesPage() {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Role</th>
                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Sales</th>
                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Revenue</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Commission</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Joined</th>
                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
@@ -212,7 +246,7 @@ export default function EmployeesPage() {
                 <tbody className="divide-y divide-gray-100">
                   {filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-12 text-center">
+                      <td colSpan={9} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -256,6 +290,11 @@ export default function EmployeesPage() {
                             KES {(employee.total_sales || 0).toLocaleString()}
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="font-semibold text-green-600">
+                            KES {(employee.total_commission || 0).toLocaleString()}
+                          </span>
+                        </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-600">
                             {new Date(employee.created_at).toLocaleDateString()}
@@ -263,11 +302,11 @@ export default function EmployeesPage() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-3">
-                            <button className="text-primary hover:text-primary-dark font-medium text-sm">
-                              Edit
-                            </button>
-                            <button className="text-red-600 hover:text-red-700 font-medium text-sm">
-                              View Sales
+                            <button 
+                              onClick={() => setDeleteModal({ show: true, employee })}
+                              className="text-red-600 hover:text-red-700 font-medium text-sm transition-colors"
+                            >
+                              Delete
                             </button>
                           </div>
                         </td>
@@ -376,6 +415,76 @@ export default function EmployeesPage() {
                 <p className="text-gray-600">
                   The employee has been successfully added to your team.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {deleteModal.show && deleteModal.employee && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Delete Employee</h3>
+                  <button
+                    onClick={() => setDeleteModal({ show: false, employee: null })}
+                    className="text-gray-400 hover:text-gray-600"
+                    disabled={deleting}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-700 mb-2">
+                    Are you sure you want to delete <strong>{deleteModal.employee.name}</strong>?
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    This will permanently delete the employee record and their user account. This action cannot be undone.
+                  </p>
+                  {deleteModal.employee.sales_count > 0 && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ This employee has {deleteModal.employee.sales_count} sale(s). The employee will be deleted but sales records will remain.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModal({ show: false, employee: null })}
+                    disabled={deleting}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteEmployee}
+                    disabled={deleting}
+                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {deleting ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete Employee'
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
