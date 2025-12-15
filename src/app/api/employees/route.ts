@@ -143,17 +143,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch sales count and revenue for each employee
+    // Fetch sales count, revenue, and commission for each employee from orders table
     const employeesWithStats = await Promise.all(
       (employees || []).map(async (employee: any) => {
-        // Get sales count and total revenue
-        const { data: sales } = await supabase
-          .from('sales')
-          .select('total_amount')
-          .eq('employee_id', employee.id);
+        // Get orders where this employee is the seller (POS sales)
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('total_amount, commission, status')
+          .eq('seller_id', employee.id)
+          .eq('sale_type', 'pos');
 
-        const sales_count = sales?.length || 0;
-        const total_sales = sales?.reduce((sum, sale) => sum + (sale.total_amount || 0), 0) || 0;
+        if (ordersError) {
+          console.error('Error fetching orders for employee:', employee.id, ordersError);
+        }
+
+        // Calculate sales stats from orders
+        const sales_count = orders?.length || 0;
+        const total_sales = orders?.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0) || 0;
+        const total_commission = orders?.reduce((sum, order) => sum + parseFloat(order.commission || 0), 0) || 0;
 
         // Try to get user email from auth if user_id exists
         let userEmail = employee.email || '';
@@ -181,6 +188,7 @@ export async function GET(request: NextRequest) {
           created_at: employee.created_at,
           sales_count,
           total_sales,
+          total_commission,
         };
       })
     );
@@ -190,6 +198,122 @@ export async function GET(request: NextRequest) {
     console.error('Employees fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch employees', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userRole = await getUserRole(user.id);
+    if (userRole !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const employeeId = searchParams.get('id');
+
+    if (!employeeId) {
+      return NextResponse.json({ error: 'Employee ID required' }, { status: 400 });
+    }
+
+    // Create admin client for user deletion
+    const supabaseAdmin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Get employee record to get user_id
+    const { data: employee, error: employeeError } = await supabaseAdmin
+      .from('employees')
+      .select('user_id')
+      .eq('id', employeeId)
+      .single();
+
+    if (employeeError || !employee) {
+      return NextResponse.json(
+        { error: 'Employee not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if employee has any orders - warn but allow deletion
+    const { data: orders } = await supabaseAdmin
+      .from('orders')
+      .select('id')
+      .eq('seller_id', employeeId)
+      .limit(1);
+
+    if (orders && orders.length > 0) {
+      console.warn(`Employee ${employeeId} has ${orders.length} orders. Proceeding with deletion.`);
+    }
+
+    // Delete employee record first
+    const { error: deleteEmployeeError } = await supabaseAdmin
+      .from('employees')
+      .delete()
+      .eq('id', employeeId);
+
+    if (deleteEmployeeError) {
+      console.error('Error deleting employee:', deleteEmployeeError);
+      return NextResponse.json(
+        { error: 'Failed to delete employee record', details: deleteEmployeeError.message },
+        { status: 500 }
+      );
+    }
+
+    // Delete user account if user_id exists
+    if (employee.user_id) {
+      try {
+        const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(employee.user_id);
+        if (deleteUserError) {
+          console.error('Error deleting user:', deleteUserError);
+          // Employee is already deleted, but user deletion failed
+          return NextResponse.json(
+            { 
+              error: 'Employee deleted but failed to delete user account', 
+              details: deleteUserError.message,
+              warning: 'User account may still exist in auth system'
+            },
+            { status: 500 }
+          );
+        }
+      } catch (userDeleteErr) {
+        console.error('Exception deleting user:', userDeleteErr);
+        return NextResponse.json(
+          { 
+            error: 'Employee deleted but failed to delete user account', 
+            details: userDeleteErr instanceof Error ? userDeleteErr.message : 'Unknown error',
+            warning: 'User account may still exist in auth system'
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Employee and user account deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Employee deletion error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete employee', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

@@ -124,6 +124,7 @@ export async function GET(request: NextRequest) {
         customer: user?.full_name || 'Guest Customer',
         email: user?.email || 'N/A',
         seller: employee?.employee_code || '-',
+        seller_role: employee?.role || null, // Include seller's role to check if admin
         type: order.sale_type || 'online',
         amount: parseFloat(order.total_amount || 0),
         commission: parseFloat(order.commission || 0), // Commission for this order

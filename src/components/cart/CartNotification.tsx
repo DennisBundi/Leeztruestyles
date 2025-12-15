@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 import type { Product } from "@/types";
 
@@ -19,6 +20,22 @@ export default function CartNotification({
 }: CartNotificationProps) {
   const getItemCount = useCartStore((state) => state.getItemCount);
   const totalItems = getItemCount();
+  const pathname = usePathname();
+  const isPOSContext = pathname?.startsWith('/pos');
+
+  // Function to scroll to POS cart
+  const scrollToPOSCart = () => {
+    onClose(); // Close the notification first
+    // Use setTimeout to ensure DOM is ready after notification closes
+    setTimeout(() => {
+      const posCart = document.querySelector('[data-pos-cart]');
+      if (posCart) {
+        posCart.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Add a small offset for better visibility
+        window.scrollBy(0, -20);
+      }
+    }, 100);
+  };
 
   if (!product) return null;
 
@@ -112,15 +129,26 @@ export default function CartNotification({
 
             {/* Actions */}
             <div className="flex gap-3">
+              {isPOSContext ? (
+                // POS Context: Scroll to cart instead of navigating to checkout
+                <button
+                  onClick={scrollToPOSCart}
+                  className="flex-1 py-2.5 px-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark transition-colors text-center"
+                >
+                  View Cart
+                </button>
+              ) : (
+                // Marketplace Context: Navigate to checkout
+                <Link
+                  href="/checkout"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 px-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark transition-colors text-center"
+                >
+                  Checkout
+                </Link>
+              )}
               <Link
-                href="/checkout"
-                onClick={onClose}
-                className="flex-1 py-2.5 px-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark transition-colors text-center"
-              >
-                Checkout
-              </Link>
-              <Link
-                href="/products"
+                href={isPOSContext ? "/pos" : "/products"}
                 onClick={onClose}
                 className="flex-1 py-2.5 px-4 bg-gray-100 text-gray-700 rounded-none font-semibold hover:bg-gray-200 transition-colors text-center"
               >

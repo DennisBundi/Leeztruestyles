@@ -41,7 +41,7 @@ const productSchema = z.object({
     .transform((val) => {
       if (!val || typeof val !== "object") return null;
       // Filter out zero values and validate sizes
-      const validSizes = ["S", "M", "L", "XL"];
+      const validSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
       const filtered: Record<string, number> = {};
       Object.entries(val).forEach(([size, qty]) => {
         if (validSizes.includes(size) && typeof qty === "number" && qty > 0) {
@@ -50,6 +50,7 @@ const productSchema = z.object({
       });
       return Object.keys(filtered).length > 0 ? filtered : null;
     }),
+  colors: z.array(z.string()).nullable().optional().transform((val) => val && val.length > 0 ? val : null),
   images: z.array(z.string()).optional().default([]),
   status: z.enum(["active", "inactive"]).optional().default("active"),
   is_flash_sale: z.boolean().optional().default(false),
@@ -231,7 +232,7 @@ export async function POST(request: NextRequest) {
             // Insert new sizes
             const sizeInserts = sizeEntries
               .filter(
-                ([size, qty]) => ["S", "M", "L", "XL"].includes(size) && qty > 0
+                ([size, qty]) => ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"].includes(size) && qty > 0
               )
               .map(([size, qty]) => ({
                 product_id: product.id,
@@ -253,6 +254,33 @@ export async function POST(request: NextRequest) {
                 // Continue anyway - main inventory was created
               }
             }
+          }
+        }
+
+        // Insert colors if provided
+        if (validated.colors && Array.isArray(validated.colors) && validated.colors.length > 0) {
+          // Delete existing colors first
+          await adminSupabase
+            .from("product_colors")
+            .delete()
+            .eq("product_id", product.id);
+
+          // Insert new colors
+          const colorInserts = validated.colors.map((color) => ({
+            product_id: product.id,
+            color: color,
+          }));
+
+          const { error: colorsError } = await adminSupabase
+            .from("product_colors")
+            .insert(colorInserts);
+
+          if (colorsError) {
+            console.warn(
+              `⚠️ Failed to insert colors for product ${product.id}:`,
+              colorsError
+            );
+            // Continue anyway - product was created
           }
         }
 
@@ -411,6 +439,40 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Update colors if provided
+    if (updateData.colors !== undefined) {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const adminSupabase = createAdminClient();
+
+      // Delete existing colors first
+      await adminSupabase
+        .from("product_colors")
+        .delete()
+        .eq("product_id", product.id);
+
+      // Insert new colors if provided
+      if (updateData.colors && Array.isArray(updateData.colors) && updateData.colors.length > 0) {
+        const colorInserts = updateData.colors.map((color: string) => ({
+          product_id: product.id,
+          color: color,
+        }));
+
+        const { error: colorsError } = await adminSupabase
+          .from("product_colors")
+          .insert(colorInserts);
+
+        if (colorsError) {
+          console.warn(
+            `⚠️ Failed to update colors for product ${product.id}:`,
+            colorsError
+          );
+          // Continue anyway - product was updated
+        } else {
+          console.log(`Successfully updated colors for product ${product.id}`);
+        }
+      }
+    }
+
     return NextResponse.json({ product });
   } catch (error) {
     console.error("Product update error:", error);
@@ -427,9 +489,30 @@ export async function PUT(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
+    
+    // Check if user is admin/manager (for admin dashboard, show all products)
+    let isAdminOrManager = false;
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { getUserRole } = await import('@/lib/auth/roles');
+        const userRole = await getUserRole(user.id);
+        isAdminOrManager = userRole === 'admin' || userRole === 'manager';
+        console.log('🔐 User role check:', { userId: user.id, role: userRole, isAdminOrManager });
+      } else {
+        console.log('🔐 No authenticated user found');
+      }
+    } catch (error) {
+      // If auth check fails, continue with normal filtering
+      console.log('⚠️ Could not check user role, using default filtering:', error);
+    }
 
     // Fetch all products with their categories
-    const { data: products, error: productsError } = await supabase
+    // For admin/manager, fetch all products regardless of status
+    // For marketplace users, we'll filter by status later if needed
+    let productsQuery = supabase
       .from("products")
       .select(
         `
@@ -442,18 +525,32 @@ export async function GET(request: NextRequest) {
       `
       )
       .order("created_at", { ascending: false });
+    
+    // Only filter by status for non-admin users (marketplace)
+    // Admins should see all products including inactive ones
+    if (!isAdminOrManager) {
+      productsQuery = productsQuery.eq("status", "active");
+    }
+    
+    const { data: products, error: productsError } = await productsQuery;
 
     if (productsError) {
-      console.error("Products fetch error:", productsError);
+      console.error("❌ Products fetch error:", productsError);
       return NextResponse.json(
         { error: "Failed to fetch products", details: productsError.message },
         { status: 500 }
       );
     }
 
+    console.log("📦 Products fetched from Supabase:", {
+      count: products?.length || 0,
+      productIds: products?.slice(0, 5).map((p: any) => ({ id: p.id, name: p.name })) || [],
+    });
+
     // Fetch inventory for all products
     const productIds = (products || []).map((p) => p.id);
     let inventoryMap = new Map();
+    let colorMap = new Map<string, string[]>();
 
     if (productIds.length > 0) {
       // Fetch from inventory table (general stock)
@@ -467,6 +564,29 @@ export async function GET(request: NextRequest) {
         .from("product_sizes")
         .select("product_id, stock_quantity, reserved_quantity")
         .in("product_id", productIds);
+
+      // Fetch product colors (if table exists)
+      try {
+        const { data: productColors, error: colorsError } = await supabase
+          .from("product_colors")
+          .select("product_id, color")
+          .in("product_id", productIds);
+
+        // Build color map
+        if (productColors && !colorsError) {
+          productColors.forEach((pc: any) => {
+            const existing = colorMap.get(pc.product_id) || [];
+            colorMap.set(pc.product_id, [...existing, pc.color]);
+          });
+        } else if (colorsError) {
+          // Table might not exist yet - log but don't fail
+          console.log('⚠️ Could not fetch product colors (table may not exist yet):', colorsError.message);
+        }
+      } catch (colorError) {
+        // Handle case where product_colors table doesn't exist
+        console.log('⚠️ Product colors table may not exist yet:', colorError instanceof Error ? colorError.message : 'Unknown error');
+        // Continue without colors - this is not a critical error
+      }
 
       // Process general inventory (primary source of stock)
       if (inventory && !inventoryError) {
@@ -518,6 +638,7 @@ export async function GET(request: NextRequest) {
     // Combine products with inventory data
     const productsWithInventory = (products || []).map((product: any) => {
       const inv = inventoryMap.get(product.id);
+      const colors = colorMap.get(product.id) || [];
       // If no inventory record exists, stock is 0 (not undefined)
       const stockValue = inv?.available ?? inv?.stock ?? 0;
       const result = {
@@ -526,6 +647,7 @@ export async function GET(request: NextRequest) {
         stock: stockValue, // Return available stock (stock_quantity - reserved_quantity)
         stock_quantity: inv?.stock ?? 0, // Also include total stock for reference
         available_stock: inv?.available ?? 0, // Explicit available stock field
+        colors: colors, // Product colors
         image:
           product.images && product.images.length > 0
             ? product.images[0]
@@ -542,19 +664,27 @@ export async function GET(request: NextRequest) {
       return result;
     });
 
-    // Filter out products with 0 stock - don't show products with no inventory
-    // This also filters out custom products created via POS (they have 0 stock)
-    const productsWithStock = productsWithInventory.filter(
-      (p: any) => p.stock > 0
-    );
+    // Filter out products with 0 stock for marketplace users
+    // Admin/Manager users see all products regardless of stock
+    const finalProducts = isAdminOrManager 
+      ? productsWithInventory 
+      : productsWithInventory.filter((p: any) => p.stock > 0);
 
-    console.log("✅ Returning products with inventory:", {
-      total: productsWithInventory.length,
-      with_stock: productsWithStock.length,
-      filtered_out: productsWithInventory.length - productsWithStock.length,
+    console.log("✅ Returning products:", {
+      products_from_db: products?.length || 0,
+      products_with_inventory_data: productsWithInventory.length,
+      returned: finalProducts.length,
+      filtered_out: isAdminOrManager ? 0 : productsWithInventory.length - finalProducts.length,
+      user_type: isAdminOrManager ? 'admin/manager' : 'marketplace',
+      sample_products: finalProducts.slice(0, 3).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        stock: p.stock,
+        has_inventory: p.stock_quantity > 0 || p.stock > 0,
+      })),
     });
 
-    return NextResponse.json({ products: productsWithStock });
+    return NextResponse.json({ products: finalProducts });
   } catch (error) {
     console.error("Products fetch error:", error);
     return NextResponse.json(

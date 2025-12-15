@@ -158,9 +158,15 @@ export default function ProductsPage() {
       setLoadingProducts(true);
       try {
         const response = await fetch('/api/products');
+        const data = await response.json();
+        
         if (response.ok) {
-          const data = await response.json();
-          console.log('📦 Fetched products:', data.products?.length || 0, 'products');
+          console.log('📦 API Response - Products fetched:', {
+            count: data.products?.length || 0,
+            hasError: !!data.error,
+            error: data.error,
+            details: data.details,
+          });
           
           // Log stock information for debugging
           if (data.products && data.products.length > 0) {
@@ -173,18 +179,24 @@ export default function ProductsPage() {
               has_inventory: p.stock !== undefined,
             }));
             console.log('📊 Stock Information:', stockInfo.slice(0, 5)); // Log first 5
+          } else {
+            console.warn('⚠️ API returned empty products array. Check server logs for details.');
           }
           
           setProducts(data.products || []);
         } else {
-          console.error('Failed to fetch products');
-          // Fall back to dummy products if API fails
-          setProducts(dummyProducts);
+          console.error('❌ Failed to fetch products:', {
+            status: response.status,
+            error: data.error,
+            details: data.details,
+          });
+          // Set empty array if API fails - show empty state
+          setProducts([]);
         }
       } catch (error) {
         console.error('Error fetching products:', error);
-        // Fall back to dummy products if fetch fails
-        setProducts(dummyProducts);
+        // Set empty array if fetch fails - show empty state
+        setProducts([]);
       } finally {
         setLoadingProducts(false);
       }
@@ -389,15 +401,32 @@ export default function ProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredProducts.length === 0 ? (
+              {loadingProducts ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <span className="ml-3 text-gray-600">Loading products...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="text-gray-500">
-                      <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                       </svg>
-                      <p className="font-medium">No products found</p>
-                      <p className="text-sm mt-1">Try adjusting your filters</p>
+                      <p className="font-medium text-lg text-gray-700 mb-2">No products found</p>
+                      {products.length === 0 ? (
+                        <p className="text-sm text-gray-500 mb-4">
+                          Your product catalog is empty. Start by adding your first product.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-500 mb-4">
+                          No products match your current search or filters. Try adjusting your search criteria.
+                        </p>
+                      )}
                     </div>
                   </td>
                 </tr>

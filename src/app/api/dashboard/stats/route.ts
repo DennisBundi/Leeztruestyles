@@ -536,6 +536,79 @@ export async function GET(request: NextRequest) {
     // Count today's orders
     const todayOrdersCount = todayOrders?.length || 0;
 
+    // Calculate today's profits from completed orders
+    let todayProfits = 0;
+    const completedTodayOrders = (todayOrders || []).filter((order: any) => order.status === 'completed');
+    
+    if (completedTodayOrders.length > 0) {
+      const completedOrderIds = completedTodayOrders.map((order: any) => order.id);
+      
+      // Fetch order items for today's completed orders
+      const { data: todayOrderItems, error: orderItemsError } = await adminClient
+        .from('order_items')
+        .select('product_id, quantity, price')
+        .in('order_id', completedOrderIds);
+      
+      if (orderItemsError) {
+        console.error('Error fetching today\'s order items:', orderItemsError);
+      } else if (todayOrderItems && todayOrderItems.length > 0) {
+        // Get unique product IDs (filter out nulls for custom products)
+        const productIds = [...new Set(todayOrderItems
+          .map((item: any) => item.product_id)
+          .filter((id: any) => id !== null && id !== undefined)
+        )];
+        
+        // Fetch buying prices for products
+        let productsMap = new Map<string, number>();
+        if (productIds.length > 0) {
+          const { data: products, error: productsError } = await adminClient
+            .from('products')
+            .select('id, buying_price')
+            .in('id', productIds);
+          
+          if (productsError) {
+            console.error('Error fetching products for profit calculation:', productsError);
+          } else if (products) {
+            products.forEach((product: any) => {
+              const buyingPrice = parseFloat(product.buying_price || 0);
+              if (buyingPrice > 0) {
+                productsMap.set(product.id, buyingPrice);
+              }
+            });
+          }
+        }
+        
+        // Calculate profit for each order item
+        todayOrderItems.forEach((item: any) => {
+          // Skip custom products (no product_id) or items without buying_price
+          if (!item.product_id) {
+            return; // Custom product, skip
+          }
+          
+          const buyingPrice = productsMap.get(item.product_id);
+          if (!buyingPrice || buyingPrice <= 0) {
+            return; // No buying price, skip (0 profit)
+          }
+          
+          const sellingPrice = parseFloat(item.price || 0);
+          const quantity = parseInt(item.quantity || 0);
+          
+          if (sellingPrice > 0 && quantity > 0) {
+            const profitPerItem = sellingPrice - buyingPrice;
+            const totalProfit = profitPerItem * quantity;
+            todayProfits += totalProfit;
+          }
+        });
+        
+        console.log('Today\'s profits calculation:', {
+          completedOrders: completedTodayOrders.length,
+          orderItems: todayOrderItems.length,
+          productsWithBuyingPrice: productsMap.size,
+          todayProfits,
+        });
+      }
+    }
+
     // Debug: Log final results
     const weekTotalSales = formattedSalesByDay.reduce((sum, day) => sum + day.sales, 0);
     console.log('Dashboard stats response:', {
@@ -550,6 +623,7 @@ export async function GET(request: NextRequest) {
       pendingOrders: pendingCount || 0,
       totalCustomers: customersCount || 0,
       topProductsCount: topProducts.length,
+      todayProfits,
     });
 
     // Ensure we always return data, even if empty
@@ -562,6 +636,7 @@ export async function GET(request: NextRequest) {
       totalProducts: allProducts.length,
       todaySales,
       todayOrders: todayOrdersCount,
+      todayProfits,
       completedOrders: completedCount || 0,
       pendingOrders: pendingCount || 0,
       totalCustomers: customersCount || 0,

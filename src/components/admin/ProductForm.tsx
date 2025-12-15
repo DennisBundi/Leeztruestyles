@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import type { Category, Product } from "@/types";
+import { PRODUCT_COLORS } from "@/lib/utils/colors";
 
 interface ProductFormProps {
   categories: Category[];
@@ -29,6 +30,7 @@ export default function ProductForm({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     name: product?.name || "",
@@ -43,6 +45,10 @@ export default function ProductForm({
       M: "",
       L: "",
       XL: "",
+      "2XL": "",
+      "3XL": "",
+      "4XL": "",
+      "5XL": "",
     },
     status: product?.status || "active",
     is_flash_sale: product?.is_flash_sale || false,
@@ -75,22 +81,41 @@ export default function ProductForm({
             .select("size, stock_quantity")
             .eq("product_id", product.id);
 
+          // Fetch product colors
+          const { data: productColors } = await supabase
+            .from("product_colors")
+            .select("color")
+            .eq("product_id", product.id);
+
+          // Set selected colors
+          if (productColors && productColors.length > 0) {
+            setSelectedColors(productColors.map((pc: any) => pc.color));
+          }
+
           // Build size_stocks object from fetched data
-          const sizeStocks: { S: string; M: string; L: string; XL: string } = {
+          const sizeStocks: { S: string; M: string; L: string; XL: string; "2XL": string; "3XL": string; "4XL": string; "5XL": string } = {
             S: "",
             M: "",
             L: "",
             XL: "",
+            "2XL": "",
+            "3XL": "",
+            "4XL": "",
+            "5XL": "",
           };
 
           if (productSizes) {
             productSizes.forEach((size: any) => {
-              const sizeKey = size.size as "S" | "M" | "L" | "XL";
+              const sizeKey = size.size as "S" | "M" | "L" | "XL" | "2XL" | "3XL" | "4XL" | "5XL";
               if (
                 sizeKey === "S" ||
                 sizeKey === "M" ||
                 sizeKey === "L" ||
-                sizeKey === "XL"
+                sizeKey === "XL" ||
+                sizeKey === "2XL" ||
+                sizeKey === "3XL" ||
+                sizeKey === "4XL" ||
+                sizeKey === "5XL"
               ) {
                 sizeStocks[sizeKey] = (size.stock_quantity || 0).toString();
               }
@@ -141,6 +166,10 @@ export default function ProductForm({
               M: "",
               L: "",
               XL: "",
+              "2XL": "",
+              "3XL": "",
+              "4XL": "",
+              "5XL": "",
             },
             status: product.status || "active",
             is_flash_sale: product.is_flash_sale || false,
@@ -376,6 +405,7 @@ export default function ProductForm({
           : null,
         initial_stock: initialStockValue,
         size_stocks: hasSizeStocks ? sizeStocks : null,
+        colors: selectedColors.length > 0 ? selectedColors : null,
         images,
         flash_sale_start:
           formData.is_flash_sale && formData.flash_sale_start
@@ -521,7 +551,7 @@ export default function ProductForm({
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     placeholder="Enter product name"
                   />
                 </div>
@@ -536,7 +566,7 @@ export default function ProductForm({
                       setFormData({ ...formData, description: e.target.value })
                     }
                     rows={4}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     placeholder="Enter product description"
                   />
                 </div>
@@ -551,7 +581,7 @@ export default function ProductForm({
                     onChange={(e) =>
                       setFormData({ ...formData, category_id: e.target.value })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">Select Category</option>
                     {categories.map((cat) => (
@@ -574,7 +604,7 @@ export default function ProductForm({
                         status: e.target.value as "active" | "inactive",
                       })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -600,7 +630,7 @@ export default function ProductForm({
                     onChange={(e) =>
                       setFormData({ ...formData, buying_price: e.target.value })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     placeholder="Cost price"
                   />
                   <p className="text-xs text-gray-500 mt-1">
@@ -621,7 +651,7 @@ export default function ProductForm({
                     onChange={(e) =>
                       setFormData({ ...formData, price: e.target.value })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     placeholder="0.00"
                   />
                   {formData.buying_price && formData.price && (
@@ -658,7 +688,7 @@ export default function ProductForm({
                     onChange={(e) =>
                       setFormData({ ...formData, sale_price: e.target.value })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     placeholder="Optional"
                   />
                   {formData.sale_price && formData.price && (
@@ -728,7 +758,7 @@ export default function ProductForm({
                             flash_sale_start: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -745,7 +775,7 @@ export default function ProductForm({
                             flash_sale_end: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </>
@@ -952,7 +982,7 @@ export default function ProductForm({
                           initial_stock: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       placeholder="Enter total stock quantity"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -969,16 +999,16 @@ export default function ProductForm({
                       Break down the total stock by size. The sum of all sizes
                       should equal the total stock quantity above.
                     </p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {(["S", "M", "L", "XL"] as const).map((size) => (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {(["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const).map((size) => (
                         <div key={size}>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                             Size {size}
                           </label>
                           <input
                             type="number"
                             min="0"
-                            value={formData.size_stocks[size]}
+                            value={formData.size_stocks[size as keyof typeof formData.size_stocks]}
                             onChange={(e) =>
                               setFormData({
                                 ...formData,
@@ -988,7 +1018,7 @@ export default function ProductForm({
                                 },
                               })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             placeholder="0"
                           />
                         </div>
@@ -1040,6 +1070,52 @@ export default function ProductForm({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Color Selection */}
+              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                <h4 className="text-md font-semibold text-gray-800 mb-3">
+                  Available Colors (Optional)
+                </h4>
+                <p className="text-xs text-gray-500 mb-4">
+                  Select the colors available for this product
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {PRODUCT_COLORS.map((color) => (
+                    <label
+                      key={color.name}
+                      className="flex items-center gap-2 p-2 rounded-lg border-2 border-gray-200 hover:border-primary/50 cursor-pointer transition-colors bg-white"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedColors.includes(color.name)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedColors([...selectedColors, color.name]);
+                          } else {
+                            setSelectedColors(
+                              selectedColors.filter((c) => c !== color.name)
+                            );
+                          }
+                        }}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
+                      />
+                      <div
+                        className="w-5 h-5 rounded-full border border-gray-300 shadow-sm"
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        {color.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {selectedColors.length > 0 && (
+                  <p className="text-xs text-gray-600 mt-3">
+                    Selected: {selectedColors.join(", ")}
+                  </p>
+                )}
               </div>
 
               {/* Actions */}

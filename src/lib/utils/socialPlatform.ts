@@ -34,3 +34,5 @@ export function getPlatformGradient(platform: string): string {
   return mapping[platform.toLowerCase()] || 'linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)';
 }
 
+
+

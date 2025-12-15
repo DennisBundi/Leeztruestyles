@@ -12,3 +12,5 @@ CREATE INDEX IF NOT EXISTS idx_orders_social_platform ON orders(social_platform)
 COMMENT ON COLUMN orders.social_platform IS 'Social platform or source where the sale originated. Required for POS sales. Options: tiktok, instagram, whatsapp, walkin';
 
 
+
+

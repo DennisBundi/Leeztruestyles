@@ -9,6 +9,7 @@ interface Order {
   customer: string;
   email: string;
   seller: string;
+  seller_role?: string | null;
   type: string;
   amount: number;
   commission?: number;
@@ -293,11 +294,15 @@ export default function OrdersPage() {
                       <span className="font-semibold text-gray-900">
                         KES {(order.amount || 0).toLocaleString()}
                       </span>
-                      {order.commission && order.commission > 0 && (
+                      {order.seller_role === 'admin' ? (
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          Commission: <span className="text-gray-400">N/A</span>
+                        </div>
+                      ) : order.commission && order.commission > 0 ? (
                         <div className="text-xs text-gray-500 mt-0.5">
                           Commission: KES {(order.commission || 0).toLocaleString()}
                         </div>
-                      )}
+                      ) : null}
                     </td>
                   )}
                   <td className="px-4 py-3">

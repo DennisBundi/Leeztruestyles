@@ -77,3 +77,5 @@ ON CONFLICT (product_id) DO NOTHING;
 
 
 
+
+

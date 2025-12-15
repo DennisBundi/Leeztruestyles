@@ -176,8 +176,8 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
       </nav>
 
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 transition-all duration-300 z-30 ${sidebarOpen ? 'w-64' : 'w-0 lg:w-20'
-        } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} overflow-hidden`}>
+      <aside className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 transition-all duration-300 z-30 ${sidebarOpen ? 'w-20 lg:w-64' : 'w-20 lg:w-20'
+        } translate-x-0 overflow-hidden`}>
         <nav className="h-full py-6 px-4 overflow-y-auto flex flex-col">
           {/* Navigation Items */}
           <ul className="space-y-2 flex-1">
@@ -191,13 +191,13 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
+                    className={`flex items-center justify-center lg:justify-start gap-3 px-2 lg:px-4 py-3 rounded-xl transition-all ${isActive
                         ? 'bg-gradient-to-r from-primary/10 to-primary-light/10 text-primary font-semibold border-l-4 border-primary'
                         : 'text-gray-700 hover:bg-gray-50'
                       }`}
                   >
                     <span className="text-xl">{item.icon}</span>
-                    <span className={`${sidebarOpen ? 'block' : 'hidden lg:hidden'}`}>{item.label}</span>
+                    <span className={`hidden ${sidebarOpen ? 'lg:block' : ''}`}>{item.label}</span>
                   </Link>
                 </li>
               );
@@ -206,7 +206,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
 
           {/* User Info & Sign Out - Bottom of Sidebar */}
           {user && (
-            <div className={`border-t border-gray-200 pt-4 mt-4 ${sidebarOpen ? 'block' : 'hidden lg:hidden'}`}>
+            <div className={`border-t border-gray-200 pt-4 mt-4 hidden ${sidebarOpen ? 'lg:block' : ''}`}>
               <div className="px-3 mb-3">
                 <div className="text-sm font-medium text-gray-900 truncate">{user.email}</div>
                 <div className="text-xs text-gray-500 mt-0.5">
@@ -219,25 +219,19 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
               </div>
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium text-sm"
+                className="w-full flex items-center justify-center lg:justify-start gap-2 px-2 lg:px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors font-medium text-sm"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Sign Out
+                <span className="hidden lg:inline">Sign Out</span>
               </button>
             </div>
           )}
         </nav>
       </aside>
 
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* Mobile Sidebar Overlay - Removed since sidebar is always visible on mobile */}
     </>
   );
 }

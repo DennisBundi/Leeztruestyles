@@ -12,3 +12,5 @@ COMMENT ON COLUMN orders.commission IS 'Commission earned by seller (3% of total
 
 
 
+
+

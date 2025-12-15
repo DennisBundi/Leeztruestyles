@@ -106,3 +106,5 @@ COMMENT ON COLUMN order_items.size IS 'The size of the product ordered (S, M, L,
 
 
 
+
+

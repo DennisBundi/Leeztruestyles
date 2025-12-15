@@ -80,3 +80,5 @@ The stock should now display correctly. If you still see issues:
 3. Verify the inventory exists in the database using the SQL query above
 
 
+
+

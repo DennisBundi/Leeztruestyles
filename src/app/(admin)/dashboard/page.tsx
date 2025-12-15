@@ -53,9 +53,9 @@ export default function DashboardPage() {
   const [totalCustomers, setTotalCustomers] = useState<number>(0);
   const [totalSales, setTotalSales] = useState<number>(0);
   const [totalOrders, setTotalOrders] = useState<number>(0);
-  const [totalProducts, setTotalProducts] = useState<number>(0);
   const [todaySales, setTodaySales] = useState<number>(0);
   const [todayOrders, setTodayOrders] = useState<number>(0);
+  const [todayProfits, setTodayProfits] = useState<number>(0);
   const [lowStock, setLowStock] = useState<Array<{ id: string; name: string; stock_quantity: number }>>([]);
 
   // Check role and redirect sellers (only once)
@@ -94,9 +94,9 @@ export default function DashboardPage() {
           lowStock: data.lowStock?.length || 0,
           totalSales: data.totalSales || 0,
           totalOrders: data.totalOrders || 0,
-          totalProducts: data.totalProducts || 0,
           todaySales: data.todaySales || 0,
           todayOrders: data.todayOrders || 0,
+          todayProfits: data.todayProfits || 0,
           completedOrders: data.completedOrders || 0,
           pendingOrders: data.pendingOrders || 0,
           totalCustomers: data.totalCustomers || 0,
@@ -105,9 +105,9 @@ export default function DashboardPage() {
         setTopProducts(data.topProducts || []);
         setTotalSales(data.totalSales || 0);
         setTotalOrders(data.totalOrders || 0);
-        setTotalProducts(data.totalProducts || 0);
         setTodaySales(data.todaySales || 0);
         setTodayOrders(data.todayOrders || 0);
+        setTodayProfits(data.todayProfits || 0);
         setCompletedOrders(data.completedOrders || 0);
         setPendingOrders(data.pendingOrders || 0);
         setTotalCustomers(data.totalCustomers || 0);
@@ -223,18 +223,18 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        <Link href="/dashboard/products" className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl shadow-md border border-purple-200 hover:shadow-lg transition-all cursor-pointer">
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl shadow-md border border-purple-200 hover:shadow-lg transition-all">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide">Total Products</h3>
+            <h3 className="text-gray-600 text-xs font-medium uppercase tracking-wide">Today's Profits</h3>
             <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
           <p className="text-2xl font-bold text-purple-600">
-            {loading ? '...' : totalProducts}
+            {loading ? '...' : `KES ${(todayProfits || 0).toLocaleString()}`}
           </p>
-          <p className="text-xs text-gray-500 mt-1">All products</p>
-        </Link>
+          <p className="text-xs text-gray-500 mt-1">Today's earnings</p>
+        </div>
       </div>
 
       {/* Secondary Stats */}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getEmployee } from "@/lib/auth/roles";
+import { getEmployee, getUserRole } from "@/lib/auth/roles";
 import { z } from "zod";
 
 export const dynamic = 'force-dynamic';
@@ -228,16 +228,27 @@ export async function POST(request: NextRequest) {
 
     // For POS orders, get the employee record to set seller_id
     let sellerId: string | null = null;
+    let sellerEmployee: any = null;
     if (validated.sale_type === "pos") {
       // If seller_id is provided in the request, use it
       if (validated.seller_id) {
         sellerId = validated.seller_id;
         console.log('Using seller_id from request:', sellerId);
+        // Get the employee record to check their role
+        const { data: employeeData } = await supabase
+          .from('employees')
+          .select('id, role, user_id')
+          .eq('id', sellerId)
+          .single();
+        if (employeeData) {
+          sellerEmployee = employeeData;
+        }
       } else {
         // Otherwise, try to get the employee record for the current user
         const employee = await getEmployee(user.id);
         if (employee) {
           sellerId = employee.id;
+          sellerEmployee = employee;
           console.log('Using seller_id from employee record:', sellerId);
         } else {
           console.warn('POS order but no employee record found for user:', user.id);
@@ -245,11 +256,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if the seller (employee) is an admin - admins should not receive commission
+    // We check the seller's role, not the user making the request
+    const isSellerAdmin = sellerEmployee?.role === 'admin';
+
     // Calculate commission for POS sales (3% of total)
+    // Only apply commission if it's a POS sale, has a seller_id, and the seller is NOT an admin
     const commissionRate = 0.03; // 3%
-    const commission = validated.sale_type === "pos" && sellerId 
+    const commission = validated.sale_type === "pos" && sellerId && !isSellerAdmin
       ? total * commissionRate 
       : 0;
+    
+    if (isSellerAdmin && validated.sale_type === "pos") {
+      console.log('Admin seller detected (seller_id:', sellerId, ') - commission will not be applied');
+    } else if (validated.sale_type === "pos" && sellerId) {
+      console.log('Non-admin seller (seller_id:', sellerId, ', role:', sellerEmployee?.role, ') - commission will be applied:', commission);
+    }
 
     // Create order with user_id and seller_id (if POS)
     // POS orders are marked as completed immediately since transactions are confirmed at physical location
