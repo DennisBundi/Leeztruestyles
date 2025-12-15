@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useCartStore } from '@/store/cartStore';
 import type { CartItem } from '@/types';
 import { useState, useEffect } from 'react';
+import { PRODUCT_COLORS, getColorHex } from '@/lib/utils/colors';
 
 interface OrderSummaryProps {
   items: CartItem[];
@@ -21,35 +22,51 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const updateSize = useCartStore((state) => state.updateSize);
+  const updateColor = useCartStore((state) => state.updateColor);
   const [productSizes, setProductSizes] = useState<ProductSizes>({});
   const [loadingSizes, setLoadingSizes] = useState<{ [key: string]: boolean }>({});
+  const [productColors, setProductColors] = useState<{ [productId: string]: string[] }>({});
 
-  // Fetch sizes for each product
+  // Fetch sizes and colors for each product
   useEffect(() => {
-    const fetchSizes = async () => {
+    const fetchProductData = async () => {
       const sizesMap: ProductSizes = {};
+      const colorsMap: { [productId: string]: string[] } = {};
       
       for (const item of items) {
         // Skip if already loading or loaded
-        if (loadingSizes[item.product.id] || productSizes[item.product.id]) {
+        if (loadingSizes[item.product.id] || (productSizes[item.product.id] && productColors[item.product.id])) {
           continue;
         }
 
         setLoadingSizes(prev => ({ ...prev, [item.product.id]: true }));
 
         try {
-          const response = await fetch(`/api/products/${item.product.id}/sizes`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.sizes && data.sizes.length > 0) {
-              sizesMap[item.product.id] = data.sizes.map((s: any) => ({
+          // Fetch sizes
+          const sizesResponse = await fetch(`/api/products/${item.product.id}/sizes`);
+          if (sizesResponse.ok) {
+            const sizesData = await sizesResponse.json();
+            if (sizesData.sizes && sizesData.sizes.length > 0) {
+              sizesMap[item.product.id] = sizesData.sizes.map((s: any) => ({
                 size: s.size,
                 available: s.available,
               }));
             }
           }
+
+          // Fetch product details to get colors
+          const productResponse = await fetch(`/api/products?id=${item.product.id}`);
+          if (productResponse.ok) {
+            const productData = await productResponse.json();
+            if (productData.products && productData.products.length > 0) {
+              const product = productData.products[0];
+              if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
+                colorsMap[item.product.id] = product.colors;
+              }
+            }
+          }
         } catch (error) {
-          console.error(`Error fetching sizes for product ${item.product.id}:`, error);
+          console.error(`Error fetching data for product ${item.product.id}:`, error);
         } finally {
           setLoadingSizes(prev => {
             const newState = { ...prev };
@@ -62,9 +79,12 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
       if (Object.keys(sizesMap).length > 0) {
         setProductSizes(prev => ({ ...prev, ...sizesMap }));
       }
+      if (Object.keys(colorsMap).length > 0) {
+        setProductColors(prev => ({ ...prev, ...colorsMap }));
+      }
     };
 
-    fetchSizes();
+    fetchProductData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length]); // Re-fetch if items change
   return (
@@ -114,7 +134,7 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
               {productSizes[item.product.id] && productSizes[item.product.id].length > 0 && (
                 <div className="mb-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Size
+                    Size <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={item.size || ''}
@@ -135,6 +155,40 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
                   {!item.size && (
                     <p className="text-xs text-red-600 mt-1">Please select a size</p>
                   )}
+                </div>
+              )}
+
+              {/* Color Selection */}
+              {productColors[item.product.id] && productColors[item.product.id].length > 0 && (
+                <div className="mb-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Color
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {productColors[item.product.id].map((color) => {
+                      const isSelected = item.color === color;
+                      const colorHex = getColorHex(color);
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => updateColor(item.product.id, isSelected ? undefined : color)}
+                          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${
+                            isSelected
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div
+                            className="w-4 h-4 rounded-full border border-gray-300 shadow-sm"
+                            style={{ backgroundColor: colorHex }}
+                            title={color}
+                          />
+                          <span>{color}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               

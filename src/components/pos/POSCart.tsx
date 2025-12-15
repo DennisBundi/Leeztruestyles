@@ -23,7 +23,13 @@ export default function POSCart({
   const clearCart = useCartStore((state) => state.clearCart);
   const removeItem = useCartStore((state) => state.removeItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
+  const updateSize = useCartStore((state) => state.updateSize);
+  const updateColor = useCartStore((state) => state.updateColor);
   const [processing, setProcessing] = useState(false);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editingSize, setEditingSize] = useState<string>("");
+  const [editingColor, setEditingColor] = useState<string>("");
+  const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "mpesa" | "card">(
     "cash"
   );
@@ -155,6 +161,8 @@ export default function POSCart({
             product_id: item.product.id,
             quantity: quantity,
             price: price,
+            size: item.size,
+            color: item.color,
           });
         }
       });
@@ -275,6 +283,7 @@ export default function POSCart({
                 product_id: item.product.id,
                 quantity: item.quantity,
                 order_id,
+                size: item.size, // Include size if specified
               }),
             });
 
@@ -502,6 +511,21 @@ export default function POSCart({
                       </span>
                     )}
                   </div>
+                  {/* Size and Color Display/Edit */}
+                  {(item.size || item.color) && (
+                    <div className="flex items-center gap-2 mb-2 text-xs">
+                      {item.size && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded font-semibold">
+                          Size: {item.size}
+                        </span>
+                      )}
+                      {item.color && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded font-semibold">
+                          Color: {item.color}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center gap-1 bg-white rounded-lg p-1">
                       <button

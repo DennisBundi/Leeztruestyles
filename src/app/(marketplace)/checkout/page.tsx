@@ -256,6 +256,7 @@ export default function CheckoutPage() {
             quantity: item.quantity,
             price: item.product.price,
             size: item.size || undefined, // Include size if selected
+            color: item.color || undefined, // Include color if selected
           })),
           customer_info: customerInfo,
           sale_type: "online",

@@ -19,11 +19,12 @@ export interface ExtendedProduct extends Product {
 
 interface CartStore {
   items: CartItem[];
-  addItem: (product: Product | ExtendedProduct, quantity?: number, size?: string) => void;
+  addItem: (product: Product | ExtendedProduct, quantity?: number, size?: string, color?: string) => void;
   addCustomItem: (customData: CustomProductData, quantity?: number) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   updateSize: (productId: string, size: string | undefined) => void;
+  updateColor: (productId: string, color: string | undefined) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -34,24 +35,29 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
-      addItem: (product, quantity = 1, size) => {
+      addItem: (product, quantity = 1, size, color) => {
         const items = get().items;
-        // Check if item with same product ID and size exists
+        // Check if item with same product ID, size, and color exists
         const existingItem = items.find(
-          (item) => item.product.id === product.id && item.size === size
+          (item) => 
+            item.product.id === product.id && 
+            item.size === size && 
+            item.color === color
         );
 
         if (existingItem) {
           set({
             items: items.map((item) =>
-              item.product.id === product.id && item.size === size
+              item.product.id === product.id && 
+              item.size === size && 
+              item.color === color
                 ? { ...item, quantity: item.quantity + quantity }
                 : item
             ),
           });
         } else {
           set({
-            items: [...items, { product, quantity, size }],
+            items: [...items, { product, quantity, size, color }],
           });
         }
       },
@@ -115,6 +121,13 @@ export const useCartStore = create<CartStore>()(
         set({
           items: get().items.map((item) =>
             item.product.id === productId ? { ...item, size } : item
+          ),
+        });
+      },
+      updateColor: (productId, color) => {
+        set({
+          items: get().items.map((item) =>
+            item.product.id === productId ? { ...item, color } : item
           ),
         });
       },

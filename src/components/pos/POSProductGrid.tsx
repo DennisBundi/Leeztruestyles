@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { useCartStore } from '@/store/cartStore';
 import type { Product } from '@/types';
 import { useCartAnimationContext } from '@/components/cart/CartAnimationProvider';
+import ProductSizeColorModal from './ProductSizeColorModal';
 
 interface POSProductGridProps {
   products: (Product & { available_stock?: number })[];
@@ -12,6 +14,9 @@ interface POSProductGridProps {
 export default function POSProductGrid({ products }: POSProductGridProps) {
   const addItem = useCartStore((state) => state.addItem);
   const { triggerAnimation } = useCartAnimationContext();
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showSizeColorModal, setShowSizeColorModal] = useState(false);
+  const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
 
   // Filter out products with 0 stock - only show products with stock > 0
   const availableProducts = products.filter((product) => {
@@ -20,20 +25,75 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
     return product.available_stock === undefined || product.available_stock > 0;
   });
 
+  const handleProductClick = async (product: Product, button: HTMLElement) => {
+    // Get product colors first
+    const productColors = (product as any).colors || [];
+
+    // Fetch available sizes for the product
+    let sizesWithStock: Array<{ size: string; available: number }> = [];
+    try {
+      const response = await fetch(`/api/products/${product.id}/sizes`);
+      if (response.ok) {
+        const data = await response.json();
+        sizesWithStock = (data.sizes || []).filter(
+          (s: any) => s.available > 0
+        );
+        setAvailableSizes(sizesWithStock);
+      }
+    } catch (error) {
+      console.error("Error fetching product sizes:", error);
+      setAvailableSizes([]);
+    }
+
+    // If product has sizes or colors, show modal; otherwise add directly
+    if (sizesWithStock.length > 0 || productColors.length > 0) {
+      setSelectedProduct(product);
+      setShowSizeColorModal(true);
+    } else {
+      // No sizes/colors, add directly to cart
+      addItem(product, 1);
+      triggerAnimation(product, button, 'pos', '[data-pos-cart]');
+    }
+  };
+
+  const handleSizeColorConfirm = (size?: string, color?: string) => {
+    if (selectedProduct) {
+      addItem(selectedProduct, 1, size, color);
+      // Trigger animation - find the button that was clicked
+      const button = document.querySelector(`[data-product-id="${selectedProduct.id}"]`) as HTMLElement;
+      if (button) {
+        triggerAnimation(selectedProduct, button, 'pos', '[data-pos-cart]');
+      }
+    }
+    setShowSizeColorModal(false);
+    setSelectedProduct(null);
+  };
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {availableProducts.map((product) => {
-        return (
+    <>
+      <ProductSizeColorModal
+        isOpen={showSizeColorModal}
+        onClose={() => {
+          setShowSizeColorModal(false);
+          setSelectedProduct(null);
+        }}
+        onConfirm={handleSizeColorConfirm}
+        product={selectedProduct}
+        availableSizes={availableSizes}
+        availableColors={(selectedProduct as any)?.colors || []}
+      />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {availableProducts.map((product) => {
+          return (
             <button
-            key={product.id}
-            onClick={(e) => {
-              addItem(product, 1);
-              // Trigger cart animation to POS cart
-              const button = e.currentTarget;
-              triggerAnimation(product, button, 'pos', '[data-pos-cart]');
-            }}
-            className="group relative bg-white rounded-none shadow-md text-left hover:shadow-xl transition-all border-2 hover:scale-105 cursor-pointer border-transparent hover:border-primary/30 active:scale-95"
-          >
+              key={product.id}
+              data-product-id={product.id}
+              onClick={(e) => {
+                const button = e.currentTarget;
+                handleProductClick(product, button);
+              }}
+              className="group relative bg-white rounded-none shadow-md text-left hover:shadow-xl transition-all border-2 hover:scale-105 cursor-pointer border-transparent hover:border-primary/30 active:scale-95"
+            >
             {/* Product Image */}
             <div className="aspect-square relative bg-gradient-to-br from-gray-50 to-gray-100 rounded-t-xl overflow-hidden">
               {product.images && product.images.length > 0 ? (
@@ -85,6 +145,7 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
         );
       })}
     </div>
+    </>
   );
 }
 

@@ -13,7 +13,8 @@ const createOrderSchema = z.object({
         product_id: z.string().uuid(),
         quantity: z.number().positive().int(),
         price: z.number().positive(),
-        size: z.string().optional(), // Optional size (S, M, L, XL)
+        size: z.string().optional(), // Optional size (S, M, L, XL, 2XL, 3XL, 4XL, 5XL)
+        color: z.string().optional(), // Optional color
       }),
       // Custom product with product_data
       z.object({
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
       quantity: number;
       price: number;
       size?: string;
+      color?: string;
     }> = [];
     const customProductItems: Array<{
       product_data: {
@@ -197,6 +199,7 @@ export async function POST(request: NextRequest) {
       quantity: number;
       price: number;
       size?: string;
+      color?: string;
     }> = [];
 
     // Add existing product items
@@ -206,6 +209,7 @@ export async function POST(request: NextRequest) {
         quantity: item.quantity,
         price: item.price,
         size: item.size,
+        color: item.color,
       });
     });
 
@@ -364,6 +368,7 @@ export async function POST(request: NextRequest) {
       quantity: item.quantity,
       price: item.price,
       size: item.size || null, // Include size if provided
+      color: item.color || null, // Include color if provided
     }));
 
     const { error: itemsError } = await supabase

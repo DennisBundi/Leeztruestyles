@@ -10,6 +10,7 @@ const deductRequestSchema = z.object({
   product_id: z.string().uuid(),
   quantity: z.number().positive().int(),
   order_id: z.string().uuid().optional(),
+  size: z.string().optional(), // Optional size for size-based inventory deduction
 });
 
 export async function POST(request: NextRequest) {
@@ -40,6 +41,79 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
+    // If size is specified, deduct from specific size in product_sizes
+    if (validated.size) {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const adminClient = createAdminClient();
+      
+      // Check stock for specific size
+      const { data: sizeRecord, error: sizeError } = await adminClient
+        .from('product_sizes')
+        .select('stock_quantity, reserved_quantity')
+        .eq('product_id', validated.product_id)
+        .eq('size', validated.size)
+        .single();
+      
+      if (sizeError || !sizeRecord) {
+        return NextResponse.json(
+          { 
+            error: `Size ${validated.size} not found for this product`,
+            available: 0,
+            requested: validated.quantity
+          },
+          { status: 400 }
+        );
+      }
+      
+      const availableStock = Math.max(0, (sizeRecord.stock_quantity || 0) - (sizeRecord.reserved_quantity || 0));
+      
+      if (availableStock < validated.quantity) {
+        return NextResponse.json(
+          { 
+            error: `Insufficient stock for size ${validated.size}. Available: ${availableStock}, Requested: ${validated.quantity}`,
+            available: availableStock,
+            requested: validated.quantity
+          },
+          { status: 400 }
+        );
+      }
+      
+      // Deduct from specific size
+      const { error: deductError } = await adminClient
+        .from('product_sizes')
+        .update({
+          stock_quantity: (sizeRecord.stock_quantity || 0) - validated.quantity,
+          last_updated: new Date().toISOString(),
+        })
+        .eq('product_id', validated.product_id)
+        .eq('size', validated.size);
+      
+      if (deductError) {
+        console.error('Error deducting from size-based inventory:', deductError);
+        return NextResponse.json(
+          { error: 'Failed to deduct stock from size-based inventory' },
+          { status: 500 }
+        );
+      }
+      
+      // Also deduct from general inventory
+      const success = await InventoryService.deductStock(
+        validated.product_id,
+        validated.quantity,
+        employee?.id
+      );
+      
+      if (!success) {
+        console.warn('Warning: Size-based deduction succeeded but general inventory deduction failed');
+      }
+      
+      return NextResponse.json({
+        success: true,
+        message: `Stock deducted successfully from size ${validated.size}`,
+      });
+    }
+    
+    // No size specified, use general deduction
     // Check current stock before attempting deduction
     const currentStock = await InventoryService.getStock(validated.product_id);
     

@@ -66,6 +66,7 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
             available_stock: product.available_stock !== undefined ? product.available_stock : (product.stock !== undefined ? product.stock : undefined),
             status: product.status,
             sale_price: product.sale_price,
+            colors: product.colors || [], // Include colors from API
           };
         });
       

@@ -120,7 +120,7 @@ const dummyProducts: (Product & { category?: string; stock?: number; image?: str
 
 export default function ProductsPage() {
   const router = useRouter();
-  const [products, setProducts] = useState<(Product & { category?: string; stock?: number; image?: string })[]>([]);
+  const [products, setProducts] = useState<(Product & { category?: string; stock?: number; image?: string; colors?: string[] })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -129,10 +129,12 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedColorFilter, setSelectedColorFilter] = useState('all');
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; product: { id: string; name: string } | null }>({ isOpen: false, product: null });
   const [successModal, setSuccessModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
+  const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
 
   // Check role and redirect sellers (only once)
   useEffect(() => {
@@ -231,15 +233,41 @@ export default function ProductsPage() {
     fetchCategories();
   }, []);
 
-  // Filter products based on search, category, and status
+  // Extract unique colors from all products
+  const availableColors = useMemo(() => {
+    const colorSet = new Set<string>();
+    products.forEach((product: any) => {
+      if (product.colors && Array.isArray(product.colors)) {
+        product.colors.forEach((color: string) => colorSet.add(color));
+      }
+    });
+    return Array.from(colorSet).sort();
+  }, [products]);
+
+  // Filter products based on search, category, status, and color
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    return products.filter((product: any) => {
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategoryFilter === 'all' || product.category === selectedCategoryFilter;
       const matchesStatus = selectedStatus === 'all' || product.status === selectedStatus;
-      return matchesSearch && matchesCategory && matchesStatus;
+      const matchesColor = selectedColorFilter === 'all' || 
+        (product.colors && Array.isArray(product.colors) && product.colors.includes(selectedColorFilter));
+      return matchesSearch && matchesCategory && matchesStatus && matchesColor;
     });
-  }, [searchQuery, selectedCategoryFilter, selectedStatus, products]);
+  }, [searchQuery, selectedCategoryFilter, selectedStatus, selectedColorFilter, products]);
+
+  // Function to copy product link to clipboard
+  const copyProductLink = async (productId: string) => {
+    try {
+      const productUrl = `${window.location.origin}/products/${productId}`;
+      await navigator.clipboard.writeText(productUrl);
+      setCopiedProductId(productId);
+      setTimeout(() => setCopiedProductId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      alert('Failed to copy link. Please try again.');
+    }
+  };
 
   const handleProductSuccess = async () => {
     // Refresh products list
@@ -377,6 +405,20 @@ export default function ProductsPage() {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
+          {availableColors.length > 0 && (
+            <select
+              value={selectedColorFilter}
+              onChange={(e) => setSelectedColorFilter(e.target.value)}
+              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All Colors</option>
+              {availableColors.map((color) => (
+                <option key={color} value={color}>
+                  {color}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         {filteredProducts.length !== products.length && (
           <div className="mt-4 text-sm text-gray-600">
@@ -501,6 +543,21 @@ export default function ProductsPage() {
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-3">
                         <button
+                          onClick={() => copyProductLink(product.id)}
+                          className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                          title="Copy product link"
+                        >
+                          {copiedProductId === product.id ? (
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                          )}
+                        </button>
+                        <button
                           onClick={() => setSelectedProduct(product as Product)}
                           className="text-primary hover:text-primary-dark font-medium text-sm"
                         >
@@ -583,6 +640,16 @@ export default function ProductsPage() {
               The product has been successfully removed from your inventory.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Copy Link Toast */}
+      {copiedProductId && (
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2 transform transition-all duration-300 ease-in-out animate-fade-in">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="font-semibold">Product link copied to clipboard!</span>
         </div>
       )}
     </div>

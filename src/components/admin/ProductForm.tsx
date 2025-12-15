@@ -31,6 +31,10 @@ export default function ProductForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [customColors, setCustomColors] = useState<Array<{ name: string; hex: string }>>([]);
+  const [newColorName, setNewColorName] = useState("");
+  const [newColorHex, setNewColorHex] = useState("#000000");
+  const [showAddColorForm, setShowAddColorForm] = useState(false);
 
   const [formData, setFormData] = useState({
     name: product?.name || "",
@@ -449,6 +453,12 @@ export default function ProductForm({
       setTimeout(() => {
         setShowSuccessModal(false);
         setIsOpen(false);
+        // Reset custom colors and form state
+        setCustomColors([]);
+        setSelectedColors([]);
+        setShowAddColorForm(false);
+        setNewColorName("");
+        setNewColorHex("#000000");
         if (onSuccess) onSuccess();
         if (onClose) onClose();
       }, 2000);
@@ -477,6 +487,10 @@ export default function ProductForm({
           M: "",
           L: "",
           XL: "",
+          "2XL": "",
+          "3XL": "",
+          "4XL": "",
+          "5XL": "",
         },
         status: "active",
         is_flash_sale: false,
@@ -484,6 +498,11 @@ export default function ProductForm({
         flash_sale_end: "",
       });
       setImagePreviews([]);
+      setSelectedColors([]);
+      setCustomColors([]);
+      setShowAddColorForm(false);
+      setNewColorName("");
+      setNewColorHex("#000000");
     }
   };
 
@@ -640,7 +659,7 @@ export default function ProductForm({
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Regular Price (KES) *
+                    Selling Price (KES) *
                   </label>
                   <input
                     type="number"
@@ -678,7 +697,7 @@ export default function ProductForm({
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Sale Price (KES)
+                    Flash Sale Price (KES)
                   </label>
                   <input
                     type="number"
@@ -1074,17 +1093,145 @@ export default function ProductForm({
 
               {/* Color Selection */}
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                <h4 className="text-md font-semibold text-gray-800 mb-3">
-                  Available Colors (Optional)
-                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-md font-semibold text-gray-800">
+                    Available Colors (Optional)
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddColorForm(!showAddColorForm)}
+                    className="px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Color
+                  </button>
+                </div>
                 <p className="text-xs text-gray-500 mb-4">
                   Select the colors available for this product
                 </p>
+
+                {/* Add New Color Form */}
+                {showAddColorForm && (
+                  <div className="mb-4 p-4 bg-white rounded-lg border-2 border-primary/30">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Color Name
+                        </label>
+                        <input
+                          type="text"
+                          value={newColorName}
+                          onChange={(e) => setNewColorName(e.target.value)}
+                          placeholder="e.g., Burgundy"
+                          className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Color Preview
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={newColorHex}
+                            onChange={(e) => setNewColorHex(e.target.value)}
+                            className="w-12 h-10 border-2 border-gray-200 rounded-lg cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={newColorHex}
+                            onChange={(e) => setNewColorHex(e.target.value)}
+                            placeholder="#000000"
+                            className="flex-1 px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (newColorName.trim()) {
+                              const colorName = newColorName.trim();
+                              // Check if color already exists
+                              const allColors = [...PRODUCT_COLORS, ...customColors];
+                              const colorExists = allColors.some(
+                                (c) => c.name.toLowerCase() === colorName.toLowerCase()
+                              );
+                              
+                              if (!colorExists) {
+                                const newColor = { name: colorName, hex: newColorHex };
+                                setCustomColors([...customColors, newColor]);
+                                // Immediately select the new color
+                                setSelectedColors([...selectedColors, colorName]);
+                                // Reset form
+                                setNewColorName("");
+                                setNewColorHex("#000000");
+                                setShowAddColorForm(false);
+                              } else {
+                                alert(`Color "${colorName}" already exists.`);
+                              }
+                            } else {
+                              alert("Please enter a color name.");
+                            }
+                          }}
+                          className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary-dark transition-colors text-sm"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddColorForm(false);
+                            setNewColorName("");
+                            setNewColorHex("#000000");
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {/* Standard Colors */}
                   {PRODUCT_COLORS.map((color) => (
                     <label
                       key={color.name}
                       className="flex items-center gap-2 p-2 rounded-lg border-2 border-gray-200 hover:border-primary/50 cursor-pointer transition-colors bg-white"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedColors.includes(color.name)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedColors([...selectedColors, color.name]);
+                          } else {
+                            setSelectedColors(
+                              selectedColors.filter((c) => c !== color.name)
+                            );
+                          }
+                        }}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
+                      />
+                      <div
+                        className="w-5 h-5 rounded-full border border-gray-300 shadow-sm"
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        {color.name}
+                      </span>
+                    </label>
+                  ))}
+                  {/* Custom Colors */}
+                  {customColors.map((color) => (
+                    <label
+                      key={color.name}
+                      className="flex items-center gap-2 p-2 rounded-lg border-2 border-primary/30 hover:border-primary/50 cursor-pointer transition-colors bg-white"
                     >
                       <input
                         type="checkbox"
@@ -1137,6 +1284,11 @@ export default function ProductForm({
                   type="button"
                   onClick={() => {
                     setIsOpen(false);
+                    // Reset custom colors when canceling
+                    setCustomColors([]);
+                    setShowAddColorForm(false);
+                    setNewColorName("");
+                    setNewColorHex("#000000");
                     if (onClose) onClose();
                   }}
                   className="px-6 py-3 bg-gray-200 text-gray-700 rounded-none font-semibold hover:bg-gray-300 transition-all"
