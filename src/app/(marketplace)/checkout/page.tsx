@@ -29,8 +29,14 @@ export default function CheckoutPage() {
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [productSizes, setProductSizes] = useState<{ [productId: string]: Array<{ size: string; available: number }> }>({});
   const [loadingSizes, setLoadingSizes] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  const total = getTotal();
+  // Wait for client-side hydration before accessing cart
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const total = isMounted ? getTotal() : 0;
 
 
 
@@ -196,8 +202,9 @@ export default function CheckoutPage() {
     try {
       // Validate that all products with sizes have size selected
       const itemsWithMissingSizes: string[] = [];
+      const cartItems = items;
       
-      for (const item of items) {
+      for (const item of cartItems) {
         // Check if this product has sizes available
         const hasSizes = productSizes[item.product.id] && productSizes[item.product.id].length > 0;
         
@@ -251,7 +258,7 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: items.map((item) => ({
+          items: cartItems.map((item) => ({
             product_id: item.product.id,
             quantity: item.quantity,
             price: item.product.price,
@@ -310,9 +317,10 @@ export default function CheckoutPage() {
 
   // Check if any products with sizes are missing size selection
   const hasMissingSizes = () => {
-    if (loadingSizes) return true; // Wait for sizes to load
+    if (loadingSizes || !isMounted) return true; // Wait for sizes to load or hydration
     
-    for (const item of items) {
+    const cartItems = items;
+    for (const item of cartItems) {
       const hasSizes = productSizes[item.product.id] && productSizes[item.product.id].length > 0;
       if (hasSizes && !item.size) {
         return true;
@@ -321,8 +329,8 @@ export default function CheckoutPage() {
     return false;
   };
 
-  // Show loading state while checking auth
-  if (checkingAuth) {
+  // Show loading state while checking auth or waiting for hydration
+  if (checkingAuth || !isMounted) {
     return (
       <div className="container mx-auto px-4 py-16 text-center animate-fade-in">
         <div className="max-w-md mx-auto">
@@ -333,7 +341,9 @@ export default function CheckoutPage() {
     );
   }
 
-  if (items.length === 0) {
+  const cartItems = isMounted ? items : [];
+
+  if (cartItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16 text-center animate-fade-in">
         <div className="max-w-md mx-auto">
@@ -580,7 +590,7 @@ export default function CheckoutPage() {
 
         {/* Order Summary */}
         <div className="lg:col-span-1">
-          <OrderSummary items={items} total={total} />
+          <OrderSummary items={isMounted ? items : []} total={total} />
         </div>
       </form>
 

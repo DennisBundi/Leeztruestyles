@@ -91,15 +91,130 @@ export class InventoryService {
   /**
    * Deduct stock atomically (for completed sales)
    * This is critical for POS and online sales synchronization
-   * Handles both general inventory and size-based inventory
+   * Handles general inventory, size-based inventory, and color-based inventory
+   * Priority: size+color > color only > size only > general inventory
    */
   static async deductStock(
     productId: string,
     quantity: number,
-    sellerId?: string
+    sellerId?: string,
+    size?: string,
+    color?: string
   ): Promise<boolean> {
     const supabase = await createClient();
+    const adminClient = createAdminClient();
 
+    // Priority 1: If both size and color are specified, check product_size_colors
+    if (size && color) {
+      const { data: colorSizeRecord, error: colorSizeError } = await supabase
+        .from('product_size_colors')
+        .select('id, stock_quantity, reserved_quantity')
+        .eq('product_id', productId)
+        .eq('size', size)
+        .eq('color', color)
+        .single();
+
+      if (!colorSizeError && colorSizeRecord) {
+        const availableStock = Math.max(0, (colorSizeRecord.stock_quantity || 0) - (colorSizeRecord.reserved_quantity || 0));
+        
+        if (availableStock >= quantity) {
+          const { error: updateError } = await adminClient
+            .from('product_size_colors')
+            .update({
+              stock_quantity: (colorSizeRecord.stock_quantity || 0) - quantity,
+              reserved_quantity: Math.max(0, (colorSizeRecord.reserved_quantity || 0) - quantity),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', colorSizeRecord.id)
+            .gte('stock_quantity', quantity);
+
+          if (!updateError) {
+            console.log(`Successfully deducted ${quantity} from size+color inventory (${size}, ${color})`);
+            return true;
+          } else {
+            console.error('Error deducting from size+color inventory:', updateError);
+          }
+        } else {
+          console.error(`Insufficient stock in size+color inventory. Available: ${availableStock}, Requested: ${quantity}`);
+          return false;
+        }
+      }
+    }
+
+    // Priority 2: If only color is specified (no size), check product_size_colors with NULL size
+    if (color && !size) {
+      const { data: colorRecord, error: colorError } = await supabase
+        .from('product_size_colors')
+        .select('id, stock_quantity, reserved_quantity')
+        .eq('product_id', productId)
+        .eq('color', color)
+        .is('size', null)
+        .single();
+
+      if (!colorError && colorRecord) {
+        const availableStock = Math.max(0, (colorRecord.stock_quantity || 0) - (colorRecord.reserved_quantity || 0));
+        
+        if (availableStock >= quantity) {
+          const { error: updateError } = await adminClient
+            .from('product_size_colors')
+            .update({
+              stock_quantity: (colorRecord.stock_quantity || 0) - quantity,
+              reserved_quantity: Math.max(0, (colorRecord.reserved_quantity || 0) - quantity),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', colorRecord.id)
+            .gte('stock_quantity', quantity);
+
+          if (!updateError) {
+            console.log(`Successfully deducted ${quantity} from color-only inventory (${color})`);
+            return true;
+          } else {
+            console.error('Error deducting from color-only inventory:', updateError);
+          }
+        } else {
+          console.error(`Insufficient stock in color-only inventory. Available: ${availableStock}, Requested: ${quantity}`);
+          return false;
+        }
+      }
+    }
+
+    // Priority 3: If only size is specified (no color), check product_sizes (existing logic)
+    if (size && !color) {
+      const { data: sizeRecord, error: sizeCheckError } = await supabase
+        .from('product_sizes')
+        .select('id, stock_quantity, reserved_quantity')
+        .eq('product_id', productId)
+        .eq('size', size)
+        .single();
+
+      if (!sizeCheckError && sizeRecord) {
+        const availableStock = Math.max(0, (sizeRecord.stock_quantity || 0) - (sizeRecord.reserved_quantity || 0));
+        
+        if (availableStock >= quantity) {
+          const { error: updateError } = await adminClient
+            .from('product_sizes')
+            .update({
+              stock_quantity: (sizeRecord.stock_quantity || 0) - quantity,
+              reserved_quantity: Math.max(0, (sizeRecord.reserved_quantity || 0) - quantity),
+              last_updated: new Date().toISOString(),
+            })
+            .eq('id', sizeRecord.id)
+            .gte('stock_quantity', quantity);
+
+          if (!updateError) {
+            console.log(`Successfully deducted ${quantity} from size-only inventory (${size})`);
+            return true;
+          } else {
+            console.error('Error deducting from size-only inventory:', updateError);
+          }
+        } else {
+          console.error(`Insufficient stock in size-only inventory. Available: ${availableStock}, Requested: ${quantity}`);
+          return false;
+        }
+      }
+    }
+
+    // Priority 4: Fall back to general inventory (existing logic)
     // First, check if we have general inventory
     const { data: inventoryData, error: inventoryCheckError } = await supabase
       .from('inventory')

@@ -51,6 +51,32 @@ const productSchema = z.object({
       return Object.keys(filtered).length > 0 ? filtered : null;
     }),
   colors: z.array(z.string()).nullable().optional().transform((val) => val && val.length > 0 ? val : null),
+  color_stocks: z.union([
+    z.record(z.string(), z.record(z.string(), z.number().int().min(0))), // Size+color: { "Red": { "M": 5, "L": 3 } }
+    z.record(z.string(), z.number().int().min(0)), // Color only: { "Red": 10, "Blue": 5 }
+  ]).nullable().optional().transform((val) => {
+    if (!val || typeof val !== 'object') return null;
+    // Filter out zero values
+    const filtered: Record<string, any> = {};
+    Object.entries(val).forEach(([color, value]) => {
+      if (typeof value === 'object') {
+        // Size+color combinations
+        const sizeQuantities: Record<string, number> = {};
+        Object.entries(value).forEach(([size, qty]) => {
+          if (typeof qty === 'number' && qty > 0) {
+            sizeQuantities[size] = qty;
+          }
+        });
+        if (Object.keys(sizeQuantities).length > 0) {
+          filtered[color] = sizeQuantities;
+        }
+      } else if (typeof value === 'number' && value > 0) {
+        // Color-only quantity
+        filtered[color] = value;
+      }
+    });
+    return Object.keys(filtered).length > 0 ? filtered : null;
+  }),
   images: z.array(z.string()).optional().default([]),
   status: z.enum(["active", "inactive"]).optional().default("active"),
   is_flash_sale: z.boolean().optional().default(false),
@@ -150,6 +176,7 @@ export async function POST(request: NextRequest) {
     //Initialize inventory using database function (bypasses RLS)
     const initialStock = validated.initial_stock || 0;
     const sizeStocks = validated.size_stocks || null;
+    const colorStocks = validated.color_stocks || null;
 
     console.log("📦 API - Inventory Initialization:", {
       product_id: product.id,
@@ -163,9 +190,10 @@ export async function POST(request: NextRequest) {
             0
           )
         : 0,
+      color_stocks: colorStocks,
     });
 
-    // Prepare size_stocks as JSONB for the function
+    // Prepare size_stocks and color_stocks as JSONB for the function
     // Supabase expects JSONB to be passed as a JSON object, not a string
     const { data: inventoryResult, error: inventoryError } = await supabase.rpc(
       "initialize_product_inventory",
@@ -173,6 +201,7 @@ export async function POST(request: NextRequest) {
         p_product_id: product.id,
         p_initial_stock: initialStock,
         p_size_stocks: sizeStocks,
+        p_color_stocks: colorStocks,
       }
     );
 
@@ -410,14 +439,17 @@ export async function PUT(request: NextRequest) {
     // Update inventory if provided
     if (
       updateData.initial_stock !== undefined ||
-      updateData.size_stocks !== undefined
+      updateData.size_stocks !== undefined ||
+      updateData.color_stocks !== undefined
     ) {
       const initialStock = updateData.initial_stock || 0;
       const sizeStocks = updateData.size_stocks || null;
+      const colorStocks = updateData.color_stocks || null;
 
       console.log(
         `Updating inventory for product ${product.id} with stock: ${initialStock}`,
-        sizeStocks ? `and sizes: ${JSON.stringify(sizeStocks)}` : ""
+        sizeStocks ? `and sizes: ${JSON.stringify(sizeStocks)}` : "",
+        colorStocks ? `and colors: ${JSON.stringify(colorStocks)}` : ""
       );
 
       // Use the initialize function which handles both create and update
@@ -426,6 +458,7 @@ export async function PUT(request: NextRequest) {
           p_product_id: product.id,
           p_initial_stock: initialStock,
           p_size_stocks: sizeStocks,
+          p_color_stocks: colorStocks,
         });
 
       if (inventoryError) {
@@ -551,6 +584,7 @@ export async function GET(request: NextRequest) {
     const productIds = (products || []).map((p) => p.id);
     let inventoryMap = new Map();
     let colorMap = new Map<string, string[]>();
+    let colorStocksMap = new Map<string, Record<string, Record<string, number> | number>>();
 
     if (productIds.length > 0) {
       // Fetch from inventory table (general stock)
@@ -586,6 +620,42 @@ export async function GET(request: NextRequest) {
         // Handle case where product_colors table doesn't exist
         console.log('⚠️ Product colors table may not exist yet:', colorError instanceof Error ? colorError.message : 'Unknown error');
         // Continue without colors - this is not a critical error
+      }
+
+      // Fetch color-based inventory (if table exists)
+      try {
+        const { data: colorInventory, error: colorInventoryError } = await supabase
+          .from("product_size_colors")
+          .select("product_id, color, size, stock_quantity")
+          .in("product_id", productIds);
+
+        // Build color_stocks map
+        if (colorInventory && !colorInventoryError) {
+          colorInventory.forEach((ci: any) => {
+            if (!colorStocksMap.has(ci.product_id)) {
+              colorStocksMap.set(ci.product_id, {});
+            }
+            const productColorStocks = colorStocksMap.get(ci.product_id)!;
+            
+            if (ci.size !== null) {
+              // Size+color combination
+              if (!productColorStocks[ci.color] || typeof productColorStocks[ci.color] === 'number') {
+                productColorStocks[ci.color] = {};
+              }
+              (productColorStocks[ci.color] as Record<string, number>)[ci.size] = ci.stock_quantity;
+            } else {
+              // Color-only quantity
+              productColorStocks[ci.color] = ci.stock_quantity;
+            }
+          });
+        } else if (colorInventoryError) {
+          // Table might not exist yet - log but don't fail
+          console.log('⚠️ Could not fetch color inventory (table may not exist yet):', colorInventoryError.message);
+        }
+      } catch (colorInventoryError) {
+        // Handle case where product_size_colors table doesn't exist
+        console.log('⚠️ Color inventory table may not exist yet:', colorInventoryError instanceof Error ? colorInventoryError.message : 'Unknown error');
+        // Continue without color inventory - this is not a critical error
       }
 
       // Process general inventory (primary source of stock)
@@ -639,6 +709,7 @@ export async function GET(request: NextRequest) {
     const productsWithInventory = (products || []).map((product: any) => {
       const inv = inventoryMap.get(product.id);
       const colors = colorMap.get(product.id) || [];
+      const colorStocks = colorStocksMap.get(product.id) || null;
       // If no inventory record exists, stock is 0 (not undefined)
       const stockValue = inv?.available ?? inv?.stock ?? 0;
       const result = {
@@ -648,6 +719,7 @@ export async function GET(request: NextRequest) {
         stock_quantity: inv?.stock ?? 0, // Also include total stock for reference
         available_stock: inv?.available ?? 0, // Explicit available stock field
         colors: colors, // Product colors
+        color_stocks: colorStocks, // Color-based inventory quantities
         image:
           product.images && product.images.length > 0
             ? product.images[0]

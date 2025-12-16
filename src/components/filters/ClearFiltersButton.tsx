@@ -10,7 +10,8 @@ export default function ClearFiltersButton() {
     searchParams.get('q') ||
     searchParams.get('category') ||
     searchParams.get('minPrice') ||
-    searchParams.get('maxPrice');
+    searchParams.get('maxPrice') ||
+    searchParams.get('color');
 
   if (!hasFilters) {
     return null;

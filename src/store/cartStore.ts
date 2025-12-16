@@ -45,6 +45,53 @@ export const useCartStore = create<CartStore>()(
             item.color === color
         );
 
+        // Calculate total quantity that would be in cart after adding
+        const currentQuantity = existingItem ? existingItem.quantity : 0;
+        const newTotalQuantity = currentQuantity + quantity;
+
+        // Check available stock (priority: size+color > color only > size only > general)
+        const availableStock = (product as any).available_stock;
+        const productSizes = (product as any).sizes;
+        const colorStocks = (product as any).color_stocks;
+        
+        let stockLimit: number | undefined = availableStock;
+        
+        // Priority 1: If both size and color are specified, check color_stocks
+        if (size && color && colorStocks && typeof colorStocks === 'object') {
+          const colorStock = colorStocks[color];
+          if (colorStock && typeof colorStock === 'object') {
+            const sizeColorStock = colorStock[size];
+            if (typeof sizeColorStock === 'number') {
+              stockLimit = sizeColorStock;
+            }
+          }
+        }
+        // Priority 2: If only color is specified (no size), check color_stocks
+        else if (color && !size && colorStocks && typeof colorStocks === 'object') {
+          const colorStock = colorStocks[color];
+          if (typeof colorStock === 'number') {
+            stockLimit = colorStock;
+          }
+        }
+        // Priority 3: If only size is selected and product has size-based inventory, use size stock
+        else if (size && productSizes && Array.isArray(productSizes)) {
+          const sizeOption = productSizes.find((s: any) => s.size === size);
+          if (sizeOption && sizeOption.available !== undefined) {
+            stockLimit = sizeOption.available;
+          }
+        }
+
+        // Validate stock if available stock is defined
+        if (stockLimit !== undefined && newTotalQuantity > stockLimit) {
+          const available = stockLimit;
+          const alreadyInCart = currentQuantity;
+          throw new Error(
+            `Only ${available} ${available === 1 ? 'item is' : 'items are'} available for this product. ` +
+            `${alreadyInCart > 0 ? `You already have ${alreadyInCart} in your cart. ` : ''}` +
+            `You cannot add ${quantity} more ${quantity === 1 ? 'item' : 'items'}.`
+          );
+        }
+
         if (existingItem) {
           set({
             items: items.map((item) =>
@@ -111,8 +158,35 @@ export const useCartStore = create<CartStore>()(
           return;
         }
 
+        const items = get().items;
+        const item = items.find((item) => item.product.id === productId);
+        if (!item) return;
+
+        // Check available stock
+        const availableStock = (item.product as any).available_stock;
+        const productSizes = (item.product as any).sizes;
+        
+        let stockLimit: number | undefined = availableStock;
+        
+        // If size is selected and product has size-based inventory, use size stock
+        if (item.size && productSizes && Array.isArray(productSizes)) {
+          const sizeOption = productSizes.find((s: any) => s.size === item.size);
+          if (sizeOption && sizeOption.available !== undefined) {
+            stockLimit = sizeOption.available;
+          }
+        }
+
+        // Validate stock if available stock is defined
+        if (stockLimit !== undefined && quantity > stockLimit) {
+          const available = stockLimit;
+          throw new Error(
+            `Only ${available} ${available === 1 ? 'item is' : 'items are'} available for this product. ` +
+            `You cannot increase the quantity to ${quantity}.`
+          );
+        }
+
         set({
-          items: get().items.map((item) =>
+          items: items.map((item) =>
             item.product.id === productId ? { ...item, quantity } : item
           ),
         });
@@ -157,7 +231,13 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: 'cart-storage',
+      skipHydration: true, // Prevent hydration mismatch
     }
   )
 );
+
+// Manually rehydrate on client side to prevent hydration errors
+if (typeof window !== 'undefined') {
+  useCartStore.persist.rehydrate();
+}
 

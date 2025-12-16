@@ -11,6 +11,7 @@ const deductRequestSchema = z.object({
   quantity: z.number().positive().int(),
   order_id: z.string().uuid().optional(),
   size: z.string().optional(), // Optional size for size-based inventory deduction
+  color: z.string().optional(), // Optional color for color-based inventory deduction
 });
 
 export async function POST(request: NextRequest) {
@@ -96,11 +97,13 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Also deduct from general inventory
+      // Also deduct from general inventory (or use InventoryService which handles color)
       const success = await InventoryService.deductStock(
         validated.product_id,
         validated.quantity,
-        employee?.id
+        employee?.id,
+        validated.size,
+        validated.color
       );
       
       if (!success) {
@@ -143,7 +146,9 @@ export async function POST(request: NextRequest) {
     const success = await InventoryService.deductStock(
       validated.product_id,
       validated.quantity,
-      employee?.id
+      employee?.id,
+      validated.size,
+      validated.color
     );
 
     if (!success) {

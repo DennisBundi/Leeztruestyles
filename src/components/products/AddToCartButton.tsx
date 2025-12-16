@@ -19,14 +19,36 @@ export default function AddToCartButton({
   selectedSize,
 }: AddToCartButtonProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const items = useCartStore((state) => state.items);
   const { triggerAnimation } = useCartAnimationContext();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
+  // Get current quantity in cart for this product (with same size/color)
+  const currentCartItem = items.find(
+    (item) =>
+      item.product.id === product.id &&
+      item.size === selectedSize &&
+      item.color === selectedColor
+  );
+  const currentCartQuantity = currentCartItem ? currentCartItem.quantity : 0;
+
+  // Calculate available stock (consider size-specific stock if size is selected)
+  let stockLimit: number | undefined = availableStock;
+  const productSizes = (product as any).sizes;
+  if (selectedSize && productSizes && Array.isArray(productSizes)) {
+    const sizeOption = productSizes.find((s: any) => s.size === selectedSize);
+    if (sizeOption && sizeOption.available !== undefined) {
+      stockLimit = sizeOption.available;
+    }
+  }
+
   // If availableStock is undefined, treat as in stock (inventory not set up yet)
   // If it's 0 or less, then it's out of stock
-  const isOutOfStock = availableStock !== undefined && availableStock <= 0;
-  const maxQuantity = availableStock !== undefined ? Math.min(availableStock, 10) : 10;
+  const isOutOfStock = stockLimit !== undefined && stockLimit <= 0;
+  // Max quantity is the available stock minus what's already in cart
+  const maxAvailable = stockLimit !== undefined ? stockLimit - currentCartQuantity : 10;
+  const maxQuantity = stockLimit !== undefined ? Math.min(maxAvailable, 10) : 10;
 
   // Calculate display price (use sale_price if available and on flash sale)
   const isOnSale = product.is_flash_sale && product.sale_price !== null && product.sale_price !== undefined;
@@ -71,12 +93,20 @@ export default function AddToCartButton({
             value={quantity}
             onChange={(e) => {
               const val = parseInt(e.target.value) || 1;
-              setQuantity(Math.min(maxQuantity, Math.max(1, val)));
+              const maxAllowed = stockLimit !== undefined 
+                ? Math.min(stockLimit - currentCartQuantity, 10)
+                : 10;
+              setQuantity(Math.min(maxAllowed, Math.max(1, val)));
             }}
             className="w-20 text-center border-0 bg-transparent font-semibold text-gray-900 focus:outline-none"
           />
           <button
-            onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+            onClick={() => {
+              const maxAllowed = stockLimit !== undefined 
+                ? Math.min(stockLimit - currentCartQuantity, 10)
+                : 10;
+              setQuantity(Math.min(maxAllowed, quantity + 1));
+            }}
             disabled={quantity >= maxQuantity}
             className="w-10 h-10 rounded-none border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white hover:border-primary transition-all font-semibold text-gray-600"
           >
@@ -87,22 +117,49 @@ export default function AddToCartButton({
 
       <button
         onClick={(e) => {
-          if (isOutOfStock || quantity > maxQuantity) return;
+          if (isOutOfStock || quantity > maxQuantity) {
+            if (stockLimit !== undefined && currentCartQuantity + quantity > stockLimit) {
+              alert(
+                `Only ${stockLimit} ${stockLimit === 1 ? 'item is' : 'items are'} available for this product. ` +
+                `${currentCartQuantity > 0 ? `You already have ${currentCartQuantity} in your cart. ` : ''}` +
+                `You cannot add ${quantity} more ${quantity === 1 ? 'item' : 'items'}.`
+              );
+            }
+            return;
+          }
           
-          // Create product with sale price for cart if on sale
-          const productForCart = {
-            ...product,
-            price: displayPrice, // Use sale price if on sale
-          };
+          // Validate size selection if product has sizes
+          const productHasSizes = (product as any).sizes && (product as any).sizes.length > 0;
+          if (productHasSizes && !selectedSize) {
+            alert('Please select a size before adding to cart');
+            return;
+          }
+          
+          try {
+            // Create product with sale price for cart if on sale
+            const productForCart = {
+              ...product,
+              price: displayPrice, // Use sale price if on sale
+              available_stock: stockLimit, // Pass stock limit for validation
+              sizes: productSizes, // Pass sizes for size-based validation
+            };
 
-          addItem(productForCart, quantity);
-          
-          // Trigger cart animation
-          const button = e.currentTarget;
-          triggerAnimation(productForCart, button);
-          
-          setAdded(true);
-          setTimeout(() => setAdded(false), 2000);
+            addItem(productForCart, quantity, selectedSize || undefined, selectedColor || undefined);
+            
+            // Trigger cart animation
+            const button = e.currentTarget;
+            triggerAnimation(productForCart, button);
+            
+            setAdded(true);
+            setTimeout(() => setAdded(false), 2000);
+          } catch (error) {
+            // Handle stock validation error from cart store
+            if (error instanceof Error) {
+              alert(error.message);
+            } else {
+              alert('Failed to add item to cart. Please try again.');
+            }
+          }
         }}
         disabled={isOutOfStock || quantity > maxQuantity}
         className={`w-full py-4 px-6 rounded-none font-semibold text-lg transition-all ${

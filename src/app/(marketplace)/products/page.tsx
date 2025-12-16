@@ -2,6 +2,7 @@ import ProductGrid from "@/components/products/ProductGrid";
 import SearchBar from "@/components/search/SearchBar";
 import CategoryFilter from "@/components/filters/CategoryFilter";
 import PriceFilter from "@/components/filters/PriceFilter";
+import ColorFilter from "@/components/filters/ColorFilter";
 import ClearFiltersButton from "@/components/filters/ClearFiltersButton";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,6 +11,7 @@ interface SearchParams {
   category?: string;
   minPrice?: string;
   maxPrice?: string;
+  color?: string;
   page?: string;
   flash_sale?: string;
 }
@@ -71,6 +73,37 @@ export default async function ProductsPage({
     ascending: false,
   });
 
+  // Fetch product colors for filtering
+  let productColorsMap = new Map<string, string[]>();
+  let allAvailableColors = new Set<string>();
+  
+  if (products && products.length > 0) {
+    const productIds = products.map((p: any) => p.id);
+    const { data: productColors, error: colorsError } = await supabase
+      .from("product_colors")
+      .select("product_id, color")
+      .in("product_id", productIds);
+
+    if (colorsError) {
+      console.error("Error fetching product colors:", colorsError);
+    } else if (productColors) {
+      productColors.forEach((pc: any) => {
+        const existing = productColorsMap.get(pc.product_id) || [];
+        productColorsMap.set(pc.product_id, [...existing, pc.color]);
+        allAvailableColors.add(pc.color);
+      });
+    }
+  }
+
+  // Filter by color if specified
+  let filteredProducts = products || [];
+  if (searchParams.color && searchParams.color.trim() !== "") {
+    filteredProducts = filteredProducts.filter((product: any) => {
+      const productColors = productColorsMap.get(product.id) || [];
+      return productColors.includes(searchParams.color!);
+    });
+  }
+
   // Fetch inventory for products with error handling
   // Use only the inventory table (not product_sizes) for stock display
   let inventoryMap = new Map();
@@ -115,14 +148,15 @@ export default async function ProductsPage({
     console.error("Error fetching products:", error);
   }
 
-  // Transform products to include stock and category
+  // Transform products to include stock, category, and colors
   // Filter out products with 0 stock - only show products with stock > 0
-  const productsWithStock = (products || [])
+  const productsWithStock = (filteredProducts || [])
     .map((product: any) => {
       const category = product.category_id
         ? categoryMap.get(product.category_id)
         : null;
       const stock = inventoryMap.get(product.id);
+      const colors = productColorsMap.get(product.id) || [];
       return {
         ...product,
         // Only set available_stock if we have inventory data
@@ -130,6 +164,7 @@ export default async function ProductsPage({
         categories: category
           ? { name: category.name }
           : { name: "Uncategorized" },
+        colors: colors, // Include colors for product display
       };
     })
     .filter((product: any) => {
@@ -156,6 +191,7 @@ export default async function ProductsPage({
         <div className="flex flex-wrap gap-4 justify-center items-center">
           <CategoryFilter categories={categories || []} />
           <PriceFilter />
+          <ColorFilter availableColors={Array.from(allAvailableColors).sort()} />
           <ClearFiltersButton />
         </div>
       </div>

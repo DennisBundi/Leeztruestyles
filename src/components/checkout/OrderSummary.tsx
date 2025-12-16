@@ -204,7 +204,17 @@ export default function OrderSummary({ items, total }: OrderSummaryProps) {
                   </button>
                   <span className="w-8 text-center font-semibold text-gray-900 text-sm">{item.quantity}</span>
                   <button
-                    onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                    onClick={() => {
+                      try {
+                        updateQuantity(item.product.id, item.quantity + 1);
+                      } catch (error) {
+                        if (error instanceof Error) {
+                          alert(error.message);
+                        } else {
+                          alert('Failed to update quantity. Please try again.');
+                        }
+                      }
+                    }}
                     className="w-7 h-7 rounded-none border border-gray-200 hover:bg-gray-50 hover:border-primary transition-colors flex items-center justify-center font-semibold text-gray-600 text-sm"
                     aria-label="Increase quantity"
                   >

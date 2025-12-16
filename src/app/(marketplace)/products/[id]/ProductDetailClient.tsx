@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import AddToCartButton from '@/components/products/AddToCartButton';
 import WhatsAppWidget from '@/components/whatsapp/WhatsAppWidget';
 import type { Product } from '@/types';
+import { PRODUCT_COLORS } from '@/lib/utils/colors';
 
 // Enhanced product type with color variations (optional, for future use)
 interface ProductVariant {
@@ -15,11 +16,17 @@ interface ProductVariant {
   stock: number;
 }
 
+interface SizeOption {
+  size: string;
+  available: number;
+}
+
 interface EnhancedProduct extends Product {
   available_stock?: number;
   categories: { name: string };
   variants?: ProductVariant[];
-  sizes?: string[];
+  sizes?: SizeOption[];
+  colors?: string[];
 }
 
 interface ProductDetailClientProps {
@@ -31,10 +38,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const availableStock = product.available_stock ?? undefined;
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string | null>(
-    product.variants && product.variants.length > 0 ? product.variants[0].color : null
+    product.colors && product.colors.length > 0 ? product.colors[0] : null
   );
   const [selectedSize, setSelectedSize] = useState<string | null>(
-    product.sizes && product.sizes.length > 0 ? product.sizes[0] : null
+    product.sizes && product.sizes.length > 0 ? product.sizes[0].size : null
   );
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
@@ -42,10 +49,20 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [thumbnailScrollRefState, setThumbnailScrollRef] = useState<HTMLDivElement | null>(null);
 
-  // Get current variant based on selected color
+  // Get current variant based on selected color (for backward compatibility with variants)
   const currentVariant = product.variants?.find((v) => v.color === selectedColor);
   const displayImages = currentVariant?.images || product.images || [];
-  const currentStock = currentVariant?.stock ?? availableStock;
+  
+  // Calculate current stock based on selected size
+  let currentStock = availableStock;
+  if (selectedSize && product.sizes) {
+    const selectedSizeOption = product.sizes.find((s) => s.size === selectedSize);
+    if (selectedSizeOption) {
+      currentStock = selectedSizeOption.available;
+    }
+  } else if (currentVariant) {
+    currentStock = currentVariant.stock;
+  }
 
   // Calculate display price (use sale_price if available and on flash sale)
   const isOnSale = product.is_flash_sale && product.sale_price !== null && product.sale_price !== undefined;
@@ -339,37 +356,40 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           </div>
 
           {/* Color Selection */}
-          {product.variants && product.variants.length > 0 && (
+          {product.colors && product.colors.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-lg font-semibold text-gray-900">
-                  Color: <span className="text-primary">{selectedColor}</span>
+                  Color: {selectedColor && <span className="text-primary">{selectedColor}</span>}
                 </label>
               </div>
               <div className="flex flex-wrap gap-3">
-                {product.variants.map((variant) => (
-                  <button
-                    key={variant.color}
-                    onClick={() => {
-                      setSelectedColor(variant.color);
-                      setSelectedImage(0); // Reset to first image when color changes
-                    }}
-                    className={`relative group flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                      selectedColor === variant.color
-                        ? 'border-primary shadow-lg scale-105'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div
-                      className="w-12 h-12 rounded-full border-2 border-gray-300 shadow-sm"
-                      style={{ backgroundColor: variant.colorCode }}
-                    />
-                    <span className="text-xs font-medium text-gray-700">{variant.color}</span>
-                    {variant.stock <= 0 && (
-                      <span className="absolute top-0 right-0 text-xs text-red-600 font-bold">×</span>
-                    )}
-                  </button>
-                ))}
+                {product.colors.map((color) => {
+                  const colorDef = PRODUCT_COLORS.find((c) => c.name.toLowerCase() === color.toLowerCase());
+                  const colorHex = colorDef?.hex || '#808080';
+                  
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => {
+                        setSelectedColor(color);
+                        setSelectedImage(0); // Reset to first image when color changes
+                      }}
+                      className={`relative group flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                        selectedColor === color
+                          ? 'border-primary shadow-lg scale-105'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div
+                        className="w-12 h-12 rounded-full border-2 border-gray-300 shadow-sm"
+                        style={{ backgroundColor: colorHex }}
+                        title={color}
+                      />
+                      <span className="text-xs font-medium text-gray-700">{color}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -378,23 +398,38 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           {product.sizes && product.sizes.length > 0 && (
             <div className="space-y-3">
               <label className="text-lg font-semibold text-gray-900">
-                Size: <span className="text-primary">{selectedSize}</span>
+                Size: {selectedSize && <span className="text-primary">{selectedSize}</span>}
               </label>
               <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 rounded-lg border-2 font-semibold transition-all ${
-                      selectedSize === size
-                        ? 'border-primary bg-primary text-white'
-                        : 'border-gray-200 text-gray-700 hover:border-primary hover:text-primary'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {product.sizes.map((sizeOption) => {
+                  const isAvailable = sizeOption.available > 0;
+                  const isSelected = selectedSize === sizeOption.size;
+                  
+                  return (
+                    <button
+                      key={sizeOption.size}
+                      onClick={() => isAvailable && setSelectedSize(sizeOption.size)}
+                      disabled={!isAvailable}
+                      className={`px-4 py-2 rounded-lg border-2 font-semibold transition-all ${
+                        isSelected
+                          ? 'border-primary bg-primary text-white'
+                          : isAvailable
+                          ? 'border-gray-200 text-gray-700 hover:border-primary hover:text-primary'
+                          : 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed opacity-50'
+                      }`}
+                      title={!isAvailable ? 'Out of stock' : `${sizeOption.available} available`}
+                    >
+                      {sizeOption.size}
+                      {isAvailable && (
+                        <span className="ml-1 text-xs opacity-75">({sizeOption.available})</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+              {!selectedSize && (
+                <p className="text-sm text-red-600">Please select a size</p>
+              )}
             </div>
           )}
 
@@ -421,7 +456,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                 <svg className="w-5 h-5 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Fast & Free Delivery
+                Fast Delivery
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -439,7 +474,10 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           </div>
 
           <AddToCartButton 
-            product={product} 
+            product={{
+              ...product,
+              sizes: product.sizes, // Pass sizes so AddToCartButton can validate
+            }}
             availableStock={currentStock}
             selectedColor={selectedColor}
             selectedSize={selectedSize}

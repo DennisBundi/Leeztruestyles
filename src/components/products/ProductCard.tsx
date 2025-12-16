@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/types";
 import { useCartStore } from "@/store/cartStore";
 import { useCartAnimationContext } from "@/components/cart/CartAnimationProvider";
+import ProductOptionsModal from "./ProductOptionsModal";
 
 interface ProductCardProps {
   product: Product & {
@@ -18,7 +20,11 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const items = useCartStore((state) => state.items);
   const { triggerAnimation } = useCartAnimationContext();
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
+  
   // If available_stock is undefined, treat as in stock (inventory not set up yet)
   // If it's 0 or less, then it's out of stock
   const isOutOfStock =
@@ -38,8 +44,136 @@ export default function ProductCard({ product }: ProductCardProps) {
       : null
     : null;
 
+  const handleAddToCartClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Get product colors
+    const productColors = (product as any).colors || [];
+
+    // Fetch available sizes for the product
+    let sizesWithStock: Array<{ size: string; available: number }> = [];
+    try {
+      const response = await fetch(`/api/products/${product.id}/sizes`);
+      if (response.ok) {
+        const data = await response.json();
+        sizesWithStock = (data.sizes || []).filter(
+          (s: any) => s.available > 0
+        );
+        setAvailableSizes(sizesWithStock);
+      }
+    } catch (error) {
+      console.error("Error fetching product sizes:", error);
+      setAvailableSizes([]);
+    }
+
+    // If product has sizes or colors, show modal; otherwise add directly
+    if (sizesWithStock.length > 0 || productColors.length > 0) {
+      setShowOptionsModal(true);
+    } else {
+      // No sizes/colors, add directly to cart
+      // Check inventory before adding
+      const currentCartItem = items.find(
+        (item) =>
+          item.product.id === product.id &&
+          !item.size &&
+          !item.color
+      );
+      const currentCartQuantity = currentCartItem ? currentCartItem.quantity : 0;
+      const availableStock = product.available_stock;
+      
+      if (availableStock !== undefined && currentCartQuantity + 1 > availableStock) {
+        alert(
+          `Only ${availableStock} ${availableStock === 1 ? 'item is' : 'items are'} available for this product. ` +
+          `${currentCartQuantity > 0 ? `You already have ${currentCartQuantity} in your cart. ` : ''}` +
+          `You cannot add more items.`
+        );
+        return;
+      }
+      
+      try {
+        const productForCart = {
+          ...product,
+          price: displayPrice,
+          available_stock: availableStock,
+        };
+        addItem(productForCart);
+        
+        // Trigger cart animation
+        const button = e.currentTarget;
+        triggerAnimation(productForCart, button);
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(error.message);
+        } else {
+          alert('Failed to add item to cart. Please try again.');
+        }
+      }
+    }
+  };
+
+  const handleOptionsConfirm = (size?: string, color?: string) => {
+    // Check inventory before adding
+    const currentCartItem = items.find(
+      (item) =>
+        item.product.id === product.id &&
+        item.size === size &&
+        item.color === color
+    );
+    const currentCartQuantity = currentCartItem ? currentCartItem.quantity : 0;
+    
+    // Calculate available stock (consider size-specific stock if size is selected)
+    let stockLimit: number | undefined = product.available_stock;
+    if (size && availableSizes.length > 0) {
+      const sizeOption = availableSizes.find((s) => s.size === size);
+      if (sizeOption && sizeOption.available !== undefined) {
+        stockLimit = sizeOption.available;
+      }
+    }
+    
+    if (stockLimit !== undefined && currentCartQuantity + 1 > stockLimit) {
+      alert(
+        `Only ${stockLimit} ${stockLimit === 1 ? 'item is' : 'items are'} available for this product. ` +
+        `${currentCartQuantity > 0 ? `You already have ${currentCartQuantity} in your cart. ` : ''}` +
+        `You cannot add more items.`
+      );
+      return;
+    }
+    
+    try {
+      const productForCart = {
+        ...product,
+        price: displayPrice,
+        available_stock: stockLimit,
+        sizes: availableSizes,
+      };
+      addItem(productForCart, 1, size, color);
+      
+      // Trigger cart animation - find the button
+      const button = document.querySelector(`[data-product-card-id="${product.id}"]`) as HTMLElement;
+      if (button) {
+        triggerAnimation(productForCart, button);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('Failed to add item to cart. Please try again.');
+      }
+    }
+  };
+
   return (
-    <div className="group relative bg-white rounded-none shadow-sm overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-primary/20 animate-fade-in">
+    <>
+      <ProductOptionsModal
+        isOpen={showOptionsModal}
+        onClose={() => setShowOptionsModal(false)}
+        onConfirm={handleOptionsConfirm}
+        product={product}
+        availableSizes={availableSizes}
+        availableColors={(product as any)?.colors || []}
+      />
+      <div className="group relative bg-white rounded-none shadow-sm overflow-hidden hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-primary/20 animate-fade-in">
       {/* Flash Sale Badge */}
       {isOnSale && (
         <div className="absolute top-4 left-4 z-20 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg animate-pulse">
@@ -125,27 +259,8 @@ export default function ProductCard({ product }: ProductCardProps) {
             )}
         </div>
         <button
-          onClick={(e) => {
-            // Create product with sale price for cart
-            const productForCart = {
-              ...product,
-              price: displayPrice, // Use sale price if on sale
-            };
-            addItem(productForCart);
-            
-            // Trigger cart animation
-            const button = e.currentTarget;
-            triggerAnimation(productForCart, button);
-            
-            // Visual feedback
-            if (button) {
-              button.classList.add("animate-scale-in");
-              setTimeout(
-                () => button.classList.remove("animate-scale-in"),
-                200
-              );
-            }
-          }}
+          data-product-card-id={product.id}
+          onClick={handleAddToCartClick}
           disabled={isOutOfStock}
           className={`w-full py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 rounded-none text-xs sm:text-sm md:text-base font-semibold transition-all duration-200 ${
             isOutOfStock
@@ -159,5 +274,6 @@ export default function ProductCard({ product }: ProductCardProps) {
         </button>
       </div>
     </div>
+    </>
   );
 }

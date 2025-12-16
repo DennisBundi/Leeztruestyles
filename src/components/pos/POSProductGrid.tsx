@@ -13,6 +13,7 @@ interface POSProductGridProps {
 
 export default function POSProductGrid({ products }: POSProductGridProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const items = useCartStore((state) => state.items);
   const { triggerAnimation } = useCartAnimationContext();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showSizeColorModal, setShowSizeColorModal] = useState(false);
@@ -51,18 +52,91 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
       setShowSizeColorModal(true);
     } else {
       // No sizes/colors, add directly to cart
-      addItem(product, 1);
-      triggerAnimation(product, button, 'pos', '[data-pos-cart]');
+      // Check inventory before adding
+      const currentCartItem = items.find(
+        (item) =>
+          item.product.id === product.id &&
+          !item.size &&
+          !item.color
+      );
+      const currentCartQuantity = currentCartItem ? currentCartItem.quantity : 0;
+      const availableStock = product.available_stock;
+      
+      if (availableStock !== undefined && currentCartQuantity + 1 > availableStock) {
+        alert(
+          `Only ${availableStock} ${availableStock === 1 ? 'item is' : 'items are'} available for this product. ` +
+          `${currentCartQuantity > 0 ? `You already have ${currentCartQuantity} in the cart. ` : ''}` +
+          `You cannot add more items.`
+        );
+        return;
+      }
+      
+      try {
+        const productForCart = {
+          ...product,
+          available_stock: availableStock,
+        };
+        addItem(productForCart, 1);
+        triggerAnimation(productForCart, button, 'pos', '[data-pos-cart]');
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(error.message);
+        } else {
+          alert('Failed to add item to cart. Please try again.');
+        }
+      }
     }
   };
 
   const handleSizeColorConfirm = (size?: string, color?: string) => {
     if (selectedProduct) {
-      addItem(selectedProduct, 1, size, color);
-      // Trigger animation - find the button that was clicked
-      const button = document.querySelector(`[data-product-id="${selectedProduct.id}"]`) as HTMLElement;
-      if (button) {
-        triggerAnimation(selectedProduct, button, 'pos', '[data-pos-cart]');
+      // Check inventory before adding
+      const currentCartItem = items.find(
+        (item) =>
+          item.product.id === selectedProduct.id &&
+          item.size === size &&
+          item.color === color
+      );
+      const currentCartQuantity = currentCartItem ? currentCartItem.quantity : 0;
+      
+      // Calculate available stock (consider size-specific stock if size is selected)
+      let stockLimit: number | undefined = selectedProduct.available_stock;
+      if (size && availableSizes.length > 0) {
+        const sizeOption = availableSizes.find((s) => s.size === size);
+        if (sizeOption && sizeOption.available !== undefined) {
+          stockLimit = sizeOption.available;
+        }
+      }
+      
+      if (stockLimit !== undefined && currentCartQuantity + 1 > stockLimit) {
+        alert(
+          `Only ${stockLimit} ${stockLimit === 1 ? 'item is' : 'items are'} available for this product. ` +
+          `${currentCartQuantity > 0 ? `You already have ${currentCartQuantity} in the cart. ` : ''}` +
+          `You cannot add more items.`
+        );
+        setShowSizeColorModal(false);
+        setSelectedProduct(null);
+        return;
+      }
+      
+      try {
+        const productForCart = {
+          ...selectedProduct,
+          available_stock: stockLimit,
+          sizes: availableSizes,
+        };
+        addItem(productForCart, 1, size, color);
+        // Trigger animation - find the button that was clicked
+        const button = document.querySelector(`[data-product-id="${selectedProduct.id}"]`) as HTMLElement;
+        if (button) {
+          triggerAnimation(productForCart, button, 'pos', '[data-pos-cart]');
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          alert(error.message);
+        } else {
+          alert('Failed to add item to cart. Please try again.');
+        }
       }
     }
     setShowSizeColorModal(false);

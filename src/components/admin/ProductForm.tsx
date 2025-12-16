@@ -35,6 +35,8 @@ export default function ProductForm({
   const [newColorName, setNewColorName] = useState("");
   const [newColorHex, setNewColorHex] = useState("#000000");
   const [showAddColorForm, setShowAddColorForm] = useState(false);
+  // Color stocks: Record<color, Record<size, quantity>> or Record<color, quantity>
+  const [colorStocks, setColorStocks] = useState<Record<string, Record<string, string> | string>>({});
 
   const [formData, setFormData] = useState({
     name: product?.name || "",
@@ -91,10 +93,39 @@ export default function ProductForm({
             .select("color")
             .eq("product_id", product.id);
 
+          // Fetch color-based inventory
+          const { data: colorInventory } = await supabase
+            .from("product_size_colors")
+            .select("color, size, stock_quantity")
+            .eq("product_id", product.id);
+
           // Set selected colors
           if (productColors && productColors.length > 0) {
             setSelectedColors(productColors.map((pc: any) => pc.color));
           }
+
+          // Build color_stocks object from fetched data
+          const colorStocksData: Record<string, Record<string, string> | string> = {};
+          if (colorInventory && colorInventory.length > 0) {
+            // Check if product has sizes (if any entry has a non-null size)
+            const hasSizes = colorInventory.some((ci: any) => ci.size !== null);
+            
+            if (hasSizes) {
+              // Build size+color matrix
+              colorInventory.forEach((ci: any) => {
+                if (!colorStocksData[ci.color]) {
+                  colorStocksData[ci.color] = {};
+                }
+                (colorStocksData[ci.color] as Record<string, string>)[ci.size || ''] = ci.stock_quantity.toString();
+              });
+            } else {
+              // Simple color-only quantities
+              colorInventory.forEach((ci: any) => {
+                colorStocksData[ci.color] = ci.stock_quantity.toString();
+              });
+            }
+          }
+          setColorStocks(colorStocksData);
 
           // Build size_stocks object from fetched data
           const sizeStocks: { S: string; M: string; L: string; XL: string; "2XL": string; "3XL": string; "4XL": string; "5XL": string } = {
@@ -348,6 +379,34 @@ export default function ProductForm({
 
       const hasSizeStocks = Object.keys(sizeStocks).length > 0;
 
+      // Prepare color stocks object
+      const colorStocksData: Record<string, Record<string, number> | number> = {};
+      const hasSizes = hasSizeStocks;
+      
+      Object.entries(colorStocks).forEach(([color, value]) => {
+        if (hasSizes && typeof value === 'object') {
+          // Size+color combinations
+          const sizeQuantities: Record<string, number> = {};
+          Object.entries(value).forEach(([size, qty]) => {
+            const numValue = parseInt(qty.toString()) || 0;
+            if (numValue > 0) {
+              sizeQuantities[size] = numValue;
+            }
+          });
+          if (Object.keys(sizeQuantities).length > 0) {
+            colorStocksData[color] = sizeQuantities;
+          }
+        } else if (!hasSizes && typeof value === 'string') {
+          // Color-only quantities
+          const numValue = parseInt(value) || 0;
+          if (numValue > 0) {
+            colorStocksData[color] = numValue;
+          }
+        }
+      });
+
+      const hasColorStocks = Object.keys(colorStocksData).length > 0;
+
       // Log what we're capturing
       console.log("📦 Product Form - Captured Data:", {
         name: formData.name,
@@ -410,6 +469,7 @@ export default function ProductForm({
         initial_stock: initialStockValue,
         size_stocks: hasSizeStocks ? sizeStocks : null,
         colors: selectedColors.length > 0 ? selectedColors : null,
+        color_stocks: hasColorStocks ? colorStocksData : null,
         images,
         flash_sale_start:
           formData.is_flash_sale && formData.flash_sale_start
@@ -456,6 +516,7 @@ export default function ProductForm({
         // Reset custom colors and form state
         setCustomColors([]);
         setSelectedColors([]);
+        setColorStocks({});
         setShowAddColorForm(false);
         setNewColorName("");
         setNewColorHex("#000000");
@@ -499,6 +560,7 @@ export default function ProductForm({
       });
       setImagePreviews([]);
       setSelectedColors([]);
+      setColorStocks({});
       setCustomColors([]);
       setShowAddColorForm(false);
       setNewColorName("");
@@ -1165,6 +1227,21 @@ export default function ProductForm({
                                 setCustomColors([...customColors, newColor]);
                                 // Immediately select the new color
                                 setSelectedColors([...selectedColors, colorName]);
+                                // Initialize color_stocks entry for this color
+                                const hasSizes = Object.keys(formData.size_stocks).some(
+                                  (size) => formData.size_stocks[size as keyof typeof formData.size_stocks] !== ""
+                                );
+                                if (hasSizes) {
+                                  setColorStocks({
+                                    ...colorStocks,
+                                    [colorName]: {},
+                                  });
+                                } else {
+                                  setColorStocks({
+                                    ...colorStocks,
+                                    [colorName]: "",
+                                  });
+                                }
                                 // Reset form
                                 setNewColorName("");
                                 setNewColorHex("#000000");
@@ -1209,10 +1286,29 @@ export default function ProductForm({
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedColors([...selectedColors, color.name]);
+                            // Initialize color_stocks entry for this color
+                            const hasSizes = Object.keys(formData.size_stocks).some(
+                              (size) => formData.size_stocks[size as keyof typeof formData.size_stocks] !== ""
+                            );
+                            if (hasSizes) {
+                              setColorStocks({
+                                ...colorStocks,
+                                [color.name]: {},
+                              });
+                            } else {
+                              setColorStocks({
+                                ...colorStocks,
+                                [color.name]: "",
+                              });
+                            }
                           } else {
                             setSelectedColors(
                               selectedColors.filter((c) => c !== color.name)
                             );
+                            // Remove color from color_stocks
+                            const newColorStocks = { ...colorStocks };
+                            delete newColorStocks[color.name];
+                            setColorStocks(newColorStocks);
                           }
                         }}
                         className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
@@ -1239,10 +1335,29 @@ export default function ProductForm({
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedColors([...selectedColors, color.name]);
+                            // Initialize color_stocks entry for this color
+                            const hasSizes = Object.keys(formData.size_stocks).some(
+                              (size) => formData.size_stocks[size as keyof typeof formData.size_stocks] !== ""
+                            );
+                            if (hasSizes) {
+                              setColorStocks({
+                                ...colorStocks,
+                                [color.name]: {},
+                              });
+                            } else {
+                              setColorStocks({
+                                ...colorStocks,
+                                [color.name]: "",
+                              });
+                            }
                           } else {
                             setSelectedColors(
                               selectedColors.filter((c) => c !== color.name)
                             );
+                            // Remove color from color_stocks
+                            const newColorStocks = { ...colorStocks };
+                            delete newColorStocks[color.name];
+                            setColorStocks(newColorStocks);
                           }
                         }}
                         className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
@@ -1264,6 +1379,101 @@ export default function ProductForm({
                   </p>
                 )}
               </div>
+
+              {/* Color Stock Quantities */}
+              {selectedColors.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 mt-4">
+                  <h4 className="text-md font-semibold text-gray-800 mb-3">
+                    Stock Quantities by Color
+                  </h4>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Specify the quantity available for each color. If the product has sizes, enter quantities for each size+color combination.
+                  </p>
+                  
+                  {(() => {
+                    const hasSizes = Object.keys(formData.size_stocks).some(
+                      (size) => formData.size_stocks[size as keyof typeof formData.size_stocks] !== ""
+                    );
+                    const sizes = hasSizes ? (["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const) : [];
+
+                    return (
+                      <div className="space-y-4">
+                        {selectedColors.map((colorName) => {
+                          const allColors = [...PRODUCT_COLORS, ...customColors];
+                          const colorInfo = allColors.find((c) => c.name === colorName);
+                          const colorHex = colorInfo?.hex || "#CCCCCC";
+
+                          return (
+                            <div key={colorName} className="bg-white rounded-lg p-4 border border-gray-200">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div
+                                  className="w-6 h-6 rounded-full border border-gray-300 shadow-sm"
+                                  style={{ backgroundColor: colorHex }}
+                                  title={colorName}
+                                />
+                                <span className="text-sm font-semibold text-gray-800">{colorName}</span>
+                              </div>
+
+                              {hasSizes ? (
+                                // Size+Color matrix
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+                                  {sizes.map((size) => {
+                                    const currentValue = 
+                                      (colorStocks[colorName] as Record<string, string>)?.[size] || "";
+                                    
+                                    return (
+                                      <div key={size}>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                                          {size}
+                                        </label>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={currentValue}
+                                          onChange={(e) => {
+                                            const newColorStocks = { ...colorStocks };
+                                            if (!newColorStocks[colorName]) {
+                                              newColorStocks[colorName] = {};
+                                            }
+                                            (newColorStocks[colorName] as Record<string, string>)[size] = e.target.value;
+                                            setColorStocks(newColorStocks);
+                                          }}
+                                          className="w-full px-2 py-1.5 text-xs border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                          placeholder="0"
+                                        />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                // Color-only quantity
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    Quantity
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={(colorStocks[colorName] as string) || ""}
+                                    onChange={(e) => {
+                                      setColorStocks({
+                                        ...colorStocks,
+                                        [colorName]: e.target.value,
+                                      });
+                                    }}
+                                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    placeholder="Enter quantity"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
