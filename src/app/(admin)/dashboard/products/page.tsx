@@ -245,15 +245,29 @@ export default function ProductsPage() {
   }, [products]);
 
   // Filter products based on search, category, status, and color
+  const LOW_STOCK_THRESHOLD = 5;
+
+  const getStockStatus = (stock?: number) => {
+    if (stock === undefined || stock === null) return 'unknown';
+    if (stock === 0) return 'out';
+    if (stock <= LOW_STOCK_THRESHOLD) return 'low';
+    return 'in';
+  };
+
   const filteredProducts = useMemo(() => {
-    return products.filter((product: any) => {
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategoryFilter === 'all' || product.category === selectedCategoryFilter;
-      const matchesStatus = selectedStatus === 'all' || product.status === selectedStatus;
-      const matchesColor = selectedColorFilter === 'all' || 
-        (product.colors && Array.isArray(product.colors) && product.colors.includes(selectedColorFilter));
-      return matchesSearch && matchesCategory && matchesStatus && matchesColor;
-    });
+    return products
+      .filter((product: any) => {
+        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategoryFilter === 'all' || product.category === selectedCategoryFilter;
+        const matchesStatus = selectedStatus === 'all' || product.status === selectedStatus;
+        const matchesColor = selectedColorFilter === 'all' || 
+          (product.colors && Array.isArray(product.colors) && product.colors.includes(selectedColorFilter));
+        return matchesSearch && matchesCategory && matchesStatus && matchesColor;
+      })
+      .map((product: any) => {
+        const stock = product.stock ?? product.available_stock ?? product.stock_quantity;
+        return { ...product, stock, stock_status: getStockStatus(stock) };
+      });
   }, [searchQuery, selectedCategoryFilter, selectedStatus, selectedColorFilter, products]);
 
   // Function to copy product link to clipboard
@@ -515,10 +529,13 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4 text-center">
                       {product.stock !== undefined ? (
-                        <span className={`font-semibold ${product.stock === 0 ? 'text-red-600' :
-                          product.stock < 10 ? 'text-yellow-600' :
-                            'text-green-600'
-                          }`}>
+                        <span className={`font-semibold ${
+                          product.stock_status === 'out'
+                            ? 'text-red-600'
+                            : product.stock_status === 'low'
+                              ? 'text-yellow-600'
+                              : 'text-green-600'
+                        }`}>
                           {product.stock}
                         </span>
                       ) : (
