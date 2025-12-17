@@ -80,17 +80,17 @@ export async function GET(request: NextRequest) {
       // Filter out products with 0 stock - only show products with stock > 0
       const productsWithStock = products
         .map((product) => {
-          const stock = inventoryMap.get(product.id);
-          return {
-            ...product,
-            available_stock: stock !== undefined ? stock : undefined,
-          };
+        const stock = inventoryMap.get(product.id);
+        return {
+          ...product,
+          available_stock: stock !== undefined ? stock : undefined,
+        };
         })
         .filter((product) => {
           // Filter out products with 0 stock
           // Keep products with undefined stock (inventory not set up yet) or stock > 0
           return product.available_stock === undefined || product.available_stock > 0;
-        });
+      });
 
       return NextResponse.json({
         products: productsWithStock,

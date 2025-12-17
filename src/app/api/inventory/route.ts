@@ -11,13 +11,13 @@ export async function GET(request: NextRequest) {
         const { data: products, error: productsError } = await supabase
             .from('products')
             .select(`
-                id,
-                name,
-                category_id,
-                categories (
-                    name
-                )
-            `)
+          id,
+          name,
+          category_id,
+          categories (
+            name
+        )
+      `)
             .order('name', { ascending: true });
 
         if (productsError) {

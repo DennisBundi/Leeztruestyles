@@ -104,6 +104,45 @@ export class InventoryService {
     const supabase = await createClient();
     const adminClient = createAdminClient();
 
+    // Helper: also decrement general inventory if it exists, to keep display in sync
+    const decrementGeneralInventory = async () => {
+      const { data: inventoryData, error: inventoryError } = await supabase
+        .from('inventory')
+        .select('stock_quantity, reserved_quantity')
+        .eq('product_id', productId)
+        .single();
+
+      if (inventoryError || !inventoryData) {
+        console.log(`General inventory not found or error for product ${productId}:`, inventoryError?.message);
+        return false;
+      }
+
+      const newStock = Math.max(0, (inventoryData.stock_quantity || 0) - quantity);
+      const newReserved = Math.max(0, (inventoryData.reserved_quantity || 0) - quantity);
+
+      const { data: updateResult, error: updateError } = await adminClient
+        .from('inventory')
+        .update({
+          stock_quantity: newStock,
+          reserved_quantity: newReserved,
+          last_updated: new Date().toISOString(),
+        })
+        .eq('product_id', productId)
+        .select();
+
+      if (updateError || !updateResult || updateResult.length === 0) {
+        console.error('Failed to decrement general inventory after size/color deduction:', updateError);
+        return false;
+      }
+
+      console.log('General inventory synced after size/color deduction', {
+        productId,
+        old_stock: inventoryData.stock_quantity,
+        new_stock: newStock,
+      });
+      return true;
+    };
+
     // Priority 1: If both size and color are specified, check product_size_colors
     if (size && color) {
       const { data: colorSizeRecord, error: colorSizeError } = await supabase
@@ -130,15 +169,96 @@ export class InventoryService {
 
           if (!updateError) {
             console.log(`Successfully deducted ${quantity} from size+color inventory (${size}, ${color})`);
+            // Keep general inventory in sync if it exists
+            await decrementGeneralInventory();
             return true;
           } else {
             console.error('Error deducting from size+color inventory:', updateError);
+            // Fall through to try fallback sources
           }
         } else {
           console.error(`Insufficient stock in size+color inventory. Available: ${availableStock}, Requested: ${quantity}`);
-          return false;
+          // Fall through to try fallback sources
+        }
+      } else {
+        // Size+color combination doesn't exist, try fallback sources
+        console.log(`Size+color combination (${size}, ${color}) not found, trying fallback sources...`);
+      }
+      
+      // Fallback 1: Try size-only inventory
+      const { data: sizeRecord } = await supabase
+        .from('product_sizes')
+        .select('id, stock_quantity, reserved_quantity')
+        .eq('product_id', productId)
+        .eq('size', size)
+        .single();
+      
+      if (sizeRecord) {
+        const availableStock = Math.max(0, (sizeRecord.stock_quantity || 0) - (sizeRecord.reserved_quantity || 0));
+        
+        if (availableStock >= quantity) {
+          const { error: updateError } = await adminClient
+            .from('product_sizes')
+            .update({
+              stock_quantity: (sizeRecord.stock_quantity || 0) - quantity,
+              reserved_quantity: Math.max(0, (sizeRecord.reserved_quantity || 0) - quantity),
+              last_updated: new Date().toISOString(),
+            })
+            .eq('id', sizeRecord.id)
+            .gte('stock_quantity', quantity);
+
+          if (!updateError) {
+            console.log(`Successfully deducted ${quantity} from size-only inventory (${size}) as fallback`);
+            // Keep general inventory in sync if it exists
+            await decrementGeneralInventory();
+            return true;
+          } else {
+            console.error('Error deducting from size-only inventory:', updateError);
+          }
+        } else {
+          console.error(`Insufficient stock in size-only inventory. Available: ${availableStock}, Requested: ${quantity}`);
         }
       }
+      
+      // Fallback 2: Try color-only inventory
+      const { data: colorRecord } = await supabase
+        .from('product_size_colors')
+        .select('id, stock_quantity, reserved_quantity')
+        .eq('product_id', productId)
+        .eq('color', color)
+        .is('size', null)
+        .single();
+      
+      if (colorRecord) {
+        const availableStock = Math.max(0, (colorRecord.stock_quantity || 0) - (colorRecord.reserved_quantity || 0));
+        
+        if (availableStock >= quantity) {
+          const { error: updateError } = await adminClient
+            .from('product_size_colors')
+            .update({
+              stock_quantity: (colorRecord.stock_quantity || 0) - quantity,
+              reserved_quantity: Math.max(0, (colorRecord.reserved_quantity || 0) - quantity),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', colorRecord.id)
+            .gte('stock_quantity', quantity);
+
+          if (!updateError) {
+            console.log(`Successfully deducted ${quantity} from color-only inventory (${color}) as fallback`);
+            // Keep general inventory in sync if it exists
+            await decrementGeneralInventory();
+            return true;
+          } else {
+            console.error('Error deducting from color-only inventory:', updateError);
+          }
+        } else {
+          console.error(`Insufficient stock in color-only inventory. Available: ${availableStock}, Requested: ${quantity}`);
+        }
+      }
+      
+      // Fall through to general inventory (Priority 4) - don't return false here
+      // Let it continue to try general inventory
+      console.log(`All size+color fallbacks failed, trying general inventory...`);
     }
 
     // Priority 2: If only color is specified (no size), check product_size_colors with NULL size
@@ -167,6 +287,8 @@ export class InventoryService {
 
           if (!updateError) {
             console.log(`Successfully deducted ${quantity} from color-only inventory (${color})`);
+            // Keep general inventory in sync if it exists
+            await decrementGeneralInventory();
             return true;
           } else {
             console.error('Error deducting from color-only inventory:', updateError);
@@ -216,18 +338,25 @@ export class InventoryService {
 
     // Priority 4: Fall back to general inventory (existing logic)
     // First, check if we have general inventory
+    console.log(`Checking general inventory for product ${productId}...`);
     const { data: inventoryData, error: inventoryCheckError } = await supabase
       .from('inventory')
       .select('stock_quantity, reserved_quantity')
       .eq('product_id', productId)
       .single();
 
+    if (inventoryCheckError) {
+      console.log(`General inventory check error (may not exist):`, inventoryCheckError.message);
+    }
+
     // If general inventory exists and has stock, try to deduct from it
     if (!inventoryCheckError && inventoryData) {
       const availableGeneralStock = Math.max(0, (inventoryData.stock_quantity || 0) - (inventoryData.reserved_quantity || 0));
+      console.log(`General inventory found: stock=${inventoryData.stock_quantity}, reserved=${inventoryData.reserved_quantity}, available=${availableGeneralStock}, requested=${quantity}`);
       
       if (availableGeneralStock >= quantity) {
         // Try to deduct from general inventory using the database function
+        console.log(`Attempting to deduct ${quantity} from general inventory using RPC function...`);
         const { data: generalResult, error: generalError } = await supabase.rpc('deduct_inventory', {
           p_product_id: productId,
           p_quantity: quantity,
@@ -237,29 +366,45 @@ export class InventoryService {
           console.error('Error calling deduct_inventory function:', generalError);
           // Fall through to try direct update
         } else if (generalResult) {
-          console.log('Successfully deducted from general inventory');
+          console.log('Successfully deducted from general inventory via RPC function');
           return true;
+        } else {
+          console.log('RPC function returned false/null, trying direct update...');
         }
 
         // If function failed, try direct update as fallback using admin client to bypass RLS
+        console.log(`Attempting direct update of general inventory...`);
+        const newStockQuantity = Math.max(0, (inventoryData.stock_quantity || 0) - quantity);
+        const newReservedQuantity = Math.max(0, (inventoryData.reserved_quantity || 0) - quantity);
+        console.log(`Updating inventory: ${inventoryData.stock_quantity} -> ${newStockQuantity}, reserved: ${inventoryData.reserved_quantity} -> ${newReservedQuantity}`);
+        
         const adminClient = createAdminClient();
-        const { error: directUpdateError } = await adminClient
+        const { data: updateResult, error: directUpdateError } = await adminClient
           .from('inventory')
           .update({
-            stock_quantity: Math.max(0, (inventoryData.stock_quantity || 0) - quantity),
-            reserved_quantity: Math.max(0, (inventoryData.reserved_quantity || 0) - quantity),
+            stock_quantity: newStockQuantity,
+            reserved_quantity: newReservedQuantity,
             last_updated: new Date().toISOString(),
           })
           .eq('product_id', productId)
-          .gte('stock_quantity', quantity); // Only update if enough stock
+          .select();
 
-        if (!directUpdateError) {
-          console.log('Successfully deducted from general inventory (direct update with admin client)');
+        if (!directUpdateError && updateResult && updateResult.length > 0) {
+          console.log('Successfully deducted from general inventory (direct update with admin client)', {
+            updated_record: updateResult[0],
+            old_stock: inventoryData.stock_quantity,
+            new_stock: newStockQuantity
+          });
           return true;
         } else {
-          console.error('Direct update failed:', directUpdateError);
+          console.error('Direct update failed:', directUpdateError, { updateResult });
+          return false;
         }
+      } else {
+        console.error(`Insufficient stock in general inventory. Available: ${availableGeneralStock}, Requested: ${quantity}`);
       }
+    } else {
+      console.log(`No general inventory found for product ${productId}`);
     }
 
     // If general inventory doesn't exist or doesn't have enough stock,

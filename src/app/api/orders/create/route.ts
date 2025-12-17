@@ -3,67 +3,73 @@ import { createClient } from "@/lib/supabase/server";
 import { getEmployee, getUserRole } from "@/lib/auth/roles";
 import { z } from "zod";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-const createOrderSchema = z.object({
-  items: z.array(
-    z.union([
-      // Existing product with product_id
-      z.object({
-        product_id: z.string().uuid(),
-        quantity: z.number().positive().int(),
-        price: z.number().positive(),
-        size: z.string().optional(), // Optional size (S, M, L, XL, 2XL, 3XL, 4XL, 5XL)
-        color: z.string().optional(), // Optional color
-      }),
-      // Custom product with product_data
-      z.object({
-        product_data: z.object({
-          name: z.string().min(1),
+const createOrderSchema = z
+  .object({
+    items: z.array(
+      z.union([
+        // Existing product with product_id
+        z.object({
+          product_id: z.string().uuid(),
+          quantity: z.number().positive().int(),
           price: z.number().positive(),
-          size: z.string().optional(),
-          category_id: z.string().uuid().optional().nullable(),
-          description: z.string().optional().nullable(),
+          size: z.string().optional(), // Optional size (S, M, L, XL, 2XL, 3XL, 4XL, 5XL)
+          color: z.string().optional(), // Optional color
         }),
-        quantity: z.number().positive().int(),
-        price: z.number().positive(),
-      }),
-    ])
-  ),
-  customer_info: z.object({
-    name: z.string().min(1),
-    email: z.string().email(),
-    phone: z.string().min(1),
-    address: z.string().min(1),
-  }),
-  sale_type: z.enum(["online", "pos"]).default("online"),
-  seller_id: z.string().uuid().optional(), // Optional seller_id for POS orders
-  social_platform: z.enum(["tiktok", "instagram", "whatsapp", "walkin"]).optional(), // Required for POS orders
-}).refine(
-  (data) => {
-    // If sale_type is "pos", social_platform is required
-    if (data.sale_type === "pos") {
-      return data.social_platform !== undefined && data.social_platform !== null;
+        // Custom product with product_data
+        z.object({
+          product_data: z.object({
+            name: z.string().min(1),
+            price: z.number().positive(),
+            size: z.string().optional(),
+            category_id: z.string().uuid().optional().nullable(),
+            description: z.string().optional().nullable(),
+          }),
+          quantity: z.number().positive().int(),
+          price: z.number().positive(),
+        }),
+      ])
+    ),
+    customer_info: z.object({
+      name: z.string().min(1),
+      email: z.string().email(),
+      phone: z.string().min(1),
+      address: z.string().min(1),
+    }),
+    sale_type: z.enum(["online", "pos"]).default("online"),
+    seller_id: z.string().uuid().optional(), // Optional seller_id for POS orders
+    social_platform: z
+      .enum(["tiktok", "instagram", "whatsapp", "walkin"])
+      .optional(), // Required for POS orders
+  })
+  .refine(
+    (data) => {
+      // If sale_type is "pos", social_platform is required
+      if (data.sale_type === "pos") {
+        return (
+          data.social_platform !== undefined && data.social_platform !== null
+        );
+      }
+      return true; // Optional for online orders
+    },
+    {
+      message: "Social platform is required for POS sales",
+      path: ["social_platform"],
     }
-    return true; // Optional for online orders
-  },
-  {
-    message: "Social platform is required for POS sales",
-    path: ["social_platform"],
-  }
-);
+  );
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // Log the request for debugging
-    console.log('Order creation request:', {
+    console.log("Order creation request:", {
       itemsCount: body.items?.length,
       saleType: body.sale_type,
       hasCustomerInfo: !!body.customer_info,
     });
-    
+
     const validated = createOrderSchema.parse(body);
 
     const supabase = await createClient();
@@ -127,10 +133,11 @@ export async function POST(request: NextRequest) {
           images: [],
         }));
 
-        const { data: createdProducts, error: productsError } = await adminSupabase
-          .from("products")
-          .insert(productsToInsert)
-          .select();
+        const { data: createdProducts, error: productsError } =
+          await adminSupabase
+            .from("products")
+            .insert(productsToInsert)
+            .select();
 
         if (productsError || !createdProducts) {
           console.error("Error creating custom products:", productsError);
@@ -237,12 +244,12 @@ export async function POST(request: NextRequest) {
       // If seller_id is provided in the request, use it
       if (validated.seller_id) {
         sellerId = validated.seller_id;
-        console.log('Using seller_id from request:', sellerId);
+        console.log("Using seller_id from request:", sellerId);
         // Get the employee record to check their role
         const { data: employeeData } = await supabase
-          .from('employees')
-          .select('id, role, user_id')
-          .eq('id', sellerId)
+          .from("employees")
+          .select("id, role, user_id")
+          .eq("id", sellerId)
           .single();
         if (employeeData) {
           sellerEmployee = employeeData;
@@ -253,28 +260,43 @@ export async function POST(request: NextRequest) {
         if (employee) {
           sellerId = employee.id;
           sellerEmployee = employee;
-          console.log('Using seller_id from employee record:', sellerId);
+          console.log("Using seller_id from employee record:", sellerId);
         } else {
-          console.warn('POS order but no employee record found for user:', user.id);
+          console.warn(
+            "POS order but no employee record found for user:",
+            user.id
+          );
         }
       }
     }
 
     // Check if the seller (employee) is an admin - admins should not receive commission
     // We check the seller's role, not the user making the request
-    const isSellerAdmin = sellerEmployee?.role === 'admin';
+    const isSellerAdmin = sellerEmployee?.role === "admin";
 
     // Calculate commission for POS sales (3% of total)
     // Only apply commission if it's a POS sale, has a seller_id, and the seller is NOT an admin
     const commissionRate = 0.03; // 3%
-    const commission = validated.sale_type === "pos" && sellerId && !isSellerAdmin
-      ? total * commissionRate 
-      : 0;
-    
+    const commission =
+      validated.sale_type === "pos" && sellerId && !isSellerAdmin
+        ? total * commissionRate
+        : 0;
+
     if (isSellerAdmin && validated.sale_type === "pos") {
-      console.log('Admin seller detected (seller_id:', sellerId, ') - commission will not be applied');
+      console.log(
+        "Admin seller detected (seller_id:",
+        sellerId,
+        ") - commission will not be applied"
+      );
     } else if (validated.sale_type === "pos" && sellerId) {
-      console.log('Non-admin seller (seller_id:', sellerId, ', role:', sellerEmployee?.role, ') - commission will be applied:', commission);
+      console.log(
+        "Non-admin seller (seller_id:",
+        sellerId,
+        ", role:",
+        sellerEmployee?.role,
+        ") - commission will be applied:",
+        commission
+      );
     }
 
     // Create order with user_id and seller_id (if POS)
@@ -294,9 +316,18 @@ export async function POST(request: NextRequest) {
     // Set seller_id for POS orders
     if (sellerId) {
       orderData.seller_id = sellerId;
-      console.log('Creating order with seller_id:', sellerId, 'commission:', commission);
+      console.log(
+        "Creating order with seller_id:",
+        sellerId,
+        "commission:",
+        commission
+      );
     } else {
-      console.log('Creating order without seller_id (sale_type:', validated.sale_type, ')');
+      console.log(
+        "Creating order without seller_id (sale_type:",
+        validated.sale_type,
+        ")"
+      );
     }
 
     // Try to insert with commission first, fallback without if column doesn't exist
@@ -311,16 +342,26 @@ export async function POST(request: NextRequest) {
         .insert(orderDataWithCommission)
         .select()
         .single();
-      
+
       order = result.data;
       orderError = result.error;
 
       // If error is about missing commission or social_platform column, retry without it
-      if (orderError && orderError.message && 
-          (orderError.message.includes("commission") || orderError.message.includes("social_platform"))) {
-        console.warn("⚠️ Commission or social_platform column not found. Retrying without it. Please run migration: add_social_platform_to_orders.sql");
+      if (
+        orderError &&
+        orderError.message &&
+        (orderError.message.includes("commission") ||
+          orderError.message.includes("social_platform"))
+      ) {
+        console.warn(
+          "⚠️ Commission or social_platform column not found. Retrying without it. Please run migration: add_social_platform_to_orders.sql"
+        );
         // Remove commission and social_platform for retry
-        const { commission: _, social_platform: __, ...orderDataWithoutOptional } = orderDataWithCommission;
+        const {
+          commission: _,
+          social_platform: __,
+          ...orderDataWithoutOptional
+        } = orderDataWithCommission;
         const retryResult = await supabase
           .from("orders")
           .insert(orderDataWithoutOptional)
@@ -340,9 +381,16 @@ export async function POST(request: NextRequest) {
       orderError = result.error;
 
       // If error is about missing social_platform column, retry without it
-      if (orderError && orderError.message && orderError.message.includes("social_platform")) {
-        console.warn("⚠️ Social platform column not found. Retrying without it. Please run migration: add_social_platform_to_orders.sql");
-        const { social_platform: _, ...orderDataWithoutSocialPlatform } = orderData;
+      if (
+        orderError &&
+        orderError.message &&
+        orderError.message.includes("social_platform")
+      ) {
+        console.warn(
+          "⚠️ Social platform column not found. Retrying without it. Please run migration: add_social_platform_to_orders.sql"
+        );
+        const { social_platform: _, ...orderDataWithoutSocialPlatform } =
+          orderData;
         const retryResult = await supabase
           .from("orders")
           .insert(orderDataWithoutSocialPlatform)
@@ -362,18 +410,66 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order items
-    const orderItems = allOrderItems.map((item) => ({
-      order_id: order.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      price: item.price,
-      size: item.size || null, // Include size if provided
-      color: item.color || null, // Include color if provided
-    }));
+    // Build order items object - conditionally include color if it might exist
+    const orderItems = allOrderItems.map((item) => {
+      const orderItem: any = {
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.price,
+      };
 
-    const { error: itemsError } = await supabase
-      .from("order_items")
-      .insert(orderItems);
+      // Include size if provided
+      if (item.size !== undefined && item.size !== null) {
+        orderItem.size = item.size;
+      }
+
+      // Include color if provided (only if column exists - will be handled by try/catch)
+      if (item.color !== undefined && item.color !== null) {
+        orderItem.color = item.color;
+      }
+
+      return orderItem;
+    });
+
+    // Try to insert order items
+    // If color column doesn't exist, remove it and retry
+    let itemsError: any = null;
+
+    const insertResult = await supabase.from("order_items").insert(orderItems);
+    itemsError = insertResult.error;
+
+    // If error is about missing color column, retry without it
+    if (
+      itemsError &&
+      itemsError.message &&
+      (itemsError.message.includes("color") ||
+        itemsError.message.includes("Could not find the 'color' column"))
+    ) {
+      console.warn(
+        "⚠️ Color column not found in order_items table. Retrying without color field."
+      );
+      console.warn(
+        "⚠️ Please run the migration: supabase/migrations/add_color_to_order_items.sql"
+      );
+
+      // Remove color from order items and retry
+      const orderItemsWithoutColor = orderItems.map((item: any) => {
+        const { color, ...itemWithoutColor } = item;
+        return itemWithoutColor;
+      });
+
+      const retryResult = await supabase
+        .from("order_items")
+        .insert(orderItemsWithoutColor);
+      itemsError = retryResult.error;
+
+      if (!itemsError) {
+        console.log(
+          "✅ Order items created successfully (without color field)"
+        );
+      }
+    }
 
     if (itemsError) {
       console.error("Order items creation error:", itemsError);
@@ -399,16 +495,16 @@ export async function POST(request: NextRequest) {
       console.error("Validation error:", error.errors);
       // Format validation errors for better readability
       const formattedErrors = error.errors.map((err) => ({
-        field: err.path.join('.'),
+        field: err.path.join("."),
         message: err.message,
         code: err.code,
       }));
-      
+
       return NextResponse.json(
-        { 
-          error: "Invalid request data", 
+        {
+          error: "Invalid request data",
           details: formattedErrors,
-          rawErrors: error.errors 
+          rawErrors: error.errors,
         },
         { status: 400 }
       );
@@ -416,7 +512,10 @@ export async function POST(request: NextRequest) {
 
     console.error("Order creation error:", error);
     return NextResponse.json(
-      { error: "Failed to create order", details: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: "Failed to create order",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }

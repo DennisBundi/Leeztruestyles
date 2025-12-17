@@ -44,12 +44,8 @@ export default function ProductSizeColorModal({
       const response = await fetch(`/api/products/${product.id}/sizes`);
       if (response.ok) {
         const data = await response.json();
-        // Filter to only show sizes with available stock
-        const sizesWithStock = (data.sizes || []).filter(
-          (s: any) => s.available > 0
-        );
-        // If no sizes with stock, show all sizes (product might not have size-based inventory)
-        // This will be handled by the parent component
+        // Note: We use all sizes passed from parent component (availableSizes prop)
+        // This function is kept for potential future use but sizes come from parent
       }
     } catch (error) {
       console.error("Error fetching product sizes:", error);
@@ -145,11 +141,11 @@ export default function ProductSizeColorModal({
                     }`}
                   >
                     {sizeOption.size}
-                    {isAvailable && (
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        ({sizeOption.available})
-                      </div>
-                    )}
+                    <div className={`text-xs mt-0.5 ${
+                      isAvailable ? "text-gray-500" : "text-gray-400"
+                    }`}>
+                      ({sizeOption.available})
+                    </div>
                   </button>
                 );
               })}

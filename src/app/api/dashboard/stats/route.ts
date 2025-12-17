@@ -517,12 +517,13 @@ export async function GET(request: NextRequest) {
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999);
 
-    // Fetch today's orders
+    // Fetch today's orders - include sale_type for debugging
     const { data: todayOrders, error: todayOrdersError } = await adminClient
       .from('orders')
-      .select('id, total_amount, created_at, status')
+      .select('id, total_amount, created_at, status, sale_type')
       .gte('created_at', todayStart.toISOString())
-      .lte('created_at', todayEnd.toISOString());
+      .lte('created_at', todayEnd.toISOString())
+      .order('created_at', { ascending: false });
 
     if (todayOrdersError) {
       console.error('Error fetching today\'s orders:', todayOrdersError);
@@ -536,18 +537,38 @@ export async function GET(request: NextRequest) {
     // Count today's orders
     const todayOrdersCount = todayOrders?.length || 0;
 
-    // Calculate today's profits from completed orders
+    // Calculate today's profits - include all orders except cancelled/refunded
+    // For POS sales, orders might be pending initially but should still count as profit
     let todayProfits = 0;
-    const completedTodayOrders = (todayOrders || []).filter((order: any) => order.status === 'completed');
+    const eligibleTodayOrders = (todayOrders || []).filter((order: any) => 
+      order.status !== 'cancelled' && order.status !== 'refunded'
+    );
     
-    if (completedTodayOrders.length > 0) {
-      const completedOrderIds = completedTodayOrders.map((order: any) => order.id);
+    // Log all today's orders for debugging
+    console.log('Today\'s orders breakdown:', {
+      total: todayOrders?.length || 0,
+      byStatus: (todayOrders || []).reduce((acc: any, order: any) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+      }, {}),
+      eligible: eligibleTodayOrders.length,
+      allOrders: (todayOrders || []).map((o: any) => ({
+        id: o.id,
+        status: o.status,
+        amount: o.total_amount,
+        created_at: o.created_at,
+        sale_type: o.sale_type,
+      })),
+    });
+    
+    if (eligibleTodayOrders.length > 0) {
+      const eligibleOrderIds = eligibleTodayOrders.map((order: any) => order.id);
       
-      // Fetch order items for today's completed orders
+      // Fetch order items for today's eligible orders
       const { data: todayOrderItems, error: orderItemsError } = await adminClient
         .from('order_items')
-        .select('product_id, quantity, price')
-        .in('order_id', completedOrderIds);
+        .select('product_id, quantity, price, order_id')
+        .in('order_id', eligibleOrderIds);
       
       if (orderItemsError) {
         console.error('Error fetching today\'s order items:', orderItemsError);
@@ -578,33 +599,148 @@ export async function GET(request: NextRequest) {
           }
         }
         
+        // Track items that are skipped and why
+        let skippedItems = {
+          noProductId: 0,
+          noBuyingPrice: 0,
+          invalidPrice: 0,
+          invalidQuantity: 0,
+        };
+        
         // Calculate profit for each order item
         todayOrderItems.forEach((item: any) => {
-          // Skip custom products (no product_id) or items without buying_price
+          // Skip custom products (no product_id)
           if (!item.product_id) {
+            skippedItems.noProductId++;
             return; // Custom product, skip
           }
           
           const buyingPrice = productsMap.get(item.product_id);
           if (!buyingPrice || buyingPrice <= 0) {
+            skippedItems.noBuyingPrice++;
             return; // No buying price, skip (0 profit)
           }
           
           const sellingPrice = parseFloat(item.price || 0);
           const quantity = parseInt(item.quantity || 0);
           
-          if (sellingPrice > 0 && quantity > 0) {
-            const profitPerItem = sellingPrice - buyingPrice;
-            const totalProfit = profitPerItem * quantity;
-            todayProfits += totalProfit;
+          if (sellingPrice <= 0) {
+            skippedItems.invalidPrice++;
+            return;
           }
+          
+          if (quantity <= 0) {
+            skippedItems.invalidQuantity++;
+            return;
+          }
+          
+          const profitPerItem = sellingPrice - buyingPrice;
+          const totalProfit = profitPerItem * quantity;
+          todayProfits += totalProfit;
         });
         
-        console.log('Today\'s profits calculation:', {
-          completedOrders: completedTodayOrders.length,
+        // Build detailed profit breakdown
+        const profitBreakdown = eligibleTodayOrders.map((order: any) => {
+          const orderItems = todayOrderItems.filter((item: any) => item.order_id === order.id);
+          const orderProfit = orderItems.reduce((sum: number, item: any) => {
+            if (!item.product_id) return sum;
+            const buyingPrice = productsMap.get(item.product_id);
+            if (!buyingPrice || buyingPrice <= 0) return sum;
+            const sellingPrice = parseFloat(item.price || 0);
+            const quantity = parseInt(item.quantity || 0);
+            if (sellingPrice > 0 && quantity > 0) {
+              return sum + (sellingPrice - buyingPrice) * quantity;
+            }
+            return sum;
+          }, 0);
+          
+          const orderItemsDetails = orderItems.map((item: any) => {
+            const buyingPrice = productsMap.get(item.product_id);
+            return {
+              product_id: item.product_id,
+              buying_price: buyingPrice || 'N/A',
+              selling_price: item.price,
+              quantity: item.quantity,
+              profit: buyingPrice && buyingPrice > 0 
+                ? (parseFloat(item.price || 0) - buyingPrice) * parseInt(item.quantity || 0)
+                : 'N/A (no buying price)',
+            };
+          });
+          
+          return {
+            orderId: order.id,
+            status: order.status,
+            sale_type: order.sale_type,
+            amount: order.total_amount,
+            profit: orderProfit,
+            itemsCount: orderItems.length,
+            items: orderItemsDetails,
+          };
+        });
+        
+        console.log('Today\'s profits calculation - DETAILED:', {
+          totalTodayOrders: todayOrders?.length || 0,
+          eligibleOrders: eligibleTodayOrders.length,
           orderItems: todayOrderItems.length,
+          uniqueProducts: productIds.length,
           productsWithBuyingPrice: productsMap.size,
+          productsWithoutBuyingPrice: productIds.length - productsMap.size,
+          skippedItems,
           todayProfits,
+          profitBreakdown,
+          productsMap: Array.from(productsMap.entries()).map(([id, price]) => ({ id, buying_price: price })),
+        });
+        
+        // If profit is 0 but we have orders, log detailed warning
+        if (todayProfits === 0 && eligibleTodayOrders.length > 0 && todayOrderItems.length > 0) {
+          console.warn('⚠️ WARNING: Profit is 0 but orders and items exist!', {
+            reason: skippedItems.noBuyingPrice > 0 
+              ? `Products are missing buying_price. ${skippedItems.noBuyingPrice} items skipped.`
+              : skippedItems.noProductId > 0
+              ? `Custom products (no product_id) cannot calculate profit. ${skippedItems.noProductId} items skipped.`
+              : 'Unknown reason',
+            orders: eligibleTodayOrders.map((order: any) => ({
+              id: order.id,
+              status: order.status,
+              sale_type: order.sale_type,
+              total_amount: order.total_amount,
+            })),
+            orderItemsSample: todayOrderItems.slice(0, 5).map((item: any) => ({
+              order_id: item.order_id,
+              product_id: item.product_id || 'CUSTOM (no product_id)',
+              quantity: item.quantity,
+              price: item.price,
+              hasBuyingPrice: item.product_id ? productsMap.has(item.product_id) : false,
+              buyingPrice: item.product_id ? productsMap.get(item.product_id) : null,
+            })),
+            action: 'Please set buying_price for products in the database to calculate profits',
+          });
+        }
+      } else {
+        console.log('Today\'s profits calculation: No order items found for eligible orders', {
+          eligibleOrderIds,
+          orderItemsError: orderItemsError?.message,
+        });
+      }
+    } else {
+      console.log('Today\'s profits calculation: No eligible orders found', {
+        totalTodayOrders: todayOrders?.length || 0,
+        allStatuses: ordersByStatus,
+        message: 'Only orders with status other than "cancelled" or "refunded" are included',
+      });
+      
+      // If there are orders but none are eligible, log them for debugging
+      if (todayOrders && todayOrders.length > 0) {
+        console.warn('⚠️ Orders found but not eligible for profit calculation:', {
+          orders: todayOrders.map((o: any) => ({
+            id: o.id,
+            status: o.status,
+            amount: o.total_amount,
+            created_at: o.created_at,
+            note: o.status === 'pending' ? 'Pending orders are excluded. POS orders should be "completed".' : 
+                  o.status === 'cancelled' ? 'Cancelled orders are excluded.' :
+                  o.status === 'refunded' ? 'Refunded orders are excluded.' : 'Unknown status',
+          })),
         });
       }
     }

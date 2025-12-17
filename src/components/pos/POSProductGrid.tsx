@@ -30,16 +30,15 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
     // Get product colors first
     const productColors = (product as any).colors || [];
 
-    // Fetch available sizes for the product
-    let sizesWithStock: Array<{ size: string; available: number }> = [];
+    // Fetch all sizes for the product (including those with 0 stock)
+    let allSizes: Array<{ size: string; available: number }> = [];
     try {
       const response = await fetch(`/api/products/${product.id}/sizes`);
       if (response.ok) {
         const data = await response.json();
-        sizesWithStock = (data.sizes || []).filter(
-          (s: any) => s.available > 0
-        );
-        setAvailableSizes(sizesWithStock);
+        // Include all sizes, even those with 0 stock
+        allSizes = data.sizes || [];
+        setAvailableSizes(allSizes);
       }
     } catch (error) {
       console.error("Error fetching product sizes:", error);
@@ -47,7 +46,7 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
     }
 
     // If product has sizes or colors, show modal; otherwise add directly
-    if (sizesWithStock.length > 0 || productColors.length > 0) {
+    if (allSizes.length > 0 || productColors.length > 0) {
       setSelectedProduct(product);
       setShowSizeColorModal(true);
     } else {

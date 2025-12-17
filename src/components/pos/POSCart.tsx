@@ -232,6 +232,11 @@ export default function POSCart({
         status: "completed", // All POS payments are completed immediately at physical location
       };
 
+      // Include social platform if selected
+      if (socialPlatform && socialPlatform.trim() !== "") {
+        updateData.social_platform = socialPlatform;
+      }
+
       // Only include seller_id if employeeId is provided and is a valid UUID
       if (
         employeeId &&
@@ -284,6 +289,7 @@ export default function POSCart({
                 quantity: item.quantity,
                 order_id,
                 size: item.size, // Include size if specified
+                color: item.color, // Include color if specified
               }),
             });
 
