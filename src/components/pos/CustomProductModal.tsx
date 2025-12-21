@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCartAnimationContext } from "@/components/cart/CartAnimationProvider";
+import Image from "next/image";
 
 interface Category {
   id: string;
   name: string;
   slug: string;
+}
+
+interface ImagePreview {
+  file: File;
+  url: string;
+  isUploaded: boolean;
 }
 
 interface CustomProductModalProps {
@@ -19,6 +26,7 @@ interface CustomProductModalProps {
     category_id?: string;
     description?: string;
     social_platform?: string;
+    images?: string[];
   }) => void;
   categories?: Category[];
 }
@@ -40,6 +48,9 @@ export default function CustomProductModal({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -53,8 +64,88 @@ export default function CustomProductModal({
         social_platform: "",
       });
       setErrors({});
+      // Clear image previews and revoke object URLs
+      imagePreviews.forEach((preview) => {
+        if (!preview.isUploaded) {
+          URL.revokeObjectURL(preview.url);
+        }
+      });
+      setImagePreviews([]);
     }
   }, [isOpen]);
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const hasDatabase =
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL !== "placeholder";
+
+    if (!hasDatabase) {
+      // Preview mode - create object URLs for preview
+      const newPreviews: ImagePreview[] = Array.from(files).map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+        isUploaded: false,
+      }));
+      setImagePreviews((prev) => [...prev, ...newPreviews]);
+      return;
+    }
+
+    // Real upload to Supabase Storage
+    setUploadingImages(true);
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileExt = file.name.split(".").pop();
+        const fileName = `custom-${Math.random()
+          .toString(36)
+          .substring(2)}_${Date.now()}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from("product-images")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (error) throw error;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("product-images").getPublicUrl(filePath);
+
+        return {
+          file,
+          url: publicUrl,
+          isUploaded: true,
+        };
+      });
+
+      const uploadedPreviews = await Promise.all(uploadPromises);
+      setImagePreviews((prev) => [...prev, ...uploadedPreviews]);
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      alert("Failed to upload some images. Please try again.");
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImagePreviews((prev) => {
+      const newPreviews = [...prev];
+      const removed = newPreviews.splice(index, 1)[0];
+      // Revoke object URL if it's a preview
+      if (removed.file && !removed.isUploaded) {
+        URL.revokeObjectURL(removed.url);
+      }
+      return newPreviews;
+    });
+  };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -85,6 +176,9 @@ export default function CustomProductModal({
 
     setLoading(true);
 
+    // Extract image URLs from previews
+    const imageUrls = imagePreviews.map((preview) => preview.url);
+
     const productData = {
       name: formData.name.trim(),
       price: parseFloat(formData.price),
@@ -92,15 +186,16 @@ export default function CustomProductModal({
       category_id: formData.category_id || undefined,
       description: formData.description.trim() || undefined,
       social_platform: formData.social_platform || undefined,
+      images: imageUrls.length > 0 ? imageUrls : undefined,
     };
 
-    // Create a mock product object for animation (custom products don't have images)
+    // Create a mock product object for animation
     const mockProductForAnimation = {
       id: `custom-${Date.now()}`,
       name: productData.name,
       description: productData.description || null,
       price: productData.price,
-      images: [], // Custom products don't have images, will show placeholder
+      images: imageUrls, // Use uploaded images if available
       category_id: productData.category_id || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -260,6 +355,110 @@ export default function CustomProductModal({
             />
           </div>
 
+          {/* Image Upload */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Product Images (Optional)
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => handleImageUpload(e.target.files)}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingImages}
+              className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {uploadingImages ? (
+                <>
+                  <svg
+                    className="animate-spin h-6 w-6 text-primary"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span className="text-sm text-gray-600">Uploading images...</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-6 h-6 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  <span className="text-sm text-gray-700 font-medium">
+                    Click to upload images
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    PNG, JPG, WEBP up to 10MB each
+                  </span>
+                </>
+              )}
+            </button>
+
+            {/* Image Previews */}
+            {imagePreviews.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative aspect-square group">
+                    <Image
+                      src={preview.url}
+                      alt={`Preview ${index + 1}`}
+                      fill
+                      className="object-cover rounded-lg"
+                      sizes="(max-width: 768px) 33vw, 150px"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Social Platform */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -299,10 +498,14 @@ export default function CustomProductModal({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploadingImages}
               className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Adding..." : "Add to Cart"}
+              {loading
+                ? "Adding..."
+                : uploadingImages
+                ? "Uploading Images..."
+                : "Add to Cart"}
             </button>
           </div>
         </form>

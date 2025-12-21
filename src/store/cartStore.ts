@@ -10,6 +10,7 @@ export interface CustomProductData {
   category_id?: string;
   description?: string;
   social_platform?: string; // Social platform where the sale originated
+  images?: string[]; // Product images for custom products
 }
 
 export interface ExtendedProduct extends Product {
@@ -25,6 +26,7 @@ interface CartStore {
   updateQuantity: (productId: string, quantity: number) => void;
   updateSize: (productId: string, size: string | undefined) => void;
   updateColor: (productId: string, color: string | undefined) => void;
+  updateSalePrice: (productId: string, salePrice: number | undefined) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -116,7 +118,7 @@ export const useCartStore = create<CartStore>()(
           name: customData.name,
           description: customData.description || null,
           price: customData.price,
-          images: [],
+          images: customData.images || [], // Use images from customData
           category_id: customData.category_id || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -205,16 +207,21 @@ export const useCartStore = create<CartStore>()(
           ),
         });
       },
+      updateSalePrice: (productId, salePrice) => {
+        set({
+          items: get().items.map((item) =>
+            item.product.id === productId ? { ...item, salePrice } : item
+          ),
+        });
+      },
       clearCart: () => {
         set({ items: [] });
       },
       getTotal: () => {
         return get().items.reduce(
           (total, item) => {
-            const product = item.product as any; // Extended product type
-            const price = product.sale_price && product.is_flash_sale 
-              ? product.sale_price 
-              : product.price;
+            // Use salePrice if set (for POS discounts), otherwise use product price
+            const price = item.salePrice ?? item.product.price;
             return total + price * item.quantity;
           },
           0

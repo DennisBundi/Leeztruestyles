@@ -116,6 +116,8 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
     size?: string;
     category_id?: string;
     description?: string;
+    social_platform?: string;
+    images?: string[];
   }) => {
     addCustomItem(customData, 1);
     setShowCustomProductModal(false);

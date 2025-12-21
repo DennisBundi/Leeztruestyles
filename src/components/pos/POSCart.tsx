@@ -25,10 +25,12 @@ export default function POSCart({
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const updateSize = useCartStore((state) => state.updateSize);
   const updateColor = useCartStore((state) => state.updateColor);
+  const updateSalePrice = useCartStore((state) => state.updateSalePrice);
   const [processing, setProcessing] = useState(false);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingSize, setEditingSize] = useState<string>("");
   const [editingColor, setEditingColor] = useState<string>("");
+  const [editingSalePrice, setEditingSalePrice] = useState<{ [productId: string]: string }>({});
   const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "mpesa" | "card">(
     "cash"
@@ -112,11 +114,12 @@ export default function POSCart({
         const extendedProduct = item.product as ExtendedProduct;
         const isCustom = extendedProduct.isCustom === true;
 
-        // Ensure price is a number
+        // Use salePrice if set (for discounts), otherwise use product price
+        const basePrice = item.salePrice ?? item.product.price;
         const price =
-          typeof item.product.price === "number"
-            ? item.product.price
-            : parseFloat(String(item.product.price));
+          typeof basePrice === "number"
+            ? basePrice
+            : parseFloat(String(basePrice));
 
         if (isNaN(price) || price <= 0) {
           throw new Error(`Invalid price for ${item.product.name}`);
@@ -130,16 +133,18 @@ export default function POSCart({
 
         if (isCustom && extendedProduct.customData) {
           // Custom product - send product_data
+          // Use salePrice if set (for discounts), otherwise use customData.price
+          const customPrice = item.salePrice ?? extendedProduct.customData.price;
           customProductItems.push({
             product_data: {
               name: extendedProduct.customData.name,
-              price: extendedProduct.customData.price,
+              price: customPrice, // Use discounted price if set
               size: extendedProduct.customData.size,
               category_id: extendedProduct.customData.category_id || null,
               description: extendedProduct.customData.description || null,
             },
             quantity: quantity,
-            price: price,
+            price: customPrice, // Use discounted price if set
           });
         } else {
           // Existing product - validate UUID and send product_id
@@ -574,13 +579,70 @@ export default function POSCart({
                       </svg>
                     </button>
                   </div>
-                  <div className="text-xs text-gray-600">
-                    KES {(item.product.price || 0).toLocaleString()} each
+                  <div className="space-y-1">
+                    {/* Original Price */}
+                    <div className={`text-xs ${item.salePrice ? 'line-through text-gray-400' : 'text-gray-600'}`}>
+                      KES {(item.product.price || 0).toLocaleString()} each
+                    </div>
+                    {/* Discount Price Input */}
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Discount price (optional)"
+                        value={editingSalePrice[item.product.id] ?? (item.salePrice ? item.salePrice.toString() : '')}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setEditingSalePrice(prev => ({ ...prev, [item.product.id]: value }));
+                        }}
+                        onBlur={(e) => {
+                          const value = e.target.value.trim();
+                          if (value === '') {
+                            // Clear discount - use original price
+                            updateSalePrice(item.product.id, undefined);
+                            setEditingSalePrice(prev => {
+                              const newState = { ...prev };
+                              delete newState[item.product.id];
+                              return newState;
+                            });
+                          } else {
+                            const numValue = parseFloat(value);
+                            if (!isNaN(numValue) && numValue > 0) {
+                              updateSalePrice(item.product.id, numValue);
+                            } else {
+                              // Invalid value, revert to current salePrice or clear
+                              setEditingSalePrice(prev => {
+                                const newState = { ...prev };
+                                if (item.salePrice) {
+                                  newState[item.product.id] = item.salePrice.toString();
+                                } else {
+                                  delete newState[item.product.id];
+                                }
+                                return newState;
+                              });
+                            }
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                      />
+                    </div>
+                    {/* Show discounted price if set */}
+                    {item.salePrice && (
+                      <div className="text-xs font-semibold text-primary">
+                        Discount: KES {item.salePrice.toLocaleString()} each
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-primary text-lg">
-                    KES {((item.product.price || 0) * item.quantity).toLocaleString()}
+                    KES {((item.salePrice ?? item.product.price || 0) * item.quantity).toLocaleString()}
                   </div>
                 </div>
               </div>

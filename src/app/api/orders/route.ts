@@ -158,3 +158,65 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userRole = await getUserRole(user.id);
+    if (userRole !== 'admin') {
+      return NextResponse.json(
+        { error: 'Only admins can delete orders' },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const orderId = searchParams.get('id');
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: 'Order ID required' },
+        { status: 400 }
+      );
+    }
+
+    // Use admin client to ensure deletion works (order_items will be deleted via CASCADE)
+    const adminClient = createAdminClient();
+
+    // Delete order (order_items will be deleted automatically via CASCADE)
+    const { error: deleteError } = await adminClient
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (deleteError) {
+      console.error('Order deletion error:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete order', details: deleteError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Order deleted successfully',
+    });
+  } catch (error) {
+    console.error('Order deletion error:', error);
+    return NextResponse.json(
+      {
+        error: 'Failed to delete order',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+

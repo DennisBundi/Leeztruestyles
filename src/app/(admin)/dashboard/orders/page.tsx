@@ -26,6 +26,9 @@ export default function OrdersPage() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -88,6 +91,42 @@ export default function OrdersPage() {
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [orders, searchQuery, selectedStatus, selectedType]);
+
+  const handleDeleteClick = (order: Order) => {
+    setOrderToDelete(order);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!orderToDelete) return;
+
+    setDeletingOrderId(orderToDelete.id);
+    try {
+      const response = await fetch(`/api/orders?id=${orderToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete order');
+      }
+
+      // Remove order from state
+      setOrders(orders.filter((o) => o.id !== orderToDelete.id));
+      setShowDeleteModal(false);
+      setOrderToDelete(null);
+    } catch (err) {
+      console.error('Error deleting order:', err);
+      alert(err instanceof Error ? err.message : 'Failed to delete order. Please try again.');
+    } finally {
+      setDeletingOrderId(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setOrderToDelete(null);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -327,12 +366,40 @@ export default function OrdersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <Link
-                      href={`/dashboard/orders/${order.id}`}
-                      className="text-primary hover:text-primary-dark font-medium text-xs"
-                    >
-                      View Details
-                    </Link>
+                    <div className="flex items-center justify-center gap-3">
+                      <Link
+                        href={`/dashboard/orders/${order.id}`}
+                        className="text-primary hover:text-primary-dark font-medium text-xs"
+                      >
+                        View Details
+                      </Link>
+                      {userRole === 'admin' && (
+                        <button
+                          onClick={() => handleDeleteClick(order)}
+                          disabled={deletingOrderId === order.id}
+                          className="text-red-600 hover:text-red-700 font-medium text-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          title="Delete order"
+                        >
+                          {deletingOrderId === order.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                          ) : (
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
                 ))
@@ -341,6 +408,87 @@ export default function OrdersPage() {
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && orderToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-300">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Delete Order</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Order ID:</span>
+                  <span className="font-semibold text-gray-900">
+                    {orderToDelete.order_number || orderToDelete.id.slice(0, 8)}...
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Customer:</span>
+                  <span className="font-semibold text-gray-900">
+                    {orderToDelete.customer}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount:</span>
+                  <span className="font-semibold text-gray-900">
+                    KES {(orderToDelete.amount || 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Status:</span>
+                  <span className="font-semibold text-gray-900 capitalize">
+                    {orderToDelete.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-700 mb-6">
+              Are you sure you want to delete this order? All associated order items will also be deleted. This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={deletingOrderId !== null}
+                className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deletingOrderId !== null}
+                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingOrderId ? 'Deleting...' : 'Delete Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,6 +18,7 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showSizeColorModal, setShowSizeColorModal] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
+  const [processingProductId, setProcessingProductId] = useState<string | null>(null);
 
   // Filter out products with 0 stock - only show products with stock > 0
   const availableProducts = products.filter((product) => {
@@ -26,63 +27,73 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
     return product.available_stock === undefined || product.available_stock > 0;
   });
 
-  const handleProductClick = async (product: Product, button: HTMLElement) => {
-    // Get product colors first
-    const productColors = (product as any).colors || [];
-
-    // Fetch all sizes for the product (including those with 0 stock)
-    let allSizes: Array<{ size: string; available: number }> = [];
+  const handleProductClick = async (product: Product, button: HTMLElement, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent multiple clicks
+    if (processingProductId === product.id) return;
+    
+    setProcessingProductId(product.id);
+    
+    // Open modal immediately - don't wait for size fetch
+    setSelectedProduct(product);
+    setShowSizeColorModal(true);
+    
+    // Fetch sizes in background (modal will handle display)
+    // This allows the modal to open instantly while sizes load
     try {
       const response = await fetch(`/api/products/${product.id}/sizes`);
       if (response.ok) {
         const data = await response.json();
         // Include all sizes, even those with 0 stock
-        allSizes = data.sizes || [];
+        const allSizes = data.sizes || [];
         setAvailableSizes(allSizes);
       }
     } catch (error) {
       console.error("Error fetching product sizes:", error);
       setAvailableSizes([]);
+    } finally {
+      setProcessingProductId(null);
     }
+  };
 
-    // If product has sizes or colors, show modal; otherwise add directly
-    if (allSizes.length > 0 || productColors.length > 0) {
-      setSelectedProduct(product);
-      setShowSizeColorModal(true);
-    } else {
-      // No sizes/colors, add directly to cart
-      // Check inventory before adding
-      const currentCartItem = items.find(
-        (item) =>
-          item.product.id === product.id &&
-          !item.size &&
-          !item.color
+  const handleDirectAdd = async (product: Product, button: HTMLElement, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Check inventory before adding
+    const currentCartItem = items.find(
+      (item) =>
+        item.product.id === product.id &&
+        !item.size &&
+        !item.color
+    );
+    const currentCartQuantity = currentCartItem ? currentCartItem.quantity : 0;
+    const availableStock = product.available_stock;
+    
+    if (availableStock !== undefined && currentCartQuantity + 1 > availableStock) {
+      alert(
+        `Only ${availableStock} ${availableStock === 1 ? 'item is' : 'items are'} available for this product. ` +
+        `${currentCartQuantity > 0 ? `You already have ${currentCartQuantity} in the cart. ` : ''}` +
+        `You cannot add more items.`
       );
-      const currentCartQuantity = currentCartItem ? currentCartItem.quantity : 0;
-      const availableStock = product.available_stock;
-      
-      if (availableStock !== undefined && currentCartQuantity + 1 > availableStock) {
-        alert(
-          `Only ${availableStock} ${availableStock === 1 ? 'item is' : 'items are'} available for this product. ` +
-          `${currentCartQuantity > 0 ? `You already have ${currentCartQuantity} in the cart. ` : ''}` +
-          `You cannot add more items.`
-        );
-        return;
-      }
-      
-      try {
-        const productForCart = {
-          ...product,
-          available_stock: availableStock,
-        };
-        addItem(productForCart, 1);
-        triggerAnimation(productForCart, button, 'pos', '[data-pos-cart]');
-      } catch (error) {
-        if (error instanceof Error) {
-          alert(error.message);
-        } else {
-          alert('Failed to add item to cart. Please try again.');
-        }
+      return;
+    }
+    
+    try {
+      const productForCart = {
+        ...product,
+        available_stock: availableStock,
+      };
+      addItem(productForCart, 1);
+      // Trigger animation from the plus icon button
+      triggerAnimation(productForCart, button, 'pos', '[data-pos-cart]');
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('Failed to add item to cart. Please try again.');
       }
     }
   };
@@ -163,9 +174,12 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
               data-product-id={product.id}
               onClick={(e) => {
                 const button = e.currentTarget;
-                handleProductClick(product, button);
+                handleProductClick(product, button, e);
               }}
-              className="group relative bg-white rounded-none shadow-md text-left hover:shadow-xl transition-all border-2 hover:scale-105 cursor-pointer border-transparent hover:border-primary/30 active:scale-95"
+              disabled={processingProductId === product.id}
+              className={`group relative bg-white rounded-none shadow-md text-left hover:shadow-xl transition-all border-2 hover:scale-105 cursor-pointer border-transparent hover:border-primary/30 active:scale-95 ${
+                processingProductId === product.id ? 'opacity-60 pointer-events-none' : ''
+              }`}
             >
             {/* Product Image */}
             <div className="aspect-square relative bg-gradient-to-br from-gray-50 to-gray-100 rounded-t-xl overflow-hidden">
@@ -208,12 +222,46 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
               </div>
             </div>
 
-            {/* Add Indicator */}
-            <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Add Indicator - Clickable Plus Icon */}
+            <button
+              type="button"
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Get product colors
+                const productColors = (product as any).colors || [];
+                
+                // Fetch sizes to check if product has options
+                let allSizes: Array<{ size: string; available: number }> = [];
+                try {
+                  const response = await fetch(`/api/products/${product.id}/sizes`);
+                  if (response.ok) {
+                    const data = await response.json();
+                    allSizes = data.sizes || [];
+                    setAvailableSizes(allSizes);
+                  }
+                } catch (error) {
+                  console.error("Error fetching product sizes:", error);
+                }
+                
+                // If product has sizes or colors, open modal; otherwise add directly
+                if (allSizes.length > 0 || productColors.length > 0) {
+                  setSelectedProduct(product);
+                  setShowSizeColorModal(true);
+                } else {
+                  // No sizes/colors, add directly with animation
+                  const plusButton = e.currentTarget;
+                  await handleDirectAdd(product, plusButton, e);
+                }
+              }}
+              className="absolute top-2 right-2 bg-primary text-white rounded-full p-2 opacity-0 group-hover:opacity-100 hover:opacity-100 hover:bg-primary-dark transition-all hover:scale-110 z-10"
+              title="Add to cart"
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-            </div>
+            </button>
           </button>
         );
       })}

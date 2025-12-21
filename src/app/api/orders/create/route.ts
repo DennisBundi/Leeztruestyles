@@ -25,6 +25,7 @@ const createOrderSchema = z
             size: z.string().optional(),
             category_id: z.string().uuid().optional().nullable(),
             description: z.string().optional().nullable(),
+            images: z.array(z.string().url()).optional(), // Optional images array
           }),
           quantity: z.number().positive().int(),
           price: z.number().positive(),
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
         size?: string;
         category_id?: string | null;
         description?: string | null;
+        images?: string[];
       };
       quantity: number;
       price: number;
@@ -130,7 +132,7 @@ export async function POST(request: NextRequest) {
           price: item.product_data.price,
           category_id: item.product_data.category_id || null,
           status: "active",
-          images: [],
+          images: item.product_data.images || [], // Use provided images or empty array
         }));
 
         const { data: createdProducts, error: productsError } =
