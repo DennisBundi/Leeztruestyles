@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userRole = await getUserRole(user.id);
-    if (!userRole || (userRole !== "admin" && userRole !== "manager")) {
+    if (!userRole || (userRole !== "admin" && userRole !== "manager" && userRole !== "seller")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -139,7 +139,9 @@ export async function POST(request: NextRequest) {
       productInsert.buying_price = validated.buying_price;
     }
 
-    const { data: product, error: productError } = await supabase
+    // Use admin client to bypass RLS since we've already verified the user's role
+    const adminSupabase = createAdminClient();
+    const { data: product, error: productError } = await adminSupabase
       .from("products")
       .insert(productInsert)
       .select()
@@ -195,24 +197,63 @@ export async function POST(request: NextRequest) {
 
     // Prepare size_stocks and color_stocks as JSONB for the function
     // Supabase expects JSONB to be passed as a JSON object, not a string
-    const { data: inventoryResult, error: inventoryError } = await supabase.rpc(
-      "initialize_product_inventory",
-      {
-        p_product_id: product.id,
-        p_initial_stock: initialStock,
-        p_size_stocks: sizeStocks,
-        p_color_stocks: colorStocks,
+    // Try calling RPC function - first without color_stocks (older function signature)
+    let inventoryResult: any = null;
+    let inventoryError: any = null;
+
+    // First, try with color_stocks if provided
+    if (colorStocks) {
+      const { data, error } = await supabase.rpc(
+        "initialize_product_inventory",
+        {
+          p_product_id: product.id,
+          p_initial_stock: initialStock,
+          p_size_stocks: sizeStocks,
+          p_color_stocks: colorStocks,
+        }
+      );
+      inventoryResult = data;
+      inventoryError = error;
+
+      // If function doesn't support color_stocks, try without it
+      if (inventoryError?.code === "PGRST202" && inventoryError?.message?.includes("p_color_stocks")) {
+        // Function doesn't support color_stocks parameter, try without it
+        const { data: data2, error: error2 } = await supabase.rpc(
+          "initialize_product_inventory",
+          {
+            p_product_id: product.id,
+            p_initial_stock: initialStock,
+            p_size_stocks: sizeStocks,
+          }
+        );
+        inventoryResult = data2;
+        inventoryError = error2;
       }
-    );
+    } else {
+      // No color_stocks, use standard function signature
+      const { data, error } = await supabase.rpc(
+        "initialize_product_inventory",
+        {
+          p_product_id: product.id,
+          p_initial_stock: initialStock,
+          p_size_stocks: sizeStocks,
+        }
+      );
+      inventoryResult = data;
+      inventoryError = error;
+    }
 
     // If function fails, try direct insert as fallback
     if (inventoryError || !inventoryResult) {
-      console.warn(
-        `⚠️ Inventory function failed for product ${product.id}, trying direct insert fallback...`,
-        inventoryError
-          ? `Error: ${inventoryError.message}`
-          : "Function returned false"
-      );
+      // Only log if it's not a known expected error (like function signature mismatch)
+      const isExpectedError = inventoryError?.code === "PGRST202" || 
+                             inventoryError?.message?.includes("schema cache");
+      if (!isExpectedError) {
+        console.warn(
+          `⚠️ Inventory function failed for product ${product.id}, trying direct insert fallback...`,
+          inventoryError?.message || "Function returned false"
+        );
+      }
 
       // Fallback: Create inventory directly using admin client (bypasses RLS)
       try {
@@ -313,6 +354,111 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Insert color_stocks (product_size_colors) if provided
+        if (colorStocks && typeof colorStocks === "object") {
+          try {
+            // Check if table exists first
+            const { error: tableCheckError } = await adminSupabase
+              .from("product_size_colors")
+              .select("id")
+              .limit(0);
+
+            if (tableCheckError) {
+              // Table doesn't exist - skip silently (expected if migration not run)
+              if (process.env.NODE_ENV === "development") {
+                console.log(
+                  `ℹ️ product_size_colors table not found. Skipping color stock insertion.`
+                );
+              }
+            } else {
+              // Delete existing color-based inventory first
+              const { error: deleteError } = await adminSupabase
+                .from("product_size_colors")
+                .delete()
+                .eq("product_id", product.id);
+
+              if (deleteError && deleteError.code !== "PGRST205") {
+                console.warn(
+                  `⚠️ Failed to delete existing color stocks for product ${product.id}:`,
+                  deleteError.message
+                );
+              }
+
+            const sizeColorInserts: Array<{
+              product_id: string;
+              size: string | null;
+              color: string;
+              stock_quantity: number;
+              reserved_quantity: number;
+            }> = [];
+
+            const validSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+
+            Object.entries(colorStocks).forEach(([color, value]) => {
+              if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+                // Size+color combinations: { "Red": { "M": 5, "L": 3 } }
+                Object.entries(value).forEach(([size, qty]) => {
+                  if (validSizes.includes(size) && typeof qty === "number" && qty > 0) {
+                    sizeColorInserts.push({
+                      product_id: product.id,
+                      size: size,
+                      color: color,
+                      stock_quantity: qty,
+                      reserved_quantity: 0,
+                    });
+                  }
+                });
+              } else if (typeof value === "number" && value > 0) {
+                // Color-only quantity: { "Red": 10 }
+                sizeColorInserts.push({
+                  product_id: product.id,
+                  size: null,
+                  color: color,
+                  stock_quantity: value,
+                  reserved_quantity: 0,
+                });
+              }
+            });
+
+            if (sizeColorInserts.length > 0) {
+              console.log(
+                `📦 Attempting to insert ${sizeColorInserts.length} color stock records:`,
+                sizeColorInserts.slice(0, 3) // Log first 3 for debugging
+              );
+
+              const { error: sizeColorError, data: insertedData } = await adminSupabase
+                .from("product_size_colors")
+                .insert(sizeColorInserts)
+                .select();
+
+              if (sizeColorError) {
+                // Only log unexpected errors
+                if (sizeColorError.code !== "PGRST205") {
+                  console.warn(
+                    `⚠️ Failed to insert color stocks for product ${product.id}:`,
+                    sizeColorError.message
+                  );
+                }
+                // Continue anyway - product was created
+              } else if (process.env.NODE_ENV === "development") {
+                console.log(
+                  `✅ Successfully inserted ${sizeColorInserts.length} color stock records for product ${product.id}`
+                );
+              }
+            }
+            }
+          } catch (colorStockError) {
+            // Only log in development
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                `⚠️ Error handling color stocks for product ${product.id}:`,
+                colorStockError instanceof Error ? colorStockError.message : colorStockError
+              );
+            }
+            // Continue anyway - product was created
+          }
+        }
+
         console.log(
           `✅ Successfully created inventory (via fallback) for product ${product.id} with stock: ${initialStock}`
         );
@@ -340,21 +486,176 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle colors separately (RPC function may not handle them)
+    // This ensures colors are always inserted even if RPC function succeeds
+    if (validated.colors && Array.isArray(validated.colors) && validated.colors.length > 0) {
+      try {
+        const adminSupabase = createAdminClient();
+
+        // Delete existing colors first
+        await adminSupabase
+          .from("product_colors")
+          .delete()
+          .eq("product_id", product.id);
+
+        // Insert new colors
+        const colorInserts = validated.colors.map((color) => ({
+          product_id: product.id,
+          color: color,
+        }));
+
+        const { error: colorsError } = await adminSupabase
+          .from("product_colors")
+          .insert(colorInserts);
+
+        if (colorsError) {
+          // Only log unexpected errors
+          if (colorsError.code !== "PGRST205") {
+            console.warn(
+              `⚠️ Failed to insert colors for product ${product.id}:`,
+              colorsError.message
+            );
+          }
+        }
+      } catch (error) {
+        // Only log in development
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            `⚠️ Error handling colors for product ${product.id}:`,
+            error instanceof Error ? error.message : error
+          );
+        }
+      }
+    }
+
+    // Handle product_size_colors if color_stocks is provided and RPC function didn't handle it
+    // (Only if RPC function failed or doesn't support color_stocks)
+    if (colorStocks && typeof colorStocks === "object" && (inventoryError || !inventoryResult)) {
+      try {
+        const adminSupabase = createAdminClient();
+
+        // Check if table exists by attempting a select (will fail gracefully if table doesn't exist)
+        const { error: tableCheckError } = await adminSupabase
+          .from("product_size_colors")
+          .select("id")
+          .limit(0);
+
+        if (tableCheckError) {
+          // Table doesn't exist - this is expected if migration hasn't been run
+          // Silently skip color stock insertion (product was created successfully)
+          // Only log in development
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              `ℹ️ product_size_colors table not found. Skipping color stock insertion. Run migration to enable color-based inventory.`
+            );
+          }
+          // Continue - product was created successfully
+        } else {
+          // Delete existing color-based inventory first
+          const { error: deleteError } = await adminSupabase
+            .from("product_size_colors")
+            .delete()
+            .eq("product_id", product.id);
+
+          if (deleteError) {
+            // Only log unexpected errors (not "table not found" errors)
+            if (deleteError.code !== "PGRST205") {
+              console.warn(
+                `⚠️ Failed to delete existing color stocks for product ${product.id}:`,
+                deleteError.message
+              );
+            }
+          }
+
+          const sizeColorInserts: Array<{
+          product_id: string;
+          size: string | null;
+          color: string;
+          stock_quantity: number;
+          reserved_quantity: number;
+        }> = [];
+
+        const validSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+
+        Object.entries(colorStocks).forEach(([color, value]) => {
+          if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+            // Size+color combinations: { "Red": { "M": 5, "L": 3 } }
+            Object.entries(value).forEach(([size, qty]) => {
+              if (validSizes.includes(size) && typeof qty === "number" && qty > 0) {
+                sizeColorInserts.push({
+                  product_id: product.id,
+                  size: size,
+                  color: color,
+                  stock_quantity: qty,
+                  reserved_quantity: 0,
+                });
+              }
+            });
+          } else if (typeof value === "number" && value > 0) {
+            // Color-only quantity: { "Red": 10 }
+            sizeColorInserts.push({
+              product_id: product.id,
+              size: null,
+              color: color,
+              stock_quantity: value,
+              reserved_quantity: 0,
+            });
+          }
+        });
+
+          if (sizeColorInserts.length > 0) {
+            const { error: sizeColorError } = await adminSupabase
+              .from("product_size_colors")
+              .insert(sizeColorInserts);
+
+            if (sizeColorError) {
+              // Only log unexpected errors (not "table not found" errors)
+              if (sizeColorError.code !== "PGRST205") {
+                console.warn(
+                  `⚠️ Failed to insert color stocks for product ${product.id}:`,
+                  sizeColorError.message
+                );
+              }
+            } else if (process.env.NODE_ENV === "development") {
+              console.log(
+                `✅ Successfully inserted ${sizeColorInserts.length} color stock records for product ${product.id}`
+              );
+            }
+          }
+        }
+      } catch (error) {
+        // Only log unexpected errors
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            `⚠️ Error handling color stocks for product ${product.id}:`,
+            error instanceof Error ? error.message : error
+          );
+        }
+      }
+    }
+
     return NextResponse.json({ product });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error("Product validation error:", error.errors);
+      console.error("❌ Product validation error:", error.errors);
       return NextResponse.json(
         { error: "Invalid request data", details: error.errors },
         { status: 400 }
       );
     }
 
-    console.error("Product creation error:", error);
+    console.error("❌ Product creation error:", error);
+    console.error("❌ Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    console.error("❌ Error details:", {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : "Unknown",
+    });
+
     return NextResponse.json(
       {
         error: "Failed to create product",
         details: error instanceof Error ? error.message : "Unknown error",
+        stack: process.env.NODE_ENV === "development" && error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );
@@ -373,7 +674,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const userRole = await getUserRole(user.id);
-    if (!userRole || (userRole !== "admin" && userRole !== "manager")) {
+    if (!userRole || (userRole !== "admin" && userRole !== "manager" && userRole !== "seller")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

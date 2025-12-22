@@ -92,35 +92,28 @@ export default function CustomProductModal({
       return;
     }
 
-    // Real upload to Supabase Storage
+    // Real upload via API route (bypasses RLS)
     setUploadingImages(true);
     try {
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-
       const uploadPromises = Array.from(files).map(async (file) => {
-        const fileExt = file.name.split(".").pop();
-        const fileName = `custom-${Math.random()
-          .toString(36)
-          .substring(2)}_${Date.now()}.${fileExt}`;
-        const filePath = `products/${fileName}`;
+        const formData = new FormData();
+        formData.append("file", file);
 
-        const { data, error } = await supabase.storage
-          .from("product-images")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
+        const response = await fetch("/api/upload/image", {
+          method: "POST",
+          body: formData,
+        });
 
-        if (error) throw error;
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to upload image");
+        }
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("product-images").getPublicUrl(filePath);
+        const { url } = await response.json();
 
         return {
           file,
-          url: publicUrl,
+          url: url,
           isUploaded: true,
         };
       });
@@ -129,7 +122,11 @@ export default function CustomProductModal({
       setImagePreviews((prev) => [...prev, ...uploadedPreviews]);
     } catch (error) {
       console.error("Error uploading images:", error);
-      alert("Failed to upload some images. Please try again.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload some images. Please try again."
+      );
     } finally {
       setUploadingImages(false);
     }

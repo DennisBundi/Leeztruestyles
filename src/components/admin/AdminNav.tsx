@@ -15,18 +15,18 @@ type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'emp
 function canAccessSection(userRole: UserRole | null, section: DashboardSection): boolean {
   if (!userRole) return false;
 
-  // Sellers can only access: orders, pos, profile, settings (NOT payments)
+  // Sellers can access: orders, pos, products, profile, settings (NOT payments, inventory, employees, dashboard)
   if (userRole === 'seller') {
-    return ['orders', 'pos', 'profile', 'settings'].includes(section);
+    return ['orders', 'pos', 'products', 'profile', 'settings'].includes(section);
   }
 
   // Admin and manager can access these sections
-  if (['orders', 'payments', 'pos', 'profile', 'settings'].includes(section)) {
+  if (['orders', 'payments', 'pos', 'profile', 'settings', 'products'].includes(section)) {
     return true;
   }
 
   // Only admin and manager can access these sections
-  if (['dashboard', 'products', 'inventory'].includes(section)) {
+  if (['dashboard', 'inventory'].includes(section)) {
     return userRole === 'admin' || userRole === 'manager';
   }
 
