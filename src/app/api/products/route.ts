@@ -177,8 +177,36 @@ export async function POST(request: NextRequest) {
 
     //Initialize inventory using database function (bypasses RLS)
     const initialStock = validated.initial_stock || 0;
-    const sizeStocks = validated.size_stocks || null;
+    let sizeStocks = validated.size_stocks || null;
     const colorStocks = validated.color_stocks || null;
+
+    // If color_stocks is provided, calculate size_stocks from color_stocks
+    if (colorStocks && typeof colorStocks === "object") {
+      const calculatedSizeStocks: Record<string, number> = {};
+      const validSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+
+      Object.entries(colorStocks).forEach(([color, value]) => {
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+          // Size+color combinations: { "Red": { "M": 5, "L": 3 } }
+          Object.entries(value).forEach(([size, qty]) => {
+            if (validSizes.includes(size) && typeof qty === "number" && qty > 0) {
+              const currentQty = calculatedSizeStocks[size] || 0;
+              calculatedSizeStocks[size] = currentQty + qty;
+            }
+          });
+        }
+        // Note: Color-only quantities (without sizes) don't contribute to size breakdown
+      });
+
+      // Use calculated size stocks if any were calculated
+      if (Object.keys(calculatedSizeStocks).length > 0) {
+        sizeStocks = calculatedSizeStocks;
+        console.log(
+          `📊 Calculated size stocks from color stocks for new product:`,
+          calculatedSizeStocks
+        );
+      }
+    }
 
     console.log("📦 API - Inventory Initialization:", {
       product_id: product.id,
@@ -697,7 +725,8 @@ export async function PUT(request: NextRequest) {
     };
 
     // Add optional fields if present
-    if (updateData.buying_price !== undefined) {
+    // Only allow admins to update buying_price
+    if (updateData.buying_price !== undefined && userRole === "admin") {
       updatePayload.buying_price = updateData.buying_price || null;
     }
     if (updateData.sale_price !== undefined) {
@@ -719,7 +748,9 @@ export async function PUT(request: NextRequest) {
       updatePayload.flash_sale_end = updateData.flash_sale_end || null;
     }
 
-    const { data: product, error: productError } = await supabase
+    // Use admin client to bypass RLS since we've already verified the user's role
+    const adminSupabase = createAdminClient();
+    const { data: product, error: productError } = await adminSupabase
       .from("products")
       .update(updatePayload)
       .eq("id", id)
@@ -744,8 +775,36 @@ export async function PUT(request: NextRequest) {
       updateData.color_stocks !== undefined
     ) {
       const initialStock = updateData.initial_stock || 0;
-      const sizeStocks = updateData.size_stocks || null;
+      let sizeStocks = updateData.size_stocks || null;
       const colorStocks = updateData.color_stocks || null;
+
+      // If color_stocks is provided, calculate size_stocks from color_stocks
+      if (colorStocks && typeof colorStocks === "object") {
+        const calculatedSizeStocks: Record<string, number> = {};
+        const validSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+
+        Object.entries(colorStocks).forEach(([color, value]) => {
+          if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+            // Size+color combinations: { "Red": { "M": 5, "L": 3 } }
+            Object.entries(value).forEach(([size, qty]) => {
+              if (validSizes.includes(size) && typeof qty === "number" && qty > 0) {
+                const currentQty = calculatedSizeStocks[size] || 0;
+                calculatedSizeStocks[size] = currentQty + qty;
+              }
+            });
+          }
+          // Note: Color-only quantities (without sizes) don't contribute to size breakdown
+        });
+
+        // Use calculated size stocks if any were calculated
+        if (Object.keys(calculatedSizeStocks).length > 0) {
+          sizeStocks = calculatedSizeStocks;
+          console.log(
+            `📊 Calculated size stocks from color stocks for product ${product.id}:`,
+            calculatedSizeStocks
+          );
+        }
+      }
 
       console.log(
         `Updating inventory for product ${product.id} with stock: ${initialStock}`,
@@ -753,30 +812,238 @@ export async function PUT(request: NextRequest) {
         colorStocks ? `and colors: ${JSON.stringify(colorStocks)}` : ""
       );
 
-      // Use the initialize function which handles both create and update
-      const { data: inventoryResult, error: inventoryError } =
-        await supabase.rpc("initialize_product_inventory", {
-          p_product_id: product.id,
-          p_initial_stock: initialStock,
-          p_size_stocks: sizeStocks,
-          p_color_stocks: colorStocks,
-        });
+      // Try RPC function first (use admin client for better compatibility)
+      let inventoryResult: any = null;
+      let inventoryError: any = null;
 
-      if (inventoryError) {
-        console.error(
-          `Failed to update inventory for product ${product.id}:`,
-          inventoryError
+      // Try with color_stocks if provided
+      if (colorStocks) {
+        const { data, error } = await adminSupabase.rpc(
+          "initialize_product_inventory",
+          {
+            p_product_id: product.id,
+            p_initial_stock: initialStock,
+            p_size_stocks: sizeStocks,
+            p_color_stocks: colorStocks,
+          }
         );
-        // Continue anyway - product was updated
+        inventoryResult = data;
+        inventoryError = error;
+
+        // If function doesn't support color_stocks, try without it
+        if (inventoryError?.code === "PGRST202" && inventoryError?.message?.includes("p_color_stocks")) {
+          const { data: data2, error: error2 } = await adminSupabase.rpc(
+            "initialize_product_inventory",
+            {
+              p_product_id: product.id,
+              p_initial_stock: initialStock,
+              p_size_stocks: sizeStocks,
+            }
+          );
+          inventoryResult = data2;
+          inventoryError = error2;
+        }
       } else {
-        console.log(`Successfully updated inventory for product ${product.id}`);
+        // No color_stocks, use standard function signature
+        const { data, error } = await adminSupabase.rpc(
+          "initialize_product_inventory",
+          {
+            p_product_id: product.id,
+            p_initial_stock: initialStock,
+            p_size_stocks: sizeStocks,
+          }
+        );
+        inventoryResult = data;
+        inventoryError = error;
+      }
+
+      // If RPC fails, use fallback direct insert
+      if (inventoryError || !inventoryResult) {
+        const isExpectedError = inventoryError?.code === "PGRST202" || 
+                               inventoryError?.message?.includes("schema cache");
+        if (!isExpectedError) {
+          console.warn(
+            `⚠️ Inventory function failed for product ${product.id}, trying direct update fallback...`,
+            inventoryError?.message || "Function returned false"
+          );
+        }
+
+        // Fallback: Update inventory directly using admin client
+        try {
+          // Update main inventory record
+          const { error: updateError } = await adminSupabase
+            .from("inventory")
+            .upsert(
+              {
+                product_id: product.id,
+                stock_quantity: initialStock,
+                reserved_quantity: 0,
+              },
+              {
+                onConflict: "product_id",
+              }
+            );
+
+          if (updateError) {
+            console.error(
+              `❌ Direct inventory update failed for product ${product.id}:`,
+              updateError
+            );
+          }
+
+          // Update size breakdown if provided
+          // If color_stocks exist, size_stocks should already be calculated from them above
+          if (sizeStocks && typeof sizeStocks === "object") {
+            const sizeEntries = Object.entries(sizeStocks);
+            if (sizeEntries.length > 0) {
+              // Delete existing sizes first
+              await adminSupabase
+                .from("product_sizes")
+                .delete()
+                .eq("product_id", product.id);
+
+              // Insert new sizes (these are calculated from color stocks if color_stocks was provided)
+              const sizeInserts = sizeEntries
+                .filter(
+                  ([size, qty]) => ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"].includes(size) && qty > 0
+                )
+                .map(([size, qty]) => ({
+                  product_id: product.id,
+                  size,
+                  stock_quantity: qty,
+                  reserved_quantity: 0,
+                }));
+
+              if (sizeInserts.length > 0) {
+                const { error: sizesError } = await adminSupabase
+                  .from("product_sizes")
+                  .insert(sizeInserts);
+
+                if (sizesError) {
+                  console.warn(
+                    `⚠️ Failed to update size breakdown for product ${product.id}:`,
+                    sizesError
+                  );
+                } else {
+                  console.log(
+                    `✅ Updated size breakdown for product ${product.id} (calculated from color stocks)`
+                  );
+                }
+              }
+            }
+          }
+
+          // Update color_stocks (product_size_colors) if provided
+          if (colorStocks && typeof colorStocks === "object") {
+            try {
+              // Check if table exists first
+              const { error: tableCheckError } = await adminSupabase
+                .from("product_size_colors")
+                .select("id")
+                .limit(0);
+
+              if (tableCheckError) {
+                if (process.env.NODE_ENV === "development") {
+                  console.log(
+                    `ℹ️ product_size_colors table not found. Skipping color stock update.`
+                  );
+                }
+              } else {
+                // Delete existing color-based inventory first
+                const { error: deleteError } = await adminSupabase
+                  .from("product_size_colors")
+                  .delete()
+                  .eq("product_id", product.id);
+
+                if (deleteError && deleteError.code !== "PGRST205") {
+                  console.warn(
+                    `⚠️ Failed to delete existing color stocks for product ${product.id}:`,
+                    deleteError.message
+                  );
+                }
+
+                const sizeColorInserts: Array<{
+                  product_id: string;
+                  size: string | null;
+                  color: string;
+                  stock_quantity: number;
+                  reserved_quantity: number;
+                }> = [];
+
+                const validSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+
+                Object.entries(colorStocks).forEach(([color, value]) => {
+                  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+                    // Size+color combinations: { "Red": { "M": 5, "L": 3 } }
+                    Object.entries(value).forEach(([size, qty]) => {
+                      if (validSizes.includes(size) && typeof qty === "number" && qty > 0) {
+                        sizeColorInserts.push({
+                          product_id: product.id,
+                          size: size,
+                          color: color,
+                          stock_quantity: qty,
+                          reserved_quantity: 0,
+                        });
+                      }
+                    });
+                  } else if (typeof value === "number" && value > 0) {
+                    // Color-only quantity: { "Red": 10 }
+                    sizeColorInserts.push({
+                      product_id: product.id,
+                      size: null,
+                      color: color,
+                      stock_quantity: value,
+                      reserved_quantity: 0,
+                    });
+                  }
+                });
+
+                if (sizeColorInserts.length > 0) {
+                  const { error: sizeColorError } = await adminSupabase
+                    .from("product_size_colors")
+                    .insert(sizeColorInserts);
+
+                  if (sizeColorError) {
+                    if (sizeColorError.code !== "PGRST205") {
+                      console.warn(
+                        `⚠️ Failed to update color stocks for product ${product.id}:`,
+                        sizeColorError.message
+                      );
+                    }
+                  } else if (process.env.NODE_ENV === "development") {
+                    console.log(
+                      `✅ Successfully updated ${sizeColorInserts.length} color stock records for product ${product.id}`
+                    );
+                  }
+                }
+              }
+            } catch (colorStockError) {
+              if (process.env.NODE_ENV === "development") {
+                console.warn(
+                  `⚠️ Error handling color stocks for product ${product.id}:`,
+                  colorStockError instanceof Error ? colorStockError.message : colorStockError
+                );
+              }
+            }
+          }
+
+          console.log(
+            `✅ Successfully updated inventory (via fallback) for product ${product.id} with stock: ${initialStock}`
+          );
+        } catch (fallbackError) {
+          console.error(
+            `❌ Fallback inventory update failed for product ${product.id}:`,
+            fallbackError
+          );
+        }
+      } else {
+        console.log(`✅ Successfully updated inventory (via function) for product ${product.id}`);
       }
     }
 
     // Update colors if provided
     if (updateData.colors !== undefined) {
-      const { createAdminClient } = await import("@/lib/supabase/admin");
-      const adminSupabase = createAdminClient();
+      // Reuse adminSupabase instance created earlier
 
       // Delete existing colors first
       await adminSupabase

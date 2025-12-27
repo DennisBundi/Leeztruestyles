@@ -11,3 +11,4 @@ COMMENT ON COLUMN products.buying_price IS 'The cost price at which the product 
 
 
 
+

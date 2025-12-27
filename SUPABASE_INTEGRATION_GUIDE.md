@@ -282,3 +282,4 @@ That's it! Your Supabase integration should now be complete. 🎉
 
 
 
+

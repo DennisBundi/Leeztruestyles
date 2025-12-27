@@ -86,3 +86,4 @@ CREATE INDEX IF NOT EXISTS idx_product_colors_color ON product_colors(color);
 -- Step 10: Add comment
 COMMENT ON TABLE product_colors IS 'Stores color associations for products. Allows multiple colors per product.';
 
+

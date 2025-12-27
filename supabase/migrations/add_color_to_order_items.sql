@@ -11,3 +11,4 @@ CREATE INDEX IF NOT EXISTS idx_order_items_color ON order_items(color) WHERE col
 -- Step 3: Add comment
 COMMENT ON COLUMN order_items.color IS 'The color of the product ordered. NULL if product has no color or color was not specified.';
 
+

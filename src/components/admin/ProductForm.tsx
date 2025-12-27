@@ -325,6 +325,77 @@ export default function ProductForm({
     }
   }, [product]);
 
+  // Auto-calculate size stocks from color stocks when colors are selected
+  useEffect(() => {
+    // Only calculate if colors are selected and color stocks exist
+    if (selectedColors.length > 0 && Object.keys(colorStocks).length > 0) {
+      const calculatedSizeStocks: {
+        S: string;
+        M: string;
+        L: string;
+        XL: string;
+        "2XL": string;
+        "3XL": string;
+        "4XL": string;
+        "5XL": string;
+      } = {
+        S: "",
+        M: "",
+        L: "",
+        XL: "",
+        "2XL": "",
+        "3XL": "",
+        "4XL": "",
+        "5XL": "",
+      };
+
+      const validSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+
+      // Sum up all color stocks for each size
+      Object.entries(colorStocks).forEach(([color, value]) => {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          !Array.isArray(value)
+        ) {
+          // Size+color combinations: { "Red": { "M": "5", "L": "3" } }
+          Object.entries(value).forEach(([size, qty]) => {
+            if (validSizes.includes(size)) {
+              const currentQty =
+                parseInt(
+                  calculatedSizeStocks[
+                    size as keyof typeof calculatedSizeStocks
+                  ] || "0"
+                ) || 0;
+              const colorQty = parseInt(qty.toString() || "0") || 0;
+              calculatedSizeStocks[size as keyof typeof calculatedSizeStocks] =
+                (currentQty + colorQty).toString();
+            }
+          });
+        }
+        // Note: Color-only quantities (without sizes) don't contribute to size breakdown
+      });
+
+      // Update formData with calculated size stocks
+      setFormData((prev) => ({
+        ...prev,
+        size_stocks: calculatedSizeStocks,
+      }));
+
+      // Also update initial_stock to be the sum of all sizes
+      const totalStock = Object.values(calculatedSizeStocks).reduce(
+        (sum, val) => sum + (parseInt(val.toString()) || 0),
+        0
+      );
+      if (totalStock > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          initial_stock: totalStock.toString(),
+        }));
+      }
+    }
+  }, [colorStocks, selectedColors]);
+
   // Cleanup: revoke object URLs when component unmounts or modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -467,20 +538,53 @@ export default function ProductForm({
       const images = imagePreviews.map((preview) => preview.url);
 
       // Prepare size stocks object (only include sizes with values)
-      const sizeStocks: Record<string, number> = {};
-      Object.entries(formData.size_stocks).forEach(([size, value]) => {
-        const numValue = parseInt(value.toString()) || 0;
-        if (numValue > 0) {
-          sizeStocks[size] = numValue;
-        }
-      });
+      // If colors are selected, recalculate size stocks from color stocks
+      let sizeStocks: Record<string, number> = {};
+
+      if (selectedColors.length > 0 && Object.keys(colorStocks).length > 0) {
+        // Recalculate size stocks from color stocks
+        const validSizes = ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"];
+        Object.entries(colorStocks).forEach(([color, value]) => {
+          if (
+            typeof value === "object" &&
+            value !== null &&
+            !Array.isArray(value)
+          ) {
+            // Size+color combinations: { "Red": { "M": "5", "L": "3" } }
+            Object.entries(value).forEach(([size, qty]) => {
+              if (validSizes.includes(size)) {
+                const currentQty = sizeStocks[size] || 0;
+                const colorQty = parseInt(qty.toString() || "0") || 0;
+                sizeStocks[size] = currentQty + colorQty;
+              }
+            });
+          }
+        });
+      } else {
+        // Use form data when no colors are selected
+        Object.entries(formData.size_stocks).forEach(([size, value]) => {
+          const numValue = parseInt(value.toString()) || 0;
+          if (numValue > 0) {
+            sizeStocks[size] = numValue;
+          }
+        });
+      }
 
       const hasSizeStocks = Object.keys(sizeStocks).length > 0;
 
       // Prepare color stocks object
       const colorStocksData: Record<string, Record<string, number> | number> =
         {};
-      const hasSizes = hasSizeStocks;
+      // Check if color stocks have sizes (size+color combinations) or if size stocks exist
+      const hasSizes =
+        hasSizeStocks ||
+        Object.values(colorStocks).some(
+          (value) =>
+            typeof value === "object" &&
+            value !== null &&
+            !Array.isArray(value) &&
+            Object.keys(value).length > 0
+        );
 
       Object.entries(colorStocks).forEach(([color, value]) => {
         if (hasSizes && typeof value === "object") {
@@ -697,11 +801,11 @@ export default function ProductForm({
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {product ? "Edit Product" : "Add New Product"}
               </h2>
               <button
@@ -730,9 +834,9 @@ export default function ProductForm({
             {/* Form */}
             <form
               onSubmit={handleSubmit}
-              className="flex-1 overflow-y-auto px-6 py-6"
+              className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {/* Basic Information */}
                 <div className="md:col-span-2">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -751,7 +855,7 @@ export default function ProductForm({
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     placeholder="Enter product name"
                   />
                 </div>
@@ -766,7 +870,7 @@ export default function ProductForm({
                       setFormData({ ...formData, description: e.target.value })
                     }
                     rows={4}
-                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     placeholder="Enter product description"
                   />
                 </div>
@@ -781,7 +885,7 @@ export default function ProductForm({
                     onChange={(e) =>
                       setFormData({ ...formData, category_id: e.target.value })
                     }
-                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">Select Category</option>
                     {categories.map((cat) => (
@@ -834,7 +938,7 @@ export default function ProductForm({
                           buying_price: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       placeholder="Cost price"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -969,7 +1073,7 @@ export default function ProductForm({
                             flash_sale_start: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
 
@@ -986,7 +1090,7 @@ export default function ProductForm({
                             flash_sale_end: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </>
@@ -1193,7 +1297,7 @@ export default function ProductForm({
                           initial_stock: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       placeholder="Enter total stock quantity"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -1207,10 +1311,12 @@ export default function ProductForm({
                       Stock Breakdown by Size (Optional)
                     </h4>
                     <p className="text-xs text-gray-500 mb-4">
-                      Break down the total stock by size. The sum of all sizes
-                      should equal the total stock quantity above.
+                      {selectedColors.length > 0 &&
+                      Object.keys(colorStocks).length > 0
+                        ? "Automatically calculated from color stocks. Edit color quantities below to change these values."
+                        : "Break down the total stock by size. The sum of all sizes should equal the total stock quantity above."}
                     </p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-3">
                       {(
                         [
                           "S",
@@ -1222,33 +1328,48 @@ export default function ProductForm({
                           "4XL",
                           "5XL",
                         ] as const
-                      ).map((size) => (
-                        <div key={size}>
-                          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                            Size {size}
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={
-                              formData.size_stocks[
-                                size as keyof typeof formData.size_stocks
-                              ]
-                            }
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                size_stocks: {
-                                  ...formData.size_stocks,
-                                  [size]: e.target.value,
-                                },
-                              })
-                            }
-                            className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                            placeholder="0"
-                          />
-                        </div>
-                      ))}
+                      ).map((size) => {
+                        const isReadOnly =
+                          selectedColors.length > 0 &&
+                          Object.keys(colorStocks).length > 0;
+                        return (
+                          <div key={size}>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                              Size {size}
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={
+                                formData.size_stocks[
+                                  size as keyof typeof formData.size_stocks
+                                ]
+                              }
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  size_stocks: {
+                                    ...formData.size_stocks,
+                                    [size]: e.target.value,
+                                  },
+                                })
+                              }
+                              readOnly={isReadOnly}
+                              className={`w-full px-3 py-2.5 text-base border-2 rounded-lg ${
+                                isReadOnly
+                                  ? "border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed"
+                                  : "border-gray-200 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              }`}
+                              placeholder="0"
+                              title={
+                                isReadOnly
+                                  ? "Calculated from color stocks - edit colors below to change"
+                                  : ""
+                              }
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                     <div className="mt-3 space-y-1">
                       <p className="text-xs text-gray-500">
@@ -1342,7 +1463,7 @@ export default function ProductForm({
                           value={newColorName}
                           onChange={(e) => setNewColorName(e.target.value)}
                           placeholder="e.g., Burgundy"
-                          className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
                       <div>
@@ -1361,7 +1482,7 @@ export default function ProductForm({
                             value={newColorHex}
                             onChange={(e) => setNewColorHex(e.target.value)}
                             placeholder="#000000"
-                            className="flex-1 px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-mono"
+                            className="flex-1 px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 font-mono"
                           />
                         </div>
                       </div>
@@ -1623,7 +1744,7 @@ export default function ProductForm({
 
                               {hasSizes ? (
                                 // Size+Color matrix
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
                                   {sizes.map((size) => {
                                     const currentValue =
                                       (
@@ -1656,7 +1777,7 @@ export default function ProductForm({
                                             )[size] = e.target.value;
                                             setColorStocks(newColorStocks);
                                           }}
-                                          className="w-full px-2 py-1.5 text-xs border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                          className="w-full px-2 py-2 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                                           placeholder="0"
                                         />
                                       </div>
@@ -1681,7 +1802,7 @@ export default function ProductForm({
                                         [colorName]: e.target.value,
                                       });
                                     }}
-                                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    className="w-full px-3 py-2.5 text-base border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                     placeholder="Enter quantity"
                                   />
                                 </div>
@@ -1696,20 +1817,7 @@ export default function ProductForm({
               )}
 
               {/* Actions */}
-              <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
-                <button
-                  type="submit"
-                  disabled={loading || uploadingImages}
-                  className="flex-1 px-6 py-3 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading
-                    ? "Saving..."
-                    : uploadingImages
-                    ? "Uploading Images..."
-                    : product
-                    ? "Update Product"
-                    : "Create Product"}
-                </button>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -1721,9 +1829,22 @@ export default function ProductForm({
                     setNewColorHex("#000000");
                     if (onClose) onClose();
                   }}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-none font-semibold hover:bg-gray-300 transition-all"
+                  className="w-full sm:w-auto px-6 py-3 bg-gray-200 text-gray-700 rounded-lg sm:rounded-none font-semibold hover:bg-gray-300 transition-all text-base order-2 sm:order-1"
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || uploadingImages}
+                  className="w-full sm:flex-1 px-6 py-3 bg-primary text-white rounded-lg sm:rounded-none font-semibold hover:bg-primary-dark hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base order-1 sm:order-2"
+                >
+                  {loading
+                    ? "Saving..."
+                    : uploadingImages
+                    ? "Uploading Images..."
+                    : product
+                    ? "Update Product"
+                    : "Create Product"}
                 </button>
               </div>
             </form>
@@ -1733,8 +1854,8 @@ export default function ProductForm({
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-scale-in">
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8 text-center animate-scale-in">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
                 className="w-8 h-8 text-green-600"
@@ -1750,7 +1871,7 @@ export default function ProductForm({
                 />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
               {product ? "Product Updated!" : "Product Created!"}
             </h3>
             <p className="text-gray-600">

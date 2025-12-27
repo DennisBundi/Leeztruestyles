@@ -33,3 +33,4 @@ export function getColorHex(name: string): string {
   return color?.hex || '#CCCCCC'; // Default gray if not found
 }
 
+

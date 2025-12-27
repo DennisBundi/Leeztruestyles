@@ -14,3 +14,4 @@ COMMENT ON COLUMN orders.social_platform IS 'Social platform or source where the
 
 
 
+
