@@ -6,6 +6,8 @@ import { cookies } from "next/headers";
 import { ADMIN_EMAILS } from "@/config/admin";
 import { getEmployee } from "@/lib/auth/roles";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminLayout({
   children,
 }: {

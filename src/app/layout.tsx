@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "@/components/navigation/Header";
 import Footer from "@/components/navigation/Footer";
@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   title: "Leeztruestyles - Fashion Marketplace",
   description: "Premium fashion marketplace in Kenya",
   manifest: "/manifest.json",
-  themeColor: "#f9a8d4",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -27,12 +26,14 @@ export const metadata: Metadata = {
       { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
     ],
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#f9a8d4",
 };
 
 export default function RootLayout({
