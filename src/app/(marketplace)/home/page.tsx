@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ProductGrid from "@/components/products/ProductGrid";
 import FlashSaleCountdown from "@/components/products/FlashSaleCountdown";
+import ReviewSection from "@/components/home/ReviewSection";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Product } from "@/types";
@@ -1005,6 +1006,9 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* Customer Reviews Section */}
+      <ReviewSection />
     </div>
   );
 }

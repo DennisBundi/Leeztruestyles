@@ -103,7 +103,7 @@ export default function Footer() {
             <h4 className="font-semibold mb-4">Contact Us</h4>
             <ul className="space-y-2 text-gray-400">
               <li>Email: info@leeztruestyles.com</li>
-              <li>Phone: +254 700 000 000</li>
+              <li>Phone: +254 797 877 254</li>
               <li>Nairobi, Kenya</li>
             </ul>
           </div>

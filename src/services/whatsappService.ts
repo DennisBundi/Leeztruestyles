@@ -119,9 +119,9 @@ export class WhatsAppService {
     const message = encodeURIComponent(
       `Hello! I'm interested in your products. Could you please help me?`
     );
-    // Use the business phone number from env or default to 25497877254
+    // Use the business phone number from env or default to 254797877254
     // Note: WhatsApp requires the number without + sign, just digits
-    const businessPhone = process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_PHONE || '25497877254';
+    const businessPhone = process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_PHONE || '254797877254';
     // Format phone number for WhatsApp URL (digits only)
     const phoneNumber = this.formatPhoneForWhatsApp(businessPhone);
     
