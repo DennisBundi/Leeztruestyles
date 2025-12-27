@@ -25,40 +25,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get employee record for sellers
-    let employeeId: string | null = null;
-    if (userRole === 'seller') {
-      const { data: employee } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (!employee) {
-        return NextResponse.json({ error: 'Employee record not found' }, { status: 403 });
-      }
-      employeeId = employee.id;
-    }
-
-    // Build query - sellers only see their own orders, admins/managers see all
-    let query = supabase
+    // Build query - all users (sellers, admins, managers) see all orders
+    const query = supabase
       .from('orders')
       .select('*');
     
-    if (userRole === 'seller' && employeeId) {
-      query = query.eq('seller_id', employeeId);
-      console.log('Orders API - filtering by seller_id:', employeeId);
-    } else {
-      console.log('Orders API - fetching all orders (role:', userRole, ')');
-    }
+    console.log('Orders API - fetching all orders (role:', userRole, ')');
     
     const { data: orders, error: ordersError } = await query
       .order('created_at', { ascending: false });
     
     console.log('Orders API - fetched orders:', orders?.length || 0);
-    if (userRole === 'seller' && orders && orders.length > 0) {
-      console.log('Orders API - sample order seller_ids:', orders.slice(0, 3).map((o: any) => o.seller_id));
-    }
 
     if (ordersError) {
       console.error('Orders fetch error:', ordersError);
