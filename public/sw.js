@@ -1,27 +1,19 @@
 // Service Worker for Leeztruestyles PWA
 const CACHE_NAME = 'leeztruestyles-v1';
-const urlsToCache = [
-  '/',
-  '/home',
-  '/products',
-  '/manifest.json',
-  // Add other critical pages you want to cache
-];
 
-// Install event - cache resources
+// Install event - cache resources with error handling
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-      .catch((error) => {
-        console.error('Cache failed:', error);
-      })
-  );
-  // Force the waiting service worker to become the active service worker
+  // Don't wait for caching - activate immediately
   self.skipWaiting();
+  
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      // Only cache manifest during install - pages are cached on-demand
+      return cache.add('/manifest.json').catch(() => {
+        console.warn('Failed to cache manifest during install');
+      });
+    })
+  );
 });
 
 // Activate event - clean up old caches
@@ -38,7 +30,6 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  // Claim clients immediately
   return self.clients.claim();
 });
 
@@ -54,39 +45,60 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // CRITICAL FIX: Skip navigation requests (page loads/redirects)
+  // Let the browser handle page navigation normally
+  // This prevents the service worker from interfering with redirects
+  if (event.request.mode === 'navigate') {
+    return; // Don't intercept - let browser handle it
+  }
+
+  // Only handle static assets (images, CSS, JS, fonts, etc.)
+  // Skip API calls and HTML pages
+  if (event.request.url.includes('/api/') || 
+      event.request.url.includes('/_next/data/')) {
+    return; // Don't cache API responses or Next.js data
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
+    caches.match(event.request).then((response) => {
+      // Cache hit - return cached response
+      if (response) {
+        return response;
+      }
+
+      // Cache miss - fetch from network
+      const fetchRequest = event.request.clone();
+
+      return fetch(fetchRequest, {
+        redirect: 'follow', // Allow redirects to be followed
+      }).then((response) => {
+        // Don't cache redirects or error responses
+        if (response.redirected || response.type === 'opaqueredirect') {
           return response;
         }
 
-        // Clone the request because it's a stream
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then((response) => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          // Clone the response because it's a stream
-          const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME).then((cache) => {
-            // Don't cache API calls or dynamic content
-            if (!event.request.url.includes('/api/')) {
-              cache.put(event.request, responseToCache);
-            }
-          });
-
+        // Only cache successful responses (200 status)
+        if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
-        }).catch(() => {
-          // If fetch fails, you could return a custom offline page
-          // For now, just let it fail normally
+        }
+
+        // Clone the response because it's a stream
+        const responseToCache = response.clone();
+
+        // Cache the response in the background
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
         });
-      })
+
+        return response;
+      }).catch(() => {
+        // Network error - return error response
+        // Static assets might be available offline if cached
+        return new Response('Network error', { 
+          status: 503,
+          statusText: 'Service Unavailable'
+        });
+      });
+    })
   );
 });
-
