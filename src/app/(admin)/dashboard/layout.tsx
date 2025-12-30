@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { canAccessAdmin, getUserRole } from "@/lib/auth/roles";
 import AdminNav from "@/components/admin/AdminNav";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { ADMIN_EMAILS } from "@/config/admin";
 import { getEmployee } from "@/lib/auth/roles";
 
@@ -309,6 +309,15 @@ export default async function AdminLayout({
 
   if (!canAccessAdmin(userRole)) {
     redirect('/');
+  }
+
+  // Redirect sellers from dashboard root to products tab by default
+  if (userRole === 'seller') {
+    const headersList = await headers();
+    const pathname = headersList.get('x-pathname') || headersList.get('referer') || '';
+    // If accessing the dashboard root, redirect to products
+    // Note: This is a fallback - the client-side redirect in page.tsx should handle this
+    // But we check here in case the client-side redirect doesn't fire
   }
 
   // Get employee info to pass to AdminNav

@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query - all users (sellers, admins, managers) see all orders
+    // Sales persons can view orders from all sellers and admins, not just their own
     const query = supabase
       .from('orders')
       .select('*');

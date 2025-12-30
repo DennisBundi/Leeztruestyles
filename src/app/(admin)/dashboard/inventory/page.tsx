@@ -48,7 +48,7 @@ export default function InventoryPage() {
         const response = await fetch('/api/auth/role');
         const { role } = await response.json();
         if (mounted && role === 'seller') {
-          router.replace('/dashboard/orders');
+          router.replace('/dashboard/products');
         }
       } catch (error) {
         console.error('Error checking role:', error);

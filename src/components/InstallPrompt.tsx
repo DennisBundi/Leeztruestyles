@@ -8,12 +8,15 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function InstallPrompt() {
+  const [mounted, setMounted] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    
     // Check if running on iOS
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(iOS);
@@ -32,8 +35,29 @@ export default function InstallPrompt() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+    // For iOS or if beforeinstallprompt doesn't fire, show prompt after a delay
+    // This ensures users see the install instructions even if the browser doesn't trigger the event
+    const showDelay = setTimeout(() => {
+      // Only show if not already installed and not dismissed recently
+      const dismissed = localStorage.getItem('pwa-install-dismissed');
+      if (dismissed) {
+        const dismissedTime = parseInt(dismissed, 10);
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        if (dismissedTime > oneDayAgo) {
+          return; // Don't show if dismissed recently
+        }
+      }
+
+      // Show for iOS always, or for other platforms if not in standalone mode
+      // (The beforeinstallprompt event handler will override this if it fires)
+      if (!standalone) {
+        setShowPrompt(true);
+      }
+    }, 3000); // Show after 3 seconds
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      clearTimeout(showDelay);
     };
   }, []);
 
@@ -82,16 +106,24 @@ export default function InstallPrompt() {
       }
     }
 
-    if (deferredPrompt) {
+    // Show prompt if:
+    // 1. We have a deferred prompt (Android/Desktop with beforeinstallprompt event)
+    // 2. OR it's iOS (which doesn't fire beforeinstallprompt, but we can show instructions)
+    if (deferredPrompt || isIOS) {
       setShowPrompt(true);
     }
-  }, [deferredPrompt, isStandalone]);
+  }, [deferredPrompt, isStandalone, isIOS]);
+
+  // Don't render until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   if (!showPrompt || isStandalone) {
     return null;
   }
 
-  // iOS-specific instructions
+  // iOS-specific instructions (show even without beforeinstallprompt event)
   if (isIOS && !isStandalone) {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 bg-white border-2 border-primary rounded-lg shadow-xl p-4 z-50 animate-slide-up">
@@ -124,6 +156,7 @@ export default function InstallPrompt() {
   }
 
   // Android/Desktop install prompt
+  // Only show install button if we have deferredPrompt (beforeinstallprompt event fired)
   return (
     <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 bg-white border-2 border-primary rounded-lg shadow-xl p-4 z-50 animate-slide-up">
       <div className="flex items-start justify-between">
@@ -132,8 +165,16 @@ export default function InstallPrompt() {
             Install Leeztruestyles
           </h3>
           <p className="text-sm text-gray-600 mb-3">
-            Get quick access and a better experience
+            {deferredPrompt 
+              ? 'Get quick access and a better experience'
+              : 'Add to Home Screen for quick access and offline support'}
           </p>
+          {!deferredPrompt && (
+            <div className="text-xs text-gray-500 space-y-1 mt-2">
+              <p>• Look for the install icon in your browser</p>
+              <p>• Or use the browser menu: More tools → Create shortcut</p>
+            </div>
+          )}
         </div>
         <button
           onClick={handleClose}
@@ -145,20 +186,32 @@ export default function InstallPrompt() {
           </svg>
         </button>
       </div>
-      <div className="flex gap-2 mt-3">
-        <button
-          onClick={handleInstallClick}
-          className="flex-1 bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-primary-dark transition-colors"
-        >
-          Install
-        </button>
-        <button
-          onClick={handleClose}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-        >
-          Later
-        </button>
-      </div>
+      {deferredPrompt && (
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={handleInstallClick}
+            className="flex-1 bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-primary-dark transition-colors"
+          >
+            Install
+          </button>
+          <button
+            onClick={handleClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            Later
+          </button>
+        </div>
+      )}
+      {!deferredPrompt && (
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={handleClose}
+            className="flex-1 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            Got it
+          </button>
+        </div>
+      )}
     </div>
   );
 }

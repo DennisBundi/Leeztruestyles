@@ -38,8 +38,8 @@ export default function EmployeesPage() {
       try {
         const response = await fetch('/api/auth/role');
         const { role } = await response.json();
-        if (mounted && role !== 'admin') {
-          router.replace('/dashboard/orders');
+        if (mounted && role === 'seller') {
+          router.replace('/dashboard/products');
         }
       } catch (error) {
         console.error('Error checking role:', error);

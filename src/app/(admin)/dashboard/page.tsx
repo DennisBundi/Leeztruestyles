@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [recentOrdersLoading, setRecentOrdersLoading] = useState(true);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   // Real data from Supabase
   const [completedOrders, setCompletedOrders] = useState<number>(0);
@@ -58,7 +59,7 @@ export default function DashboardPage() {
   const [todayProfits, setTodayProfits] = useState<number>(0);
   const [lowStock, setLowStock] = useState<Array<{ id: string; name: string; stock_quantity: number }>>([]);
 
-  // Check role and redirect sellers (only once)
+  // Check role and redirect sellers immediately (only once)
   useEffect(() => {
     let mounted = true;
     const checkRole = async () => {
@@ -66,15 +67,31 @@ export default function DashboardPage() {
         const response = await fetch('/api/auth/role');
         const { role } = await response.json();
         if (mounted && role === 'seller') {
-          router.replace('/dashboard/orders');
+          setIsRedirecting(true);
+          // Use replace to avoid adding to history, and do it immediately
+          router.replace('/dashboard/products');
+          return; // Exit early to prevent rendering dashboard content
         }
       } catch (error) {
         console.error('Error checking role:', error);
       }
     };
+    // Run immediately, don't wait
     checkRole();
     return () => { mounted = false; };
   }, [router]);
+
+  // Don't render dashboard content if redirecting
+  if (isRedirecting) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to products...</p>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     fetchDashboardData();

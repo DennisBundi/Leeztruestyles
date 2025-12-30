@@ -131,7 +131,18 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
   ];
 
   // Filter nav items based on user role
-  const navItems = allNavItems.filter(item => canAccessSection(userRole, item.section));
+  let navItems = allNavItems.filter(item => canAccessSection(userRole, item.section));
+  
+  // For sellers, reorder so Products appears first (before Orders)
+  if (userRole === 'seller') {
+    navItems = navItems.sort((a, b) => {
+      // Products should be first
+      if (a.section === 'products') return -1;
+      if (b.section === 'products') return 1;
+      // Keep original order for other items
+      return 0;
+    });
+  }
 
   return (
     <>

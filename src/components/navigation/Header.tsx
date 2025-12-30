@@ -34,6 +34,13 @@ export default function Header() {
       process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder' &&
       process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '';
 
+    // Set a maximum loading time - always show auth buttons after 2 seconds
+    const maxLoadingTimer = setTimeout(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    }, 2000);
+
     if (hasSupabase) {
       const checkUserRole = async (userId: string) => {
         try {
@@ -58,7 +65,7 @@ export default function Header() {
           // Race condition to prevent infinite loading if Supabase hangs
           const getUserPromise = supabase.auth.getUser();
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Auth timeout')), 10000)
+            setTimeout(() => reject(new Error('Auth timeout')), 5000) // Reduced to 5 seconds
           );
 
           const { data } = await Promise.race([getUserPromise, timeoutPromise]) as any;
@@ -101,7 +108,10 @@ export default function Header() {
             }
           }
         } finally {
-          if (mounted) setLoading(false);
+          if (mounted) {
+            clearTimeout(maxLoadingTimer);
+            setLoading(false);
+          }
         }
       };
 
@@ -123,9 +133,12 @@ export default function Header() {
 
       return () => {
         mounted = false;
+        clearTimeout(maxLoadingTimer);
         subscription.unsubscribe();
       };
     } else {
+      // No Supabase config - show auth buttons immediately
+      clearTimeout(maxLoadingTimer);
       setLoading(false);
     }
   }, []);
@@ -198,7 +211,7 @@ export default function Header() {
 
             {/* Auth Button (Desktop) */}
             <div className="hidden md:flex items-center">
-              {loading ? (
+              {loading && user === null ? (
                 <div className="h-9 w-24 bg-gray-100 animate-pulse rounded-lg"></div>
               ) : user ? (
                 <div className="relative">
@@ -326,9 +339,10 @@ export default function Header() {
                 </Link>
               ))}
               {/* Mobile Auth Links */}
-              {!loading && (
-                <div className="px-4 pt-2 border-t border-gray-100 flex flex-col gap-2">
-                  {user ? (
+              <div className="px-4 pt-2 border-t border-gray-100 flex flex-col gap-2">
+                {loading && user === null ? (
+                  <div className="h-10 bg-gray-100 animate-pulse rounded-lg"></div>
+                ) : user ? (
                     <>
                       <Link
                         href={isAdmin ? "/dashboard" : "/profile"}
@@ -366,8 +380,7 @@ export default function Header() {
                       </Link>
                     </div>
                   )}
-                </div>
-              )}
+              </div>
             </div>
           </nav>
         )}

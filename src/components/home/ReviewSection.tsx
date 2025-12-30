@@ -63,12 +63,14 @@ const reviews: Review[] = [
 ];
 
 export default function ReviewSection() {
+  const [mounted, setMounted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true); // Start visible so reviews show immediately
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(false); // Safe default: assume desktop initially
 
   // Detect mobile/desktop and calculate max index
   useEffect(() => {
+    setMounted(true);
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -79,7 +81,10 @@ export default function ReviewSection() {
 
   // Desktop shows 3 at a time (maxIndex = 3: positions 0-3 show reviews 0-2, 1-3, 2-4, 3-5)
   // Mobile shows 1 at a time (maxIndex = 5: positions 0-5 show each review individually)
-  const maxIndex = isMobile ? reviews.length - 1 : Math.max(0, reviews.length - 3);
+  // Use safe default (desktop) until mounted to prevent hydration mismatch
+  const maxIndex = mounted 
+    ? (isMobile ? reviews.length - 1 : Math.max(0, reviews.length - 3))
+    : Math.max(0, reviews.length - 3); // Default to desktop view until mounted
 
   // Auto-rotate reviews every 3 seconds with smooth horizontal slide animation
   useEffect(() => {

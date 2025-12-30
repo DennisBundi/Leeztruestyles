@@ -310,9 +310,22 @@ export default function ProductsPage() {
   const filteredProducts = useMemo(() => {
     return products
       .filter((product: any) => {
-        const matchesSearch = product.name
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase());
+        // Enhanced search: search across name, description, ID, and category
+        const searchLower = searchQuery.toLowerCase().trim();
+        let matchesSearch = true;
+        
+        if (searchLower) {
+          const searchInName = product.name?.toLowerCase().includes(searchLower) || false;
+          const searchInDescription = product.description?.toLowerCase().includes(searchLower) || false;
+          const searchInId = product.id?.toLowerCase().includes(searchLower) || false;
+          const searchInCategory = product.category?.toLowerCase().includes(searchLower) || false;
+          // Also search in price as string (e.g., "2500" or "KES 2500")
+          const searchInPrice = product.price?.toString().includes(searchLower) || 
+                               product.sale_price?.toString().includes(searchLower) || false;
+          
+          matchesSearch = searchInName || searchInDescription || searchInId || searchInCategory || searchInPrice;
+        }
+        
         const matchesCategory =
           selectedCategoryFilter === "all" ||
           product.category === selectedCategoryFilter;
@@ -432,12 +445,12 @@ export default function ProductsPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Products</h1>
           <p className="text-gray-600">Manage your product catalog</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => setShowCategoriesPanel(!showCategoriesPanel)}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors flex items-center gap-2"
@@ -530,8 +543,8 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+      {/* Products Table - Desktop Only */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -772,6 +785,237 @@ export default function ProductsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Products Cards - Mobile Only */}
+      <div className="block md:hidden space-y-4">
+        {loadingProducts ? (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-3 text-gray-600">Loading products...</span>
+            </div>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+            <div className="text-gray-500">
+              <svg
+                className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                />
+              </svg>
+              <p className="font-medium text-lg text-gray-700 mb-2">
+                No products found
+              </p>
+              {products.length === 0 ? (
+                <p className="text-sm text-gray-500 mb-4">
+                  Your product catalog is empty. Start by adding your first product.
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 mb-4">
+                  No products match your current search or filters. Try adjusting your search criteria.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          filteredProducts.map((product) => {
+            const hasBuyingPrice =
+              userRole === "admin"
+                ? product.buying_price !== null &&
+                  product.buying_price !== undefined &&
+                  product.buying_price > 0
+                : true;
+
+            return (
+              <div
+                key={product.id}
+                className={`bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden ${
+                  userRole === "admin" && !hasBuyingPrice
+                    ? "border-l-4 border-l-yellow-400 bg-yellow-50"
+                    : ""
+                }`}
+              >
+                {/* Product Image */}
+                <div className="relative w-full h-48 bg-gray-100">
+                  <Image
+                    src={
+                      product.image ||
+                      "/images/placeholder-product.jpg"
+                    }
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                    sizes="100vw"
+                  />
+                </div>
+
+                {/* Product Info */}
+                <div className="p-4 space-y-3">
+                  {/* Name and ID */}
+                  <div>
+                    <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                      {product.name}
+                    </h3>
+                    <p className="text-xs text-gray-500">ID: {product.id}</p>
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">
+                      Category:{" "}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {product.category}
+                    </span>
+                  </div>
+
+                  {/* Price */}
+                  <div>
+                    {product.sale_price ? (
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-lg text-gray-900">
+                          KES {(product.sale_price || 0).toLocaleString()}
+                        </span>
+                        <span className="text-sm text-gray-500 line-through">
+                          KES {(product.price || 0).toLocaleString()}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-semibold text-lg text-gray-900">
+                        KES {(product.price || 0).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Stock, Flash Sale, Status Row */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                    {/* Stock */}
+                    <div className="flex-1 min-w-[100px]">
+                      <span className="text-xs text-gray-500 block mb-1">
+                        Stock
+                      </span>
+                      {product.stock !== undefined ? (
+                        <span
+                          className={`font-semibold text-sm ${
+                            product.stock_status === "out"
+                              ? "text-red-600"
+                              : product.stock_status === "low"
+                              ? "text-yellow-600"
+                              : "text-green-600"
+                          }`}
+                        >
+                          {product.stock}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">N/A</span>
+                      )}
+                    </div>
+
+                    {/* Flash Sale */}
+                    <div className="flex-1 min-w-[100px]">
+                      <span className="text-xs text-gray-500 block mb-1">
+                        Flash Sale
+                      </span>
+                      {product.is_flash_sale ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                          🔥 Active
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </div>
+
+                    {/* Status */}
+                    <div className="flex-1 min-w-[100px]">
+                      <span className="text-xs text-gray-500 block mb-1">
+                        Status
+                      </span>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          product.status === "active"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {product.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
+                    <button
+                      onClick={() => copyProductLink(product.id)}
+                      className="flex-1 px-3 py-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium border border-gray-200"
+                      title="Copy product link"
+                    >
+                      {copiedProductId === product.id ? (
+                        <>
+                          <svg
+                            className="w-4 h-4 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          <span className="text-green-600">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                            />
+                          </svg>
+                          <span>Copy Link</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setSelectedProduct(product as Product)}
+                      className="flex-1 px-3 py-2 bg-primary text-white rounded-lg font-medium text-sm hover:bg-primary-dark transition-colors"
+                    >
+                      Edit
+                    </button>
+                    {userRole === "admin" && (
+                      <button
+                        onClick={() =>
+                          handleDeleteProduct(product.id, product.name)
+                        }
+                        className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}
