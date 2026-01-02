@@ -220,19 +220,40 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all orders for total count and total sales calculation
+    console.log('🔍 [API] Fetching all orders for totals...');
     const { data: allOrders, error: allOrdersError } = await adminClient
       .from('orders')
-      .select('id, total_amount, status');
+      .select('id, total_amount, status, created_at');
 
     if (allOrdersError) {
-      console.error('Error fetching all orders:', allOrdersError);
+      console.error('❌ [API] Error fetching all orders:', allOrdersError);
+    } else {
+      console.log('✅ [API] Fetched orders:', {
+        count: allOrders?.length || 0,
+        sampleOrders: allOrders?.slice(0, 3).map((o: any) => ({
+          id: o.id,
+          amount: o.total_amount,
+          status: o.status,
+          amountType: typeof o.total_amount
+        }))
+      });
     }
 
-    // Calculate totals from all orders
+    // Improved calculation with better error handling
     const totalOrdersCount = allOrders?.length || 0;
     const totalSalesAmount = (allOrders || []).reduce((sum: number, order: any) => {
-      return sum + parseFloat(order.total_amount || 0);
+      const amount = parseFloat(order.total_amount || 0);
+      if (isNaN(amount)) {
+        console.warn('⚠️ [API] Invalid total_amount for order:', order.id, order.total_amount);
+        return sum;
+      }
+      return sum + amount;
     }, 0);
+
+    console.log('💰 [API] Calculated totals:', {
+      totalOrders: totalOrdersCount,
+      totalSales: totalSalesAmount
+    });
 
     // Fetch order counts by status
     const { count: completedCount, error: completedError } = await adminClient
@@ -512,27 +533,70 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate today's sales and orders
-    const todayStart = new Date(today);
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(today);
-    todayEnd.setHours(23, 59, 59, 999);
+    // Use local timezone for "today" but convert to UTC for database query
+    // Database stores timestamps in UTC, so we need to query the full UTC day
+    const nowLocal = new Date();
+    const localYear = nowLocal.getFullYear();
+    const localMonth = nowLocal.getMonth();
+    const localDate = nowLocal.getDate();
+    
+    // Create start of day in local timezone, then convert to UTC
+    const todayStartLocal = new Date(localYear, localMonth, localDate, 0, 0, 0, 0);
+    // Create end of day in local timezone, then convert to UTC
+    const todayEndLocal = new Date(localYear, localMonth, localDate, 23, 59, 59, 999);
+    
+    // Convert to UTC ISO strings for database query
+    // The database stores UTC, so we query the UTC equivalent of the local day
+    const todayStartUTC = new Date(Date.UTC(localYear, localMonth, localDate, 0, 0, 0, 0));
+    const todayEndUTC = new Date(Date.UTC(localYear, localMonth, localDate, 23, 59, 59, 999));
+    
+    console.log('📅 [API] Today date range:', {
+      localDate: nowLocal.toLocaleDateString(),
+      localTime: nowLocal.toLocaleTimeString(),
+      todayStartLocal: todayStartLocal.toISOString(),
+      todayEndLocal: todayEndLocal.toISOString(),
+      todayStartUTC: todayStartUTC.toISOString(),
+      todayEndUTC: todayEndUTC.toISOString(),
+      timezoneOffset: nowLocal.getTimezoneOffset()
+    });
 
     // Fetch today's orders - include sale_type for debugging
+    // Query using UTC dates to match database storage
     const { data: todayOrders, error: todayOrdersError } = await adminClient
       .from('orders')
       .select('id, total_amount, created_at, status, sale_type')
-      .gte('created_at', todayStart.toISOString())
-      .lte('created_at', todayEnd.toISOString())
+      .gte('created_at', todayStartUTC.toISOString())
+      .lte('created_at', todayEndUTC.toISOString())
       .order('created_at', { ascending: false });
 
     if (todayOrdersError) {
-      console.error('Error fetching today\'s orders:', todayOrdersError);
+      console.error('❌ [API] Error fetching today\'s orders:', todayOrdersError);
+    } else {
+      console.log('📅 [API] Today\'s orders found:', {
+        count: todayOrders?.length || 0,
+        orders: todayOrders?.map((o: any) => ({
+          id: o.id,
+          amount: o.total_amount,
+          created_at: o.created_at,
+          status: o.status
+        }))
+      });
     }
 
     // Calculate today's sales (sum of all orders created today)
     const todaySales = (todayOrders || []).reduce((sum: number, order: any) => {
-      return sum + parseFloat(order.total_amount || 0);
+      const amount = parseFloat(order.total_amount || 0);
+      if (isNaN(amount)) {
+        console.warn('⚠️ [API] Invalid total_amount for today\'s order:', order.id, order.total_amount);
+        return sum;
+      }
+      return sum + amount;
     }, 0);
+    
+    console.log('💰 [API] Today\'s sales calculated:', {
+      todaySales,
+      orderCount: todayOrders?.length || 0
+    });
 
     // Count today's orders
     const todayOrdersCount = todayOrders?.length || 0;
@@ -545,7 +609,7 @@ export async function GET(request: NextRequest) {
     );
     
     // Log all today's orders for debugging
-    console.log('Today\'s orders breakdown:', {
+    console.log('📊 [API] Today\'s orders breakdown:', {
       total: todayOrders?.length || 0,
       byStatus: (todayOrders || []).reduce((acc: any, order: any) => {
         acc[order.status] = (acc[order.status] || 0) + 1;
@@ -662,7 +726,7 @@ export async function GET(request: NextRequest) {
               selling_price: item.price,
               quantity: item.quantity,
               profit: buyingPrice && buyingPrice > 0 
-                ? (parseFloat(item.price || 0) - buyingPrice) * parseInt(item.quantity || 0)
+                ? (parseFloat(item.price || 0) - buyingPrice) * parseInt(String(item.quantity || 0), 10)
                 : 'N/A (no buying price)',
             };
           });
@@ -678,7 +742,7 @@ export async function GET(request: NextRequest) {
           };
         });
         
-        console.log('Today\'s profits calculation - DETAILED:', {
+        console.log('💰 [API] Today\'s profits calculation - DETAILED:', {
           totalTodayOrders: todayOrders?.length || 0,
           eligibleOrders: eligibleTodayOrders.length,
           orderItems: todayOrderItems.length,
@@ -693,7 +757,7 @@ export async function GET(request: NextRequest) {
         
         // If profit is 0 but we have orders, log detailed warning
         if (todayProfits === 0 && eligibleTodayOrders.length > 0 && todayOrderItems.length > 0) {
-          console.warn('⚠️ WARNING: Profit is 0 but orders and items exist!', {
+          console.warn('⚠️ [API] WARNING: Profit is 0 but orders and items exist!', {
             reason: skippedItems.noBuyingPrice > 0 
               ? `Products are missing buying_price. ${skippedItems.noBuyingPrice} items skipped.`
               : skippedItems.noProductId > 0
@@ -717,21 +781,24 @@ export async function GET(request: NextRequest) {
           });
         }
       } else {
-        console.log('Today\'s profits calculation: No order items found for eligible orders', {
+        console.log('💰 [API] Today\'s profits calculation: No order items found for eligible orders', {
           eligibleOrderIds,
           orderItemsError: orderItemsError?.message,
         });
       }
     } else {
-      console.log('Today\'s profits calculation: No eligible orders found', {
+      console.log('💰 [API] Today\'s profits calculation: No eligible orders found', {
         totalTodayOrders: todayOrders?.length || 0,
-        allStatuses: ordersByStatus,
+        allStatuses: (todayOrders || []).reduce((acc: any, order: any) => {
+          acc[order.status] = (acc[order.status] || 0) + 1;
+          return acc;
+        }, {}),
         message: 'Only orders with status other than "cancelled" or "refunded" are included',
       });
       
       // If there are orders but none are eligible, log them for debugging
       if (todayOrders && todayOrders.length > 0) {
-        console.warn('⚠️ Orders found but not eligible for profit calculation:', {
+        console.warn('⚠️ [API] Orders found but not eligible for profit calculation:', {
           orders: todayOrders.map((o: any) => ({
             id: o.id,
             status: o.status,
@@ -762,25 +829,46 @@ export async function GET(request: NextRequest) {
       todayProfits,
     });
 
-    // Ensure we always return data, even if empty
-    return NextResponse.json({
+    // Ensure we always return data, even if empty - with consistent structure
+    const responseData = {
       salesByDay: formattedSalesByDay || [],
       topProducts: topProducts || [],
       lowStock: lowStockProducts || [],
-      totalSales: totalSalesAmount,
-      totalOrders: totalOrdersCount,
-      totalProducts: allProducts.length,
-      todaySales,
-      todayOrders: todayOrdersCount,
-      todayProfits,
+      totalSales: totalSalesAmount || 0,
+      totalOrders: totalOrdersCount || 0,
+      totalProducts: allProducts.length || 0,
+      todaySales: todaySales || 0,
+      todayOrders: todayOrdersCount || 0,
+      todayProfits: todayProfits || 0,
       completedOrders: completedCount || 0,
       pendingOrders: pendingCount || 0,
       totalCustomers: customersCount || 0,
+    };
+    
+    console.log('✅ [API] Dashboard stats response prepared:', {
+      hasSalesByDay: Array.isArray(responseData.salesByDay),
+      hasTopProducts: Array.isArray(responseData.topProducts),
+      hasLowStock: Array.isArray(responseData.lowStock),
+      totalSales: responseData.totalSales,
+      totalOrders: responseData.totalOrders,
+      todaySales: responseData.todaySales,
+      todayOrders: responseData.todayOrders,
+      todayProfits: responseData.todayProfits,
+      allFieldsPresent: Object.keys(responseData).length === 11
     });
+    
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error('Dashboard stats error:', error);
+    console.error('❌ [API] Dashboard stats error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard stats', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to fetch dashboard stats', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }

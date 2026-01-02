@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [recentOrdersLoading, setRecentOrdersLoading] = useState(true);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Real data from Supabase
   const [completedOrders, setCompletedOrders] = useState<number>(0);
@@ -101,45 +102,107 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear previous errors
+      
+      console.log('📊 [Dashboard] Fetching dashboard stats...');
       const response = await fetch('/api/dashboard/stats');
+      
+      console.log('📊 [Dashboard] API response status:', response.status, response.statusText);
+      
       const data = await response.json();
       
-      if (response.ok) {
-        console.log('Dashboard stats received:', {
-          salesByDay: data.salesByDay?.length || 0,
-          topProducts: data.topProducts?.length || 0,
-          lowStock: data.lowStock?.length || 0,
-          totalSales: data.totalSales || 0,
-          totalOrders: data.totalOrders || 0,
-          todaySales: data.todaySales || 0,
-          todayOrders: data.todayOrders || 0,
-          todayProfits: data.todayProfits || 0,
-          completedOrders: data.completedOrders || 0,
-          pendingOrders: data.pendingOrders || 0,
-          totalCustomers: data.totalCustomers || 0,
+      if (!response.ok) {
+        // Handle API errors
+        const errorMessage = data.error || `API error: ${response.status}`;
+        setError(errorMessage);
+        console.error('❌ [Dashboard] Stats API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: data.error,
+          details: data.details,
+          fullResponse: data
         });
-        setSalesByDay(data.salesByDay || []);
-        setTopProducts(data.topProducts || []);
-        setTotalSales(data.totalSales || 0);
-        setTotalOrders(data.totalOrders || 0);
-        setTodaySales(data.todaySales || 0);
-        setTodayOrders(data.todayOrders || 0);
-        setTodayProfits(data.todayProfits || 0);
-        setCompletedOrders(data.completedOrders || 0);
-        setPendingOrders(data.pendingOrders || 0);
-        setTotalCustomers(data.totalCustomers || 0);
-        const lowStockData = data.lowStock || [];
-        console.log('Low stock data received:', {
-          count: lowStockData.length,
-          items: lowStockData.slice(0, 5), // Log first 5 items
-        });
-        setLowStock(lowStockData);
-      } else {
-        console.error('Dashboard stats API error:', data.error, data.details);
+        
+        // Handle specific error types
+        if (response.status === 401) {
+          setError('Authentication required. Please sign in again.');
+        } else if (response.status === 403) {
+          setError('Access denied. You do not have permission to view dashboard stats.');
+        } else if (response.status === 500) {
+          setError('Server error. Please try again later.');
+        }
+        
+        // Reset all stats to 0 on error
+        setSalesByDay([]);
+        setTopProducts([]);
+        setTotalSales(0);
+        setTotalOrders(0);
+        setTodaySales(0);
+        setTodayOrders(0);
+        setTodayProfits(0);
+        setCompletedOrders(0);
+        setPendingOrders(0);
+        setTotalCustomers(0);
         setLowStock([]);
+        return;
       }
+      
+      // Success - log and set data
+      console.log('✅ [Dashboard] Stats received successfully:', {
+        salesByDay: data.salesByDay?.length || 0,
+        topProducts: data.topProducts?.length || 0,
+        lowStock: data.lowStock?.length || 0,
+        totalSales: data.totalSales || 0,
+        totalOrders: data.totalOrders || 0,
+        todaySales: data.todaySales || 0,
+        todayOrders: data.todayOrders || 0,
+        todayProfits: data.todayProfits || 0,
+        completedOrders: data.completedOrders || 0,
+        pendingOrders: data.pendingOrders || 0,
+        totalCustomers: data.totalCustomers || 0,
+        responseStructure: Object.keys(data)
+      });
+      
+      setSalesByDay(data.salesByDay || []);
+      setTopProducts(data.topProducts || []);
+      setTotalSales(data.totalSales || 0);
+      setTotalOrders(data.totalOrders || 0);
+      setTodaySales(data.todaySales || 0);
+      setTodayOrders(data.todayOrders || 0);
+      setTodayProfits(data.todayProfits || 0);
+      setCompletedOrders(data.completedOrders || 0);
+      setPendingOrders(data.pendingOrders || 0);
+      setTotalCustomers(data.totalCustomers || 0);
+      
+      const lowStockData = data.lowStock || [];
+      console.log('📦 [Dashboard] Low stock data received:', {
+        count: lowStockData.length,
+        items: lowStockData.slice(0, 5), // Log first 5 items
+      });
+      setLowStock(lowStockData);
+      
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      // Handle network errors
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch dashboard stats';
+      setError(errorMessage);
+      console.error('❌ [Dashboard] Network error fetching stats:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      // Reset all stats to 0 on error
+      setSalesByDay([]);
+      setTopProducts([]);
+      setTotalSales(0);
+      setTotalOrders(0);
+      setTodaySales(0);
+      setTodayOrders(0);
+      setTodayProfits(0);
+      setCompletedOrders(0);
+      setPendingOrders(0);
+      setTotalCustomers(0);
+      setLowStock([]);
     } finally {
       setLoading(false);
     }
@@ -207,9 +270,10 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-2xl font-bold text-primary">
-            {loading ? '...' : `KES ${(totalSales || 0).toLocaleString()}`}
+            {loading ? '...' : error ? 'Error' : `KES ${(totalSales || 0).toLocaleString()}`}
           </p>
           <p className="text-xs text-gray-500 mt-1">All time</p>
+          {error && <p className="text-xs text-red-500 mt-1 truncate" title={error}>{error}</p>}
         </Link>
         
         <Link href="/dashboard/orders" className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl shadow-md border border-blue-200 hover:shadow-lg transition-all cursor-pointer">
@@ -220,9 +284,10 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-2xl font-bold text-blue-600">
-            {loading ? '...' : totalOrders}
+            {loading ? '...' : error ? 'Error' : totalOrders}
           </p>
           <p className="text-xs text-gray-500 mt-1">All time</p>
+          {error && <p className="text-xs text-red-500 mt-1 truncate" title={error}>{error}</p>}
         </Link>
         
         <div className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl shadow-md border border-green-200 hover:shadow-lg transition-all">
@@ -233,11 +298,12 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-2xl font-bold text-green-600">
-            {loading ? '...' : `KES ${(todaySales || 0).toLocaleString()}`}
+            {loading ? '...' : error ? 'Error' : `KES ${(todaySales || 0).toLocaleString()}`}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {loading ? 'Loading...' : `${todayOrders} orders today`}
+            {loading ? 'Loading...' : error ? 'Failed to load' : `${todayOrders} orders today`}
           </p>
+          {error && <p className="text-xs text-red-500 mt-1 truncate" title={error}>{error}</p>}
         </div>
         
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl shadow-md border border-purple-200 hover:shadow-lg transition-all">
@@ -248,11 +314,36 @@ export default function DashboardPage() {
             </svg>
           </div>
           <p className="text-2xl font-bold text-purple-600">
-            {loading ? '...' : `KES ${(todayProfits || 0).toLocaleString()}`}
+            {loading ? '...' : error ? 'Error' : `KES ${(todayProfits || 0).toLocaleString()}`}
           </p>
           <p className="text-xs text-gray-500 mt-1">Today's earnings</p>
+          {error && <p className="text-xs text-red-500 mt-1 truncate" title={error}>{error}</p>}
         </div>
       </div>
+      
+      {/* Global Error Banner */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">Failed to load dashboard statistics</p>
+              <p className="text-sm text-red-600 mt-1">{error}</p>
+            </div>
+            <button
+              onClick={() => {
+                setError(null);
+                fetchDashboardData();
+              }}
+              className="ml-4 text-sm font-medium text-red-800 hover:text-red-900 underline"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
