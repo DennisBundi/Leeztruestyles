@@ -58,7 +58,7 @@ global.IntersectionObserver = class IntersectionObserver {
     return [];
   }
   unobserve() {}
-} as any;
+};
 
 // Mock service worker
 Object.defineProperty(navigator, 'serviceWorker', {
@@ -79,7 +79,7 @@ const localStorageMock = {
   removeItem: jest.fn(),
   clear: jest.fn(),
 };
-global.localStorage = localStorageMock as any;
+global.localStorage = localStorageMock;
 
 // Mock window.matchMedia for responsive tests
 Object.defineProperty(window, 'matchMedia', {

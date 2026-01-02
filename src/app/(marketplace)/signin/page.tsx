@@ -1,21 +1,64 @@
 
 'use client'
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useEffect, useRef, Suspense, useTransition } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { login } from '@/app/auth/actions';
 
-export default function SignInPage() {
-  const [error, setError] = useState<string | null>(null);
+function SignInContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const redirectParam = searchParams.get('redirect');
+  const errorParam = searchParams.get('error');
+  const [error, setError] = useState<string | null>(errorParam ? decodeURIComponent(errorParam) : null);
   const [isPending, startTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const handleSubmit = async (formData: FormData) => {
+  useEffect(() => {
+    console.log('[SignIn] Component mounted');
+    const form = formRef.current;
+    const button = buttonRef.current;
+    if (form) {
+      console.log('[SignIn] Form element found');
+    }
+    if (button) {
+      console.log('[SignIn] Button element found:', button);
+      // Test if button is clickable
+      button.addEventListener('click', (e) => {
+        console.log('[SignIn] Native click listener fired!');
+      }, { once: true });
+    }
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[SignIn] ===== FORM SUBMISSION STARTED =====');
     setError(null);
 
+    const formData = new FormData(e.currentTarget);
+    console.log('[SignIn] FormData extracted:', {
+      email: formData.get('email'),
+      hasPassword: !!formData.get('password')
+    });
+
     startTransition(async () => {
-      const result = await login(formData);
-      if (result?.error) {
-        setError(result.error);
+      try {
+        console.log('[SignIn] Starting login process...');
+        await login(formData);
+        // If login succeeds, redirect() will be called in the server action
+        console.log('[SignIn] Login completed - redirect should happen');
+      } catch (err: any) {
+        // Next.js redirect() throws NEXT_REDIRECT error - this is expected
+        if (err?.digest?.startsWith('NEXT_REDIRECT')) {
+          console.log('[SignIn] Redirect detected - letting Next.js handle it');
+          throw err; // Re-throw so Next.js handles the redirect
+        }
+        // Actual error - display to user
+        console.error('[SignIn] Login error:', err);
+        setError(err?.message || 'An error occurred during login. Please try again.');
       }
     });
   };
@@ -26,8 +69,8 @@ export default function SignInPage() {
       <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-primary/30 rounded-full blur-3xl opacity-50 pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-secondary/20 rounded-full blur-3xl opacity-50 pointer-events-none" />
 
-      <div className="w-full max-w-md p-8 relative z-10">
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8 sm:p-10">
+      <div className="w-full max-w-md p-8 relative z-[60]" style={{ isolation: 'isolate' }}>
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8 sm:p-10 relative z-[60]">
           <div className="text-center mb-10">
             <Link href="/" className="inline-block hover:opacity-80 transition-opacity">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-secondary-dark to-primary-dark bg-clip-text text-transparent">
@@ -39,7 +82,12 @@ export default function SignInPage() {
             </p>
           </div>
 
-          <form action={handleSubmit} className="space-y-6">
+          <form 
+            ref={formRef}
+            onSubmit={handleSubmit}
+            className="space-y-6 relative z-[60]"
+            style={{ isolation: 'isolate', position: 'relative', zIndex: 60 }}
+          >
             <div>
               <label
                 htmlFor="email"
@@ -90,11 +138,32 @@ export default function SignInPage() {
             )}
 
 
-            <div>
+            <div className="relative z-[70]" style={{ pointerEvents: 'auto', isolation: 'isolate', position: 'relative' }}>
               <button
+                ref={buttonRef}
                 type="submit"
                 disabled={isPending}
-                className="w-full flex justify-center py-3.5 px-4 rounded-none text-base font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-lg shadow-primary/30 transform transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                onClick={(e) => {
+                  console.log('[SignIn] Button onClick triggered!', { isPending, type: e.type, target: e.target });
+                  // Don't prevent default - let form onSubmit handle it
+                }}
+                onMouseDown={(e) => {
+                  console.log('[SignIn] Button onMouseDown triggered!');
+                  e.stopPropagation(); // Prevent event bubbling to Header
+                }}
+                onMouseUp={(e) => {
+                  console.log('[SignIn] Button onMouseUp triggered!');
+                  e.stopPropagation(); // Prevent event bubbling to Header
+                }}
+                style={{ 
+                  pointerEvents: 'auto', 
+                  cursor: isPending ? 'not-allowed' : 'pointer', 
+                  zIndex: 70,
+                  position: 'relative',
+                  isolation: 'isolate',
+                  width: '100%'
+                }}
+                className="w-full flex justify-center py-3.5 px-4 rounded-none text-base font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-lg shadow-primary/30 transform transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 relative z-[70]"
               >
                 {isPending ? (
                   <span className="flex items-center gap-2">
@@ -138,5 +207,20 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   );
 }

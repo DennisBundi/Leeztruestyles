@@ -55,7 +55,56 @@ const nextConfig = {
           },
         ],
       },
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: process.env.NODE_ENV === 'development' 
+              ? 'no-cache, no-store, must-revalidate, proxy-revalidate'
+              : 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // In development, prevent caching of chunks to avoid stale code issues
+      ...(process.env.NODE_ENV === 'development' ? [{
+        source: '/_next/static/chunks/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+        ],
+      }] : []),
     ];
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Improve chunk loading reliability
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            ...config.optimization.splitChunks?.cacheGroups,
+            default: {
+              minChunks: 1,
+              priority: -20,
+              reuseExistingChunk: true,
+            },
+          },
+        },
+      };
+    }
+    return config;
   },
 };
 

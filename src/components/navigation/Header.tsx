@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
@@ -18,12 +18,65 @@ export default function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'manager' | 'seller' | null>(null);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const buttonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+
+  // Track if we just opened the modal to prevent immediate closing
+  const justOpenedRef = useRef(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showSignOutModal) {
+      justOpenedRef.current = false;
+      return;
+    }
+
+    // Set flag when modal opens to prevent immediate closing
+    justOpenedRef.current = true;
+    const timeoutId = setTimeout(() => {
+      justOpenedRef.current = false;
+    }, 100); // Allow 100ms for the opening click to complete
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Ignore clicks that happened right after opening the modal
+      if (justOpenedRef.current) {
+        return;
+      }
+
+      // Don't close if clicking inside the dropdown container (button or dropdown menu)
+      if (buttonRef.current && buttonRef.current.contains(target)) {
+        return;
+      }
+      
+      // Also check if clicking on a link inside the dropdown
+      if (target.closest('.absolute.right-0.mt-2')) {
+        return;
+      }
+      
+      // Close the dropdown
+      setShowSignOutModal(false);
+    };
+
+    // Use a small delay before adding the listener to avoid catching the opening click
+    const listenerTimeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 150);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(listenerTimeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showSignOutModal]);
 
 
 
@@ -34,8 +87,17 @@ export default function Header() {
       process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder' &&
       process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '';
 
-    // Set a maximum loading time - always show auth buttons after 2 seconds
+    // Set a maximum loading time - always show auth buttons after 500ms
+    // Reduced timeout to show buttons faster and prevent blocking
     const maxLoadingTimer = setTimeout(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    }, 500);
+
+    // Safety fallback: Ensure loading is always false after maximum 2 seconds
+    // This prevents the button from being stuck in loading state
+    const safetyTimer = setTimeout(() => {
       if (mounted) {
         setLoading(false);
       }
@@ -50,13 +112,24 @@ export default function Header() {
             .eq('user_id', userId)
             .single();
 
-          if (employeeData && (employeeData.role === 'admin' || employeeData.role === 'manager')) {
-            if (mounted) setIsAdmin(true);
+          if (employeeData) {
+            const role = employeeData.role as 'admin' | 'manager' | 'seller';
+            if (mounted) {
+              setUserRole(role);
+              setIsAdmin(role === 'admin' || role === 'manager');
+            }
           } else {
-            if (mounted) setIsAdmin(false);
+            if (mounted) {
+              setUserRole(null);
+              setIsAdmin(false);
+            }
           }
         } catch (e) {
           console.error("Error checking role:", e);
+          if (mounted) {
+            setUserRole(null);
+            setIsAdmin(false);
+          }
         }
       };
 
@@ -92,6 +165,8 @@ export default function Header() {
         } catch (error) {
           console.error("Header auth check failed/timeout:", error);
           if (mounted) {
+            // Always set loading to false on error to show buttons
+            setLoading(false);
             // Fallback to session check on error
             try {
               const { data: { session } } = await supabase.auth.getSession();
@@ -105,6 +180,10 @@ export default function Header() {
             } catch (innerError) {
               console.error("Header session fallback failed:", innerError);
               setUser(null);
+            }
+            // Always set loading to false in error cases to show buttons
+            if (mounted) {
+              setLoading(false);
             }
           }
         } finally {
@@ -127,6 +206,7 @@ export default function Header() {
         if (currentUser) {
           checkUserRole(currentUser.id);
         } else {
+          setUserRole(null);
           setIsAdmin(false);
         }
       });
@@ -134,11 +214,13 @@ export default function Header() {
       return () => {
         mounted = false;
         clearTimeout(maxLoadingTimer);
+        clearTimeout(safetyTimer);
         subscription.unsubscribe();
       };
     } else {
       // No Supabase config - show auth buttons immediately
       clearTimeout(maxLoadingTimer);
+      clearTimeout(safetyTimer);
       setLoading(false);
     }
   }, []);
@@ -150,6 +232,7 @@ export default function Header() {
 
     await supabase.auth.signOut();
     setUser(null);
+    setUserRole(null);
     setIsAdmin(false);
     router.push('/');
     router.refresh();
@@ -167,9 +250,8 @@ export default function Header() {
     { href: '/contact', label: 'Contact' },
   ];
 
-
   return (
-    <header className="bg-white/95 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100 relative">
+    <header className="bg-white/95 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100 relative" style={{ isolation: 'isolate' }}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
@@ -207,53 +289,22 @@ export default function Header() {
           </nav>
 
           {/* Cart Icon & Auth Links & Mobile Menu */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 relative z-[60]">
 
             {/* Auth Button (Desktop) */}
-            <div className="hidden md:flex items-center">
+            <div className="hidden md:flex items-center relative" ref={buttonRef}>
               {loading && user === null ? (
-                <div className="h-9 w-24 bg-gray-100 animate-pulse rounded-lg"></div>
-              ) : user ? (
+                // Show Sign Up button during loading
                 <div className="relative">
                   <button
-                    onClick={() => setShowSignOutModal(!showSignOutModal)}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-none hover:bg-gray-200 transition-colors font-medium text-sm flex items-center gap-2"
-                  >
-                    {isAdmin ? "Admin" : "Account"}
-                    <svg className={`w-4 h-4 transition-transform ${showSignOutModal ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {showSignOutModal && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
-                      <Link
-                        href={isAdmin ? "/dashboard" : "/profile"}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"
-                        onClick={() => setShowSignOutModal(false)}
-                      >
-                        {isAdmin ? "Dashboard" : "Profile"}
-                      </Link>
-                      <button
-                        onClick={() => {
-                          setShowSignOutModal(false);
-                          handleSignOut();
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-
-
-                <div className="relative">
-
-                  <button
-                    onClick={() => setShowSignOutModal(!showSignOutModal)}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center gap-2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const newState = !showSignOutModal;
+                      setShowSignOutModal(newState);
+                    }}
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center gap-2 cursor-pointer"
+                    type="button"
                   >
                     Sign Up
                     <svg className={`w-4 h-4 transition-transform ${showSignOutModal ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -262,17 +313,116 @@ export default function Header() {
                   </button>
 
                   {showSignOutModal && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 animate-in fade-in zoom-in-95 duration-200 origin-top-right z-50">
+                    <div 
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Link
-                        href="/signin"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"
+                        href="/signup"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
                         onClick={() => setShowSignOutModal(false)}
                       >
-                        Sign In
+                        Sign Up
                       </Link>
                       <Link
                         href="/signup"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                        onClick={() => setShowSignOutModal(false)}
+                      >
+                        Create Account
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              ) : user ? (
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const newState = !showSignOutModal;
+                      setShowSignOutModal(newState);
+                    }}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-none hover:bg-gray-200 transition-colors font-medium text-sm flex items-center gap-2 cursor-pointer"
+                    type="button"
+                  >
+                    {isAdmin ? "Admin" : "Account"}
+                    <svg className={`w-4 h-4 transition-transform ${showSignOutModal ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {showSignOutModal && (
+                    <div 
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {userRole ? (
+                        // Admin, Manager, or Seller - show Dashboard
+                        <Link
+                          href={userRole === 'seller' ? "/dashboard/products" : "/dashboard"}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                          onClick={() => setShowSignOutModal(false)}
+                        >
+                          Dashboard
+                        </Link>
+                      ) : (
+                        // Regular user - show Profile
+                        <Link
+                          href="/profile"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                          onClick={() => setShowSignOutModal(false)}
+                        >
+                          Profile
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => {
+                          setShowSignOutModal(false);
+                          handleSignOut();
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        type="button"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Not logged in - show Sign Up button
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const newState = !showSignOutModal;
+                      setShowSignOutModal(newState);
+                    }}
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center gap-2 cursor-pointer"
+                    type="button"
+                  >
+                    Sign Up
+                    <svg className={`w-4 h-4 transition-transform ${showSignOutModal ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {showSignOutModal && (
+                    <div 
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Link
+                        href="/signup"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                        onClick={() => setShowSignOutModal(false)}
+                      >
+                        Sign Up
+                      </Link>
+                      <Link
+                        href="/signup"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
                         onClick={() => setShowSignOutModal(false)}
                       >
                         Create Account
@@ -341,45 +491,61 @@ export default function Header() {
               {/* Mobile Auth Links */}
               <div className="px-4 pt-2 border-t border-gray-100 flex flex-col gap-2">
                 {loading && user === null ? (
-                  <div className="h-10 bg-gray-100 animate-pulse rounded-lg"></div>
+                  // Show Sign Up options during loading for mobile
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center cursor-pointer"
+                    >
+                      Sign Up
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-2 bg-primary/80 text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-center cursor-pointer"
+                    >
+                      Create Account
+                    </Link>
+                  </div>
                 ) : user ? (
-                    <>
-                      <Link
-                        href={isAdmin ? "/dashboard" : "/profile"}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center"
-                      >
-                        {isAdmin ? "Dashboard" : "Account"}
-                      </Link>
-                      <button
-                        onClick={() => {
-                          setMobileMenuOpen(false);
-                          handleSignOut();
-                        }}
-                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-none hover:bg-gray-200 transition-colors font-medium"
-                      >
-                        Sign Out
-                      </button>
-                    </>
-                  ) : (
-
-                    <div className="flex flex-col gap-2">
-                      <Link
-                        href="/signin"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center"
-                      >
-                        Sign In
-                      </Link>
-                      <Link
-                        href="/signup"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-center"
-                      >
-                        Sign Up
-                      </Link>
-                    </div>
-                  )}
+                  <>
+                    <Link
+                      href={userRole ? (userRole === 'seller' ? "/dashboard/products" : "/dashboard") : "/profile"}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center cursor-pointer"
+                    >
+                      {userRole ? "Dashboard" : "Profile"}
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleSignOut();
+                      }}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-none hover:bg-gray-200 transition-colors font-medium cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  // Not logged in - show Sign Up options
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center cursor-pointer"
+                    >
+                      Sign Up
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-center cursor-pointer"
+                    >
+                      Create Account
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </nav>

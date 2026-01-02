@@ -15,21 +15,67 @@ function SignUpContent() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = async (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    console.log('[SignUp] Form submitted');
     setError(null);
     setSuccessMessage(null);
 
+    const formData = new FormData(e.currentTarget);
+
     startTransition(async () => {
-      const result = await signup(formData);
-      if (result?.error) {
-        setError(result.error);
-      } else if (result?.message) {
-        setSuccessMessage(result.message);
+      try {
+        console.log('[SignUp] Starting signup process...');
+        const result = await signup(formData);
+        console.log('[SignUp] Signup result:', result);
+        
+        if (result?.error) {
+          console.log('[SignUp] Signup error:', result.error);
+          setError(result.error);
+        } else if (result?.success || result?.message) {
+          console.log('[SignUp] Signup success:', result.message);
+          // Redirect after successful signup
+          const redirectTo = redirectUrl || "/";
+          console.log('[SignUp] Redirecting to:', redirectTo);
+          console.log('[SignUp] Redirect URL from params:', redirectUrl);
+          
+          // Clear caches before redirect to prevent chunk load errors
+          const clearCaches = async () => {
+            if (typeof window !== 'undefined' && 'caches' in window) {
+              try {
+                const names = await caches.keys();
+                await Promise.all(
+                  names
+                    .filter((name) => name.includes('next'))
+                    .map((name) => caches.delete(name))
+                );
+                console.log('[SignUp] Caches cleared');
+              } catch (err) {
+                console.warn('[SignUp] Failed to clear caches:', err);
+              }
+            }
+          };
+          
+          // Clear caches first, then redirect with full page reload
+          clearCaches().then(() => {
+            setTimeout(() => {
+              console.log('[SignUp] Executing redirect to:', redirectTo);
+              // Use window.location.href with cache bypass to force fresh page load
+              const separator = redirectTo.includes('?') ? '&' : '?';
+              window.location.href = `${redirectTo}${separator}_t=${Date.now()}`;
+            }, 200);
+          });
+        }
+      } catch (err: any) {
+        console.error("[SignUp] Signup error:", err);
+        setError(err?.message || "An error occurred during signup. Please try again.");
       }
     });
   };
 
-  if (successMessage) {
+  // Note: We redirect immediately on success, so this success message UI is kept as fallback
+  // but should rarely be seen since redirect happens quickly
+  if (successMessage && !isPending) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light/40 via-white to-primary/20 p-4">
         <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8 sm:p-10 text-center animate-in zoom-in-95 duration-300">
@@ -45,9 +91,6 @@ function SignUpContent() {
 
           <div className="mt-6 flex flex-col gap-3">
             <button
-              // The onClick handler below was throwing error before,
-              // but it was due to simple string mismatch in replace logic.
-              // Now we are replacing the whole function, so it's safe.
               onClick={() => window.location.href = redirectUrl}
               className="inline-flex justify-center w-full py-3.5 px-4 rounded-none text-base font-bold text-white bg-primary hover:bg-primary-dark shadow-lg shadow-primary/30 transform transition-all duration-200 hover:-translate-y-0.5"
             >
@@ -78,7 +121,7 @@ function SignUpContent() {
             </p>
           </div>
 
-          <form action={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
             <div>
               <label
                 htmlFor="fullName"
@@ -155,7 +198,10 @@ function SignUpContent() {
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full flex justify-center py-3.5 px-4 rounded-none text-base font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-lg shadow-primary/30 transform transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                onClick={(e) => {
+                  console.log('[SignUp] Button clicked, isPending:', isPending);
+                }}
+                className="w-full flex justify-center py-3.5 px-4 rounded-none text-base font-bold text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-lg shadow-primary/30 transform transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 relative z-10 pointer-events-auto"
               >
                 {isPending ? (
                   <span className="flex items-center gap-2">

@@ -6,6 +6,7 @@ import CartNotificationProvider from "@/components/cart/CartNotificationProvider
 import PWARegister from "@/components/PWARegister";
 import InstallPrompt from "@/components/InstallPrompt";
 import PWAMetaTags from "@/components/PWAMetaTags";
+import ChunkLoadErrorBoundary from "@/components/ChunkLoadErrorBoundary";
 
 export const metadata: Metadata = {
   title: "Leeztruestyles - Fashion Marketplace",
@@ -44,13 +45,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="flex flex-col min-h-screen">
-        <PWAMetaTags />
-        <PWARegister />
-        <Header />
-        <main className="flex-grow">{children}</main>
-        <Footer />
-        <CartNotificationProvider />
-        <InstallPrompt />
+        <ChunkLoadErrorBoundary>
+          <PWAMetaTags />
+          <PWARegister />
+          <Header />
+          <main className="flex-grow">{children}</main>
+          <Footer />
+          <CartNotificationProvider />
+          <InstallPrompt />
+        </ChunkLoadErrorBoundary>
       </body>
     </html>
   );

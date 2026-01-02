@@ -15,21 +15,59 @@ export async function login(formData: FormData) {
     const password = formData.get('password') as string
 
     if (!email || !password) {
-        return { error: 'Email and password are required' }
+        throw new Error('Email and password are required');
     }
 
     // 2. Sign in
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    })
+    let data, error;
+    try {
+        const result = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+        data = result.data;
+        error = result.error;
+    } catch (fetchError: any) {
+        // Handle network/fetch errors separately
+        console.error('[Login Action] Network error during sign-in:', fetchError);
+        console.error('[Login Action] Error details:', {
+            message: fetchError?.message,
+            name: fetchError?.name,
+            stack: fetchError?.stack,
+            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing',
+            supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Missing',
+        });
+        const errorMessage = fetchError?.message || 'Network error: Unable to connect to authentication service. Please check your internet connection and try again.';
+        // For form actions, we need to throw the error so it can be caught by the form
+        throw new Error(errorMessage);
+    }
 
     if (error) {
-        return { error: error.message }
+        // Authentication error (wrong credentials, etc.)
+        console.error('[Login Action] Authentication error:', error.message);
+        // For form actions, redirect to signin with error
+        redirect(`/signin?error=${encodeURIComponent(error.message)}`);
+    }
+
+    // 2.5. Verify session is established and cookies are set
+    // This ensures cookies are properly set in the response
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (!session) {
+        console.error('[Login Action] Session not found after sign-in:', sessionError);
+        // Still continue - cookies might be set but session not immediately available
+    } else {
+        console.log('[Login Action] Session confirmed, cookies should be set');
     }
 
     // 3. Admin Setup
-    if (data.user && ADMIN_EMAILS.includes(email.toLowerCase())) {
+    let userRole: string | null = null;
+    const emailLower = email.toLowerCase();
+    console.log('[Login Action] Checking admin status for email:', emailLower);
+    console.log('[Login Action] ADMIN_EMAILS list:', ADMIN_EMAILS);
+    console.log('[Login Action] Is admin email?', ADMIN_EMAILS.includes(emailLower));
+    
+    if (data.user && ADMIN_EMAILS.includes(emailLower)) {
+        console.log('[Login Action] Admin email detected, setting up admin role...');
         try {
             const adminClient = createAdminClient();
 
@@ -40,25 +78,67 @@ export async function login(formData: FormData) {
                 .maybeSingle();
 
             if (!existingEmployee) {
+                console.log('[Login Action] No existing employee record, creating admin...');
                 await adminClient.from("employees").insert({
                     user_id: data.user.id,
                     role: "admin",
                     employee_code: `EMP-${Date.now().toString().slice(-6)}`
                 });
+                userRole = "admin";
+                console.log('[Login Action] Admin role assigned (new employee)');
             } else if (existingEmployee.role !== "admin") {
+                console.log('[Login Action] Existing employee with different role, updating to admin...');
                 await adminClient
                     .from("employees")
                     .update({ role: "admin" })
                     .eq("user_id", data.user.id);
+                userRole = "admin";
+                console.log('[Login Action] Admin role assigned (updated existing)');
+            } else {
+                userRole = "admin";
+                console.log('[Login Action] Admin role already set');
             }
         } catch (err) {
-            console.error("Admin auto-assignment failed:", err);
+            console.error("[Login Action] Admin auto-assignment failed:", err);
         }
     }
 
-    // 4. Redirect
+    // 4. Check user role from database if not admin
+    if (!userRole && data.user) {
+        try {
+            const { data: employeeData } = await supabase
+                .from("employees")
+                .select("role")
+                .eq("user_id", data.user.id)
+                .single();
+            
+            userRole = employeeData?.role || null;
+        } catch (err) {
+            // User might not be an employee, that's okay
+            console.log("User is not an employee");
+        }
+    }
+
+    // 5. Determine redirect path
+    let redirectTo = "/";
+    if (userRole === "admin" || userRole === "manager") {
+        redirectTo = "/dashboard";
+    } else if (userRole === "seller") {
+        redirectTo = "/dashboard/products";
+    }
+
+    console.log('[Login Action] User role determined:', userRole);
+    console.log('[Login Action] Redirect path set to:', redirectTo);
+    console.log('[Login Action] Email:', email.toLowerCase());
+    console.log('[Login Action] Is in ADMIN_EMAILS:', ADMIN_EMAILS.includes(email.toLowerCase()));
+
+    // 6. Revalidate paths
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    revalidatePath('/dashboard')
+
+    // 7. Use server-side redirect to ensure cookies are set before navigation
+    // This is more reliable than client-side redirect
+    redirect(redirectTo)
 }
 
 
@@ -182,3 +262,4 @@ export async function signout() {
     revalidatePath('/', 'layout')
     redirect('/signin')
 }
+

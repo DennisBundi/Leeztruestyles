@@ -88,9 +88,13 @@ export default function ReviewSection() {
 
   // Auto-rotate reviews every 3 seconds with smooth horizontal slide animation
   useEffect(() => {
+    if (!mounted) return; // Don't start interval until mounted
+    
     const interval = setInterval(() => {
       setCurrentIndex((prev) => {
-        if (prev >= maxIndex) {
+        // Calculate maxIndex dynamically inside the callback
+        const currentMaxIndex = isMobile ? reviews.length - 1 : Math.max(0, reviews.length - 3);
+        if (prev >= currentMaxIndex) {
           return 0; // Loop back to start
         }
         return prev + 1;
@@ -98,7 +102,7 @@ export default function ReviewSection() {
     }, 3000); // Auto-slide every 3 seconds
 
     return () => clearInterval(interval);
-  }, [maxIndex]);
+  }, [mounted, isMobile]); // Only depend on mounted and isMobile, not maxIndex
 
   // Intersection Observer for scroll animation
   useEffect(() => {

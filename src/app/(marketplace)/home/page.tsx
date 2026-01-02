@@ -271,12 +271,12 @@ export default async function HomePage() {
 
   // Fetch New Arrivals - Latest products added
   // Fetch ALL products from database, no status filter
-  // Increased limit to find products with images and stock
+  // Fetch a large number to ensure we get all products that should be displayed
   let { data: newArrivals, error: newArrivalsError } = await supabase
     .from("products")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(50); // Increased from 8 to 50 to find products with images
+    .limit(200); // Increased to 200 to ensure we get all products that should be displayed
 
   // Override products to use newArrivals if available (for featured products)
   if (newArrivals && newArrivals.length > 0) {
@@ -473,8 +473,8 @@ export default async function HomePage() {
 
       return hasStock && hasImage;
     })
-    .sort((a: any, b: any) => b.salesCount - a.salesCount) // Sort by sales count descending (highest first)
-    .slice(0, 4); // Take top 4 by sales count
+    .sort((a: any, b: any) => b.salesCount - a.salesCount) // Sort by sales count descending (largest to smallest)
+    .slice(0, 4); // Take top 4 by sales count (largest to smallest)
 
   // Keep the old variable name for compatibility
   // Will be overridden later to use newArrivalsWithStock

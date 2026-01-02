@@ -37,14 +37,26 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // IMPORTANT: DO NOT REMOVE auth.getUser()
+  // IMPORTANT: Try getSession first (reads from cookies), then getUser
+  // This is more reliable for freshly logged-in users
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  let user = session?.user || null;
+
+  // If no user from session, try getUser as fallback
+  if (!user) {
+    const {
+      data: { user: userFromGetUser },
+    } = await supabase.auth.getUser()
+    user = userFromGetUser;
+  }
 
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/signin') &&
+    !request.nextUrl.pathname.startsWith('/signup') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
     (request.nextUrl.pathname.startsWith('/dashboard') ||
       request.nextUrl.pathname.startsWith('/admin'))
@@ -52,6 +64,10 @@ export async function updateSession(request: NextRequest) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
     url.pathname = '/signin'
+    // Preserve redirect parameter if present
+    if (request.nextUrl.searchParams.get('redirect')) {
+      url.searchParams.set('redirect', request.nextUrl.searchParams.get('redirect')!)
+    }
     return NextResponse.redirect(url)
   }
 
