@@ -37,7 +37,15 @@ export default function CustomProductModal({
   onAdd,
   categories = [],
 }: CustomProductModalProps) {
-  const { triggerAnimation } = useCartAnimationContext();
+  // Safely get animation context - don't fail if not available
+  let triggerAnimation: ((product: Product, sourceElement: HTMLElement, targetType?: 'floating' | 'pos', targetSelector?: string) => void) | null = null;
+  try {
+    const context = useCartAnimationContext();
+    triggerAnimation = context.triggerAnimation;
+  } catch (error) {
+    // Animation context not available, but we can still add to cart
+    console.warn('CartAnimationContext not available, animation will be skipped');
+  }
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -198,10 +206,17 @@ export default function CustomProductModal({
       updated_at: new Date().toISOString(),
     };
 
-    // Trigger animation from submit button to POS cart
-    const submitButton = e.currentTarget.querySelector('button[type="submit"]') as HTMLElement;
-    if (submitButton) {
-      triggerAnimation(mockProductForAnimation, submitButton, 'pos', '[data-pos-cart]');
+    // Trigger animation from submit button to POS cart if available
+    try {
+      if (triggerAnimation) {
+        const submitButton = e.currentTarget.querySelector('button[type="submit"]') as HTMLElement;
+        if (submitButton) {
+          triggerAnimation(mockProductForAnimation, submitButton, 'pos', '[data-pos-cart]');
+        }
+      }
+    } catch (animError) {
+      // Animation failed but item was added - continue
+      console.warn('Animation failed:', animError);
     }
 
     onAdd(productData);

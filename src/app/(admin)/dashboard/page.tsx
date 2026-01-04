@@ -71,7 +71,6 @@ export default function DashboardPage() {
           setIsRedirecting(true);
           // Use replace to avoid adding to history, and do it immediately
           router.replace('/dashboard/products');
-          return; // Exit early to prevent rendering dashboard content
         }
       } catch (error) {
         console.error('Error checking role:', error);
@@ -82,23 +81,7 @@ export default function DashboardPage() {
     return () => { mounted = false; };
   }, [router]);
 
-  // Don't render dashboard content if redirecting
-  if (isRedirecting) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Redirecting to products...</p>
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    fetchDashboardData();
-    fetchRecentOrders();
-  }, []);
-
+  // Define functions before early return to ensure they're always available
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -252,6 +235,27 @@ export default function DashboardPage() {
       setRecentOrdersLoading(false);
     }
   };
+
+  // Fetch dashboard data - only if not redirecting
+  // Must be after function definitions but before early return
+  useEffect(() => {
+    if (!isRedirecting) {
+      fetchDashboardData();
+      fetchRecentOrders();
+    }
+  }, [isRedirecting]);
+
+  // Don't render dashboard content if redirecting - must be after all hooks
+  if (isRedirecting) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to products...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

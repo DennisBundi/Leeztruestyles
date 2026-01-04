@@ -14,7 +14,16 @@ interface POSProductGridProps {
 export default function POSProductGrid({ products }: POSProductGridProps) {
   const addItem = useCartStore((state) => state.addItem);
   const items = useCartStore((state) => state.items);
-  const { triggerAnimation } = useCartAnimationContext();
+  
+  // Safely get animation context - don't fail if not available
+  let triggerAnimation: ((product: Product, sourceElement: HTMLElement, targetType?: 'floating' | 'pos', targetSelector?: string) => void) | null = null;
+  try {
+    const context = useCartAnimationContext();
+    triggerAnimation = context.triggerAnimation;
+  } catch (error) {
+    // Animation context not available, but we can still add to cart
+    console.warn('CartAnimationContext not available, animation will be skipped');
+  }
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showSizeColorModal, setShowSizeColorModal] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
@@ -87,8 +96,15 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
         available_stock: availableStock,
       };
       addItem(productForCart, 1);
-      // Trigger animation from the plus icon button
-      triggerAnimation(productForCart, button, 'pos', '[data-pos-cart]');
+      // Trigger animation from the plus icon button if available
+      try {
+        if (triggerAnimation) {
+          triggerAnimation(productForCart, button, 'pos', '[data-pos-cart]');
+        }
+      } catch (animError) {
+        // Animation failed but item was added - continue
+        console.warn('Animation failed:', animError);
+      }
     } catch (error) {
       if (error instanceof Error) {
         alert(error.message);
@@ -136,10 +152,17 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
           sizes: availableSizes,
         };
         addItem(productForCart, 1, size, color);
-        // Trigger animation - find the button that was clicked
-        const button = document.querySelector(`[data-product-id="${selectedProduct.id}"]`) as HTMLElement;
-        if (button) {
-          triggerAnimation(productForCart, button, 'pos', '[data-pos-cart]');
+        // Trigger animation if available
+        try {
+          if (triggerAnimation) {
+            const button = document.querySelector(`[data-product-id="${selectedProduct.id}"]`) as HTMLElement;
+            if (button) {
+              triggerAnimation(productForCart, button, 'pos', '[data-pos-cart]');
+            }
+          }
+        } catch (animError) {
+          // Animation failed but item was added - continue
+          console.warn('Animation failed:', animError);
         }
       } catch (error) {
         if (error instanceof Error) {

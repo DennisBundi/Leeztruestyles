@@ -18,9 +18,33 @@ export default function AddToCartButton({
   selectedColor,
   selectedSize,
 }: AddToCartButtonProps) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddToCartButton.tsx:15',message:'Component render start',data:{productId:product.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
   const addItem = useCartStore((state) => state.addItem);
   const items = useCartStore((state) => state.items);
-  const { triggerAnimation } = useCartAnimationContext();
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddToCartButton.tsx:22',message:'Cart store hooks initialized',data:{itemsCount:items.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
+  
+  // Safely get animation context - don't fail if not available
+  let triggerAnimation: ((product: Product, sourceElement: HTMLElement) => void) | null = null;
+  try {
+    const context = useCartAnimationContext();
+    triggerAnimation = context.triggerAnimation;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddToCartButton.tsx:30',message:'Animation context obtained',data:{hasTriggerAnimation:!!triggerAnimation},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+  } catch (error) {
+    // Animation context not available, but we can still add to cart
+    console.warn('CartAnimationContext not available, animation will be skipped');
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddToCartButton.tsx:36',message:'Animation context error',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+  }
+  
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -116,7 +140,16 @@ export default function AddToCartButton({
       </div>
 
       <button
+        onMouseDown={(e) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddToCartButton.tsx:128',message:'Button mousedown event',data:{productId:product.id,disabled:isOutOfStock || quantity > maxQuantity,computedStyle:window.getComputedStyle(e.currentTarget).pointerEvents},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+        }}
         onClick={(e) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddToCartButton.tsx:133',message:'Button click event fired',data:{productId:product.id,isOutOfStock,quantity,maxQuantity},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+          
           if (isOutOfStock || quantity > maxQuantity) {
             if (stockLimit !== undefined && currentCartQuantity + quantity > stockLimit) {
               alert(
@@ -144,11 +177,27 @@ export default function AddToCartButton({
               sizes: productSizes, // Pass sizes for size-based validation
             };
 
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddToCartButton.tsx:157',message:'Before addItem call',data:{productId:product.id,quantity,selectedSize,selectedColor},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            
             addItem(productForCart, quantity, selectedSize || undefined, selectedColor || undefined);
             
-            // Trigger cart animation
-            const button = e.currentTarget;
-            triggerAnimation(productForCart, button);
+            // #region agent log
+            const newItems = useCartStore.getState().items;
+            fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AddToCartButton.tsx:162',message:'After addItem call',data:{productId:product.id,newItemsCount:newItems.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            
+            // Trigger cart animation if available
+            try {
+              if (triggerAnimation) {
+                const button = e.currentTarget;
+                triggerAnimation(productForCart, button);
+              }
+            } catch (animError) {
+              // Animation failed but item was added - continue
+              console.warn('Animation failed:', animError);
+            }
             
             setAdded(true);
             setTimeout(() => setAdded(false), 2000);

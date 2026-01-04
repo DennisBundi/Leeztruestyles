@@ -26,8 +26,12 @@ export default function ContactPage() {
                   </svg>
                   Email
                 </h3>
-                <p className="text-gray-700">info@leeztruestyles.com</p>
-                <p className="text-gray-700">support@leeztruestyles.com</p>
+                <a
+                  href="mailto:leeztruestyles44@gmail.com"
+                  className="text-gray-700 hover:text-primary transition-colors"
+                >
+                  leeztruestyles44@gmail.com
+                </a>
               </div>
 
               <div>
@@ -47,8 +51,12 @@ export default function ContactPage() {
                   </svg>
                   Phone
                 </h3>
-                <p className="text-gray-700">+254 700 000 000</p>
-                <p className="text-gray-700">+254 711 000 000</p>
+                <a
+                  href="tel:+254797877254"
+                  className="text-gray-700 hover:text-primary transition-colors"
+                >
+                  +254 797 877 254
+                </a>
               </div>
 
               <div>
@@ -75,8 +83,7 @@ export default function ContactPage() {
                   Address
                 </h3>
                 <p className="text-gray-700">
-                  Westlands Shopping Centre<br />
-                  Nairobi, Kenya
+                  Dynamic mall shop number ML198
                 </p>
               </div>
 

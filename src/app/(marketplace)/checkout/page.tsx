@@ -30,6 +30,8 @@ export default function CheckoutPage() {
   const [productSizes, setProductSizes] = useState<{ [productId: string]: Array<{ size: string; available: number }> }>({});
   const [loadingSizes, setLoadingSizes] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success' | 'failed' | 'checking'>('pending');
+  const [paymentStatusMessage, setPaymentStatusMessage] = useState<string>('');
 
   // Wait for client-side hydration before accessing cart
   useEffect(() => {
@@ -299,9 +301,11 @@ export default function CheckoutPage() {
         // Redirect to Paystack payment page
         window.location.href = paymentData.authorization_url;
       } else {
-        // For M-Pesa, show success modal
+        // For M-Pesa, show success modal and start polling
         setCreatedOrderId(order_id);
         setShowMpesaModal(true);
+        setPaymentStatus('pending');
+        setPaymentStatusMessage('Waiting for payment confirmation...');
         setLoading(false);
       }
     } catch (err) {
@@ -314,6 +318,76 @@ export default function CheckoutPage() {
     clearCart();
     router.push(`/checkout/success?order_id=${createdOrderId}`);
   };
+
+  // Poll payment status when M-Pesa modal is shown
+  useEffect(() => {
+    if (!showMpesaModal || !createdOrderId) return;
+
+    let pollInterval: NodeJS.Timeout;
+    let pollCount = 0;
+    const maxPolls = 60; // Poll for up to 5 minutes (60 * 5 seconds)
+
+    const checkPaymentStatus = async () => {
+      try {
+        setPaymentStatus('checking');
+        const response = await fetch('/api/payments/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: createdOrderId }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to check payment status');
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'success' || data.order_status === 'completed') {
+          // Payment successful
+          setPaymentStatus('success');
+          setPaymentStatusMessage('Payment confirmed! Redirecting...');
+          
+          // Clear polling
+          if (pollInterval) clearInterval(pollInterval);
+          
+          // Redirect after short delay
+          setTimeout(() => {
+            handleMpesaComplete();
+          }, 2000);
+        } else if (data.status === 'failed' || data.status === 'cancelled') {
+          // Payment failed
+          setPaymentStatus('failed');
+          setPaymentStatusMessage(data.message || 'Payment failed or was cancelled');
+          
+          // Clear polling
+          if (pollInterval) clearInterval(pollInterval);
+        } else {
+          // Still pending
+          setPaymentStatus('pending');
+          setPaymentStatusMessage(data.message || 'Waiting for payment confirmation...');
+        }
+      } catch (error) {
+        console.error('Error checking payment status:', error);
+        setPaymentStatus('pending');
+        setPaymentStatusMessage('Unable to verify payment status. Please check manually.');
+      }
+
+      pollCount++;
+      if (pollCount >= maxPolls) {
+        // Stop polling after max attempts
+        if (pollInterval) clearInterval(pollInterval);
+        setPaymentStatusMessage('Payment verification timeout. Please verify manually or contact support.');
+      }
+    };
+
+    // Start polling immediately, then every 5 seconds
+    checkPaymentStatus();
+    pollInterval = setInterval(checkPaymentStatus, 5000);
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [showMpesaModal, createdOrderId]);
 
   // Check if any products with sizes are missing size selection
   const hasMissingSizes = () => {
@@ -598,29 +672,72 @@ export default function CheckoutPage() {
       {showMpesaModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center animate-in zoom-in-95 duration-300 border border-white/20">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-green-600 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-              </svg>
-            </div>
+            {paymentStatus === 'success' ? (
+              <>
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Confirmed!</h3>
+                <p className="text-gray-600 mb-6 text-lg">{paymentStatusMessage}</p>
+              </>
+            ) : paymentStatus === 'failed' ? (
+              <>
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Failed</h3>
+                <p className="text-gray-600 mb-6 text-lg">{paymentStatusMessage}</p>
+                <button
+                  onClick={() => setShowMpesaModal(false)}
+                  className="w-full py-4 px-6 bg-gray-600 text-white rounded-xl font-bold text-lg hover:bg-gray-700 hover:shadow-lg transition-all transform hover:-translate-y-1"
+                >
+                  Close
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  {paymentStatus === 'checking' ? (
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+                  ) : (
+                    <svg className="w-10 h-10 text-green-600 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                  )}
+                </div>
 
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Check Your Phone</h3>
-            <p className="text-gray-600 mb-6 text-lg">
-              We've sent an M-Pesa STK push to <span className="font-semibold text-gray-900">{customerInfo.phone}</span>.
-              <br /><br />
-              Please enter your M-Pesa PIN to complete the payment.
-            </p>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Check Your Phone</h3>
+                <p className="text-gray-600 mb-4 text-lg">
+                  We've sent an M-Pesa STK push to <span className="font-semibold text-gray-900">{customerInfo.phone}</span>.
+                  <br /><br />
+                  Please enter your M-Pesa PIN to complete the payment.
+                </p>
+                
+                {paymentStatusMessage && (
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-800">{paymentStatusMessage}</p>
+                  </div>
+                )}
 
-            <button
-              onClick={handleMpesaComplete}
-              className="w-full py-4 px-6 bg-green-600 text-white rounded-xl font-bold text-lg hover:bg-green-700 hover:shadow-lg transition-all transform hover:-translate-y-1"
-            >
-              I have Completed Payment
-            </button>
+                <button
+                  onClick={handleMpesaComplete}
+                  className="w-full py-4 px-6 bg-green-600 text-white rounded-xl font-bold text-lg hover:bg-green-700 hover:shadow-lg transition-all transform hover:-translate-y-1"
+                >
+                  I have Completed Payment
+                </button>
 
-            <p className="mt-4 text-sm text-gray-500">
-              Didn't get the prompt? <button onClick={handleMpesaComplete} className="text-primary hover:underline">Verify Status</button>
-            </p>
+                <p className="mt-4 text-sm text-gray-500">
+                  Didn't get the prompt? <button onClick={handleMpesaComplete} className="text-primary hover:underline">Verify Status</button>
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

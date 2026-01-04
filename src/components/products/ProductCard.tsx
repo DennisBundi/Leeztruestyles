@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/types";
@@ -19,11 +19,44 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:21',message:'Component render start',data:{productId:product.id,productName:product.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
   const addItem = useCartStore((state) => state.addItem);
   const items = useCartStore((state) => state.items);
-  const { triggerAnimation } = useCartAnimationContext();
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:25',message:'Cart store hooks initialized',data:{itemsCount:items.length,addItemExists:!!addItem},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+  // #endregion
+  
+  // Safely get animation context - don't fail if not available
+  let triggerAnimation: ((product: Product, sourceElement: HTMLElement) => void) | null = null;
+  try {
+    const context = useCartAnimationContext();
+    triggerAnimation = context.triggerAnimation;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:32',message:'Animation context obtained',data:{hasTriggerAnimation:!!triggerAnimation},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+  } catch (error) {
+    // Animation context not available, but we can still add to cart
+    console.warn('CartAnimationContext not available, animation will be skipped');
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:37',message:'Animation context error',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+  }
+  
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  
+  // Check if button exists in DOM after mount
+  useEffect(() => {
+    // #region agent log
+    const button = document.querySelector(`[data-product-card-id="${product.id}"]`) as HTMLButtonElement;
+    fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:38',message:'useEffect - Button DOM check',data:{productId:product.id,buttonExists:!!button,buttonRefExists:!!buttonRef.current,buttonDisabled:button?.disabled,buttonPointerEvents:button?window.getComputedStyle(button).pointerEvents:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+  }, [product.id]);
   
   // If available_stock is undefined, treat as in stock (inventory not set up yet)
   // If it's 0 or less, then it's out of stock
@@ -45,6 +78,10 @@ export default function ProductCard({ product }: ProductCardProps) {
     : null;
 
   const handleAddToCartClick = async (e: React.MouseEvent) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:47',message:'Button click event fired',data:{productId:product.id,eventType:e.type,buttonId:e.currentTarget.getAttribute('data-product-card-id')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -92,6 +129,10 @@ export default function ProductCard({ product }: ProductCardProps) {
       }
       
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:104',message:'Before addItem call',data:{productId:product.id,availableStock,displayPrice},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
         const productForCart = {
           ...product,
           price: displayPrice,
@@ -99,9 +140,21 @@ export default function ProductCard({ product }: ProductCardProps) {
         };
         addItem(productForCart);
         
-        // Trigger cart animation
-        const button = e.currentTarget;
-        triggerAnimation(productForCart, button);
+        // #region agent log
+        const newItems = useCartStore.getState().items;
+        fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:112',message:'After addItem call',data:{productId:product.id,newItemsCount:newItems.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
+        // Trigger cart animation if available
+        try {
+          if (triggerAnimation) {
+            const button = e.currentTarget;
+            triggerAnimation(productForCart, button);
+          }
+        } catch (animError) {
+          // Animation failed but item was added - continue
+          console.warn('Animation failed:', animError);
+        }
       } catch (error) {
         if (error instanceof Error) {
           alert(error.message);
@@ -149,10 +202,17 @@ export default function ProductCard({ product }: ProductCardProps) {
       };
       addItem(productForCart, 1, size, color);
       
-      // Trigger cart animation - find the button
-      const button = document.querySelector(`[data-product-card-id="${product.id}"]`) as HTMLElement;
-      if (button) {
-        triggerAnimation(productForCart, button);
+      // Trigger cart animation if available
+      try {
+        if (triggerAnimation) {
+          const button = document.querySelector(`[data-product-card-id="${product.id}"]`) as HTMLElement;
+          if (button) {
+            triggerAnimation(productForCart, button);
+          }
+        }
+      } catch (animError) {
+        // Animation failed but item was added - continue
+        console.warn('Animation failed:', animError);
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -163,6 +223,10 @@ export default function ProductCard({ product }: ProductCardProps) {
     }
   };
 
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:217',message:'Component render - returning JSX',data:{productId:product.id,isOutOfStock,showOptionsModal},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  // #endregion
+  
   return (
     <>
       <ProductOptionsModal
@@ -260,7 +324,39 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
         <button
           data-product-card-id={product.id}
-          onClick={handleAddToCartClick}
+          ref={(el) => {
+            buttonRef.current = el;
+            // #region agent log
+            try {
+              fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:324',message:'Button ref callback called',data:{productId:product.id,elExists:!!el,isOutOfStock},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            } catch (e) {
+              console.error('Ref callback log error:', e);
+            }
+            // #endregion
+            if (el) {
+              // #region agent log
+              try {
+                const rect = el.getBoundingClientRect();
+                const computed = window.getComputedStyle(el);
+                const elementAtPoint = document.elementFromPoint(rect.left + rect.width/2, rect.top + rect.height/2);
+                fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:332',message:'Button ref callback - DOM state check',data:{productId:product.id,disabled:isOutOfStock,pointerEvents:computed.pointerEvents,zIndex:computed.zIndex,position:computed.position,visibility:computed.visibility,opacity:computed.opacity,elementAtPoint:elementAtPoint?.tagName,elementAtPointId:elementAtPoint?.id,buttonRect:{left:rect.left,top:rect.top,width:rect.width,height:rect.height}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+              } catch (e) {
+                console.error('Ref callback DOM check error:', e);
+              }
+              // #endregion
+            }
+          }}
+          onClick={(e) => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:328',message:'Button onClick handler called directly',data:{productId:product.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+            handleAddToCartClick(e);
+          }}
+          onMouseDown={(e) => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.tsx:295',message:'Button mousedown event',data:{productId:product.id,disabled:isOutOfStock,computedStyle:window.getComputedStyle(e.currentTarget).pointerEvents},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+          }}
           disabled={isOutOfStock}
           className={`w-full py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 rounded-none text-xs sm:text-sm md:text-base font-semibold transition-all duration-200 ${
             isOutOfStock

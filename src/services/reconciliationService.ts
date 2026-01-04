@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { PaymentService } from './paymentService';
+import { DarajaService } from './darajaService';
 
 export class ReconciliationService {
   /**
@@ -88,6 +89,124 @@ export class ReconciliationService {
     }
 
     return data;
+  }
+
+  /**
+   * Reconcile M-Pesa transaction
+   * Can be called from callback webhook or manual query
+   */
+  static async reconcileMpesaTransaction(
+    checkoutRequestID: string,
+    orderId?: string
+  ): Promise<boolean> {
+    const supabase = await createClient();
+
+    // If orderId not provided, find order by payment_reference
+    let order;
+    if (orderId) {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
+      
+      if (error || !data) {
+        console.error('Order not found:', orderId);
+        return false;
+      }
+      order = data;
+    } else {
+      // Find order by payment_reference (CheckoutRequestID)
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('payment_reference', checkoutRequestID)
+        .single();
+      
+      if (error || !data) {
+        console.error('Order not found for CheckoutRequestID:', checkoutRequestID);
+        return false;
+      }
+      order = data;
+    }
+
+    // Query payment status from Daraja
+    const queryResult = await DarajaService.querySTKStatus(checkoutRequestID);
+
+    if (!queryResult.success) {
+      console.error('Failed to query M-Pesa status:', queryResult.error);
+      return false;
+    }
+
+    // Handle different payment statuses
+    if (queryResult.status === 'success') {
+      // Payment successful
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          status: 'completed',
+          payment_reference: queryResult.receiptNumber || checkoutRequestID,
+        })
+        .eq('id', order.id);
+
+      if (orderError) {
+        console.error('Order update error:', orderError);
+        return false;
+      }
+
+      // Create or update transaction record
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .upsert({
+          order_id: order.id,
+          payment_provider: 'mpesa',
+          provider_reference: queryResult.receiptNumber || checkoutRequestID,
+          amount: order.total_amount,
+          status: 'success',
+          metadata: {
+            checkoutRequestID,
+            receiptNumber: queryResult.receiptNumber,
+            message: queryResult.message,
+          },
+        });
+
+      if (transactionError) {
+        console.error('Transaction record error:', transactionError);
+        return false;
+      }
+
+      return true;
+    } else if (queryResult.status === 'cancelled' || queryResult.status === 'failed') {
+      // Payment failed or cancelled
+      await supabase
+        .from('orders')
+        .update({
+          status: 'failed',
+        })
+        .eq('id', order.id);
+
+      // Create transaction record for failed payment
+      await supabase
+        .from('transactions')
+        .upsert({
+          order_id: order.id,
+          payment_provider: 'mpesa',
+          provider_reference: checkoutRequestID,
+          amount: order.total_amount,
+          status: 'failed',
+          metadata: {
+            checkoutRequestID,
+            status: queryResult.status,
+            message: queryResult.message,
+          },
+        });
+
+      return false;
+    } else {
+      // Still pending
+      console.log('Payment still pending for order:', order.id);
+      return false;
+    }
   }
 }
 

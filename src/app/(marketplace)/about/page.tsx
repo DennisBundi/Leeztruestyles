@@ -80,10 +80,6 @@ export default function AboutPage() {
                 <span className="text-primary mr-2">✓</span>
                 <span>Excellent customer service</span>
               </li>
-              <li className="flex items-start">
-                <span className="text-primary mr-2">✓</span>
-                <span>Easy returns and exchanges</span>
-              </li>
             </ul>
           </section>
         </div>

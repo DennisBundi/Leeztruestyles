@@ -38,6 +38,10 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       addItem: (product, quantity = 1, size, color) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/a6b56f29-184e-4c99-a482-c4f03762c624',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'cartStore.ts:40',message:'addItem called',data:{productId:product.id,quantity,size,color,currentItemsCount:get().items.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
         const items = get().items;
         // Check if item with same product ID, size, and color exists
         const existingItem = items.find(
@@ -245,6 +249,13 @@ export const useCartStore = create<CartStore>()(
 
 // Manually rehydrate on client side to prevent hydration errors
 if (typeof window !== 'undefined') {
-  useCartStore.persist.rehydrate();
+  // Safely rehydrate only if persist is available
+  try {
+    if (useCartStore.persist && typeof useCartStore.persist.rehydrate === 'function') {
+      useCartStore.persist.rehydrate();
+    }
+  } catch (error) {
+    console.warn('Failed to rehydrate cart store:', error);
+  }
 }
 

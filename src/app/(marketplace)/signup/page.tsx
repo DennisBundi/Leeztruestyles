@@ -15,6 +15,10 @@ function SignUpContent() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Note: We redirect immediately on success, so this success message UI is kept as fallback
+  // but should rarely be seen since redirect happens quickly
+  // Moved after all hooks to comply with Rules of Hooks
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log('[SignUp] Form submitted');
@@ -73,8 +77,7 @@ function SignUpContent() {
     });
   };
 
-  // Note: We redirect immediately on success, so this success message UI is kept as fallback
-  // but should rarely be seen since redirect happens quickly
+  // Conditional return must be after all hooks
   if (successMessage && !isPending) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-light/40 via-white to-primary/20 p-4">
