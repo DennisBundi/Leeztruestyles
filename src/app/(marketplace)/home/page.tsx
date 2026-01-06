@@ -44,10 +44,10 @@ export default async function HomePage() {
       if (completedOrders && completedOrders.length > 0) {
         const orderIds = completedOrders.map((o: any) => o.id);
 
-        // Fetch order items for completed orders
+        // Fetch order items for completed orders (include order_id to count distinct orders)
         const { data: orderItems, error: itemsError } = await adminClient
           .from("order_items")
-          .select("product_id, quantity")
+          .select("product_id, order_id, quantity")
           .in("order_id", orderIds);
 
         if (itemsError) {
@@ -56,17 +56,22 @@ export default async function HomePage() {
             itemsError
           );
         } else if (orderItems && orderItems.length > 0) {
-          // Aggregate product sales (sum of quantities)
-          const productSalesMap = new Map<string, number>();
+          // Count number of orders per product (not sum of quantities)
+          const productOrderCountMap = new Map<string, Set<string>>(); // product_id -> Set of order_ids
 
           orderItems.forEach((item: any) => {
-            if (item.product_id && item.quantity) {
-              const currentSales = productSalesMap.get(item.product_id) || 0;
-              productSalesMap.set(
-                item.product_id,
-                currentSales + (parseInt(item.quantity) || 0)
-              );
+            if (item.product_id && item.order_id) {
+              if (!productOrderCountMap.has(item.product_id)) {
+                productOrderCountMap.set(item.product_id, new Set());
+              }
+              productOrderCountMap.get(item.product_id)!.add(item.order_id);
             }
+          });
+
+          // Convert to count map (number of distinct orders per product)
+          const productSalesMap = new Map<string, number>();
+          productOrderCountMap.forEach((orderIds, productId) => {
+            productSalesMap.set(productId, orderIds.size);
           });
 
           // Store sales count map for later use in filtering

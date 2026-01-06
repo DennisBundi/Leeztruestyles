@@ -290,7 +290,10 @@ export default function CheckoutPage() {
       });
 
       if (!paymentResponse.ok) {
-        throw new Error("Failed to initiate payment");
+        const errorData = await paymentResponse.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || "Failed to initiate payment";
+        const errorDetails = errorData.details ? `: ${errorData.details}` : '';
+        throw new Error(`${errorMessage}${errorDetails}`);
       }
 
       const paymentData = await paymentResponse.json();
