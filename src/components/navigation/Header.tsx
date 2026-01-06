@@ -318,11 +318,11 @@ export default function Header() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link
-                        href="/signup"
+                        href="/signin"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
                         onClick={() => setShowSignOutModal(false)}
                       >
-                        Sign Up
+                        Sign In
                       </Link>
                       <Link
                         href="/signup"
@@ -414,11 +414,11 @@ export default function Header() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link
-                        href="/signup"
+                        href="/signin"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
                         onClick={() => setShowSignOutModal(false)}
                       >
-                        Sign Up
+                        Sign In
                       </Link>
                       <Link
                         href="/signup"
@@ -491,14 +491,14 @@ export default function Header() {
               {/* Mobile Auth Links */}
               <div className="px-4 pt-2 border-t border-gray-100 flex flex-col gap-2">
                 {loading && user === null ? (
-                  // Show Sign Up options during loading for mobile
+                  // Show Sign In options during loading for mobile
                   <div className="flex flex-col gap-2">
                     <Link
-                      href="/signup"
+                      href="/signin"
                       onClick={() => setMobileMenuOpen(false)}
                       className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center cursor-pointer"
                     >
-                      Sign Up
+                      Sign In
                     </Link>
                     <Link
                       href="/signup"
@@ -528,14 +528,14 @@ export default function Header() {
                     </button>
                   </>
                 ) : (
-                  // Not logged in - show Sign Up options
+                  // Not logged in - show Sign In options
                   <div className="flex flex-col gap-2">
                     <Link
-                      href="/signup"
+                      href="/signin"
                       onClick={() => setMobileMenuOpen(false)}
                       className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center cursor-pointer"
                     >
-                      Sign Up
+                      Sign In
                     </Link>
                     <Link
                       href="/signup"

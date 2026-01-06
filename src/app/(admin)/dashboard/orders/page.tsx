@@ -29,11 +29,15 @@ export default function OrdersPage() {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [lastPaymentDate, setLastPaymentDate] = useState<Date | null>(null);
 
   useEffect(() => {
     fetchOrders();
     fetchUserRole();
-  }, []);
+    if (userRole === 'seller') {
+      fetchLastPaymentDate();
+    }
+  }, [userRole]);
 
   const fetchUserRole = async () => {
     try {
@@ -42,6 +46,21 @@ export default function OrdersPage() {
       setUserRole(role);
     } catch (error) {
       console.error('Error fetching user role:', error);
+    }
+  };
+
+  const fetchLastPaymentDate = async () => {
+    try {
+      // Fetch user stats which includes last_commission_payment_date
+      const response = await fetch('/api/dashboard/user-stats');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.lastCommissionPaymentDate) {
+          setLastPaymentDate(new Date(data.lastCommissionPaymentDate));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching last payment date:', error);
     }
   };
 
@@ -77,7 +96,52 @@ export default function OrdersPage() {
     }
   };
 
-  // Filter orders based on search, status, and type
+  // Calculate current calendar week (Monday 00:00:00 to Sunday 23:59:59)
+  const getCurrentWeekRange = useMemo(() => {
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1; // Days to subtract to get to Monday
+    
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - daysToMonday);
+    weekStart.setHours(0, 0, 0, 0);
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    return { weekStart, weekEnd };
+  }, []);
+
+  // Filter orders for stats (current week only, after last payment, for sellers)
+  const statsFilteredOrders = useMemo(() => {
+    if (userRole !== 'seller') {
+      return orders;
+    }
+
+    return orders.filter((order) => {
+      // Must be completed
+      if (order.status !== 'completed') {
+        return false;
+      }
+
+      const orderDate = new Date(order.date);
+
+      // Must be in current calendar week
+      if (orderDate < getCurrentWeekRange.weekStart || orderDate > getCurrentWeekRange.weekEnd) {
+        return false;
+      }
+
+      // Must be after last payment date (if payment date exists)
+      if (lastPaymentDate && orderDate <= lastPaymentDate) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [orders, userRole, getCurrentWeekRange, lastPaymentDate]);
+
+  // Filter orders based on search, status, and type (for table display)
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const searchLower = searchQuery.toLowerCase();
@@ -141,25 +205,36 @@ export default function OrdersPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">Total Orders</div>
+          <div className="text-xs text-gray-600 mb-2">
+            {userRole === 'seller' ? 'Total Orders (This Week)' : 'Total Orders'}
+          </div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <>
-              <div className="text-2xl font-bold text-gray-900">{orders.length}</div>
-              {filteredOrders.length !== orders.length && (
+              <div className="text-2xl font-bold text-gray-900">
+                {userRole === 'seller' ? statsFilteredOrders.length : orders.length}
+              </div>
+              {userRole !== 'seller' && filteredOrders.length !== orders.length && (
                 <div className="text-xs text-gray-500 mt-1">Showing {filteredOrders.length} filtered</div>
+              )}
+              {userRole === 'seller' && (
+                <div className="text-xs text-gray-500 mt-1">Current week only</div>
               )}
             </>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">Completed</div>
+          <div className="text-xs text-gray-600 mb-2">
+            {userRole === 'seller' ? 'Completed (This Week)' : 'Completed'}
+          </div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <div className="text-2xl font-bold text-green-600">
-              {filteredOrders.filter(o => o.status === 'completed').length}
+              {userRole === 'seller' 
+                ? statsFilteredOrders.length 
+                : filteredOrders.filter(o => o.status === 'completed').length}
             </div>
           )}
         </div>
@@ -182,8 +257,7 @@ export default function OrdersPage() {
           ) : (
             <div className="text-2xl font-bold text-primary">
               KES {userRole === 'seller'
-                ? (filteredOrders
-                    .filter(o => o.status === 'completed')
+                ? (statsFilteredOrders
                     .reduce((sum, o) => sum + (o.commission || 0), 0) || 0).toLocaleString()
                 : (filteredOrders
                     .filter(o => o.status === 'completed')
@@ -191,7 +265,7 @@ export default function OrdersPage() {
             </div>
           )}
           {userRole === 'seller' && (
-            <div className="text-xs text-gray-500 mt-1">3% of total sales</div>
+            <div className="text-xs text-gray-500 mt-1">3% of total sales • Current week only</div>
           )}
         </div>
       </div>

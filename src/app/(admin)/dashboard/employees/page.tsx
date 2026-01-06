@@ -13,6 +13,7 @@ interface Employee {
   email: string;
   role: 'admin' | 'manager' | 'seller';
   created_at: string;
+  last_commission_payment_date?: string | null;
   sales_count: number;
   total_sales: number;
   total_commission: number;
@@ -30,6 +31,8 @@ export default function EmployeesPage() {
   const [successModal, setSuccessModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; employee: Employee | null }>({ show: false, employee: null });
   const [deleting, setDeleting] = useState(false);
+  const [markPaidModal, setMarkPaidModal] = useState<{ show: boolean; employee: Employee | null }>({ show: false, employee: null });
+  const [markingPaid, setMarkingPaid] = useState(false);
 
   // Check role and redirect non-admins (only once)
   useEffect(() => {
@@ -132,6 +135,38 @@ export default function EmployeesPage() {
       alert(error instanceof Error ? error.message : 'Failed to delete employee');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleMarkPaid = async () => {
+    if (!markPaidModal.employee) return;
+
+    setMarkingPaid(true);
+    try {
+      const response = await fetch('/api/commissions/mark-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee_id: markPaidModal.employee.id }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to mark commissions as paid');
+      }
+
+      // Close modal
+      setMarkPaidModal({ show: false, employee: null });
+
+      // Refresh employees
+      await fetchEmployees();
+
+      // Show success message
+      alert('Commissions marked as paid successfully');
+    } catch (error) {
+      console.error('Error marking commissions as paid:', error);
+      alert(error instanceof Error ? error.message : 'Failed to mark commissions as paid');
+    } finally {
+      setMarkingPaid(false);
     }
   };
 
@@ -249,13 +284,14 @@ export default function EmployeesPage() {
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Joined</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Last Payment</th>
                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-6 py-12 text-center">
+                      <td colSpan={10} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -320,8 +356,32 @@ export default function EmployeesPage() {
                             {new Date(employee.created_at).toLocaleDateString()}
                           </div>
                         </td>
+                        <td className="px-6 py-4">
+                          {employee.role === 'seller' ? (
+                            employee.last_commission_payment_date ? (
+                              <div className="text-sm text-gray-600">
+                                {new Date(employee.last_commission_payment_date).toLocaleDateString()}
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {new Date(employee.last_commission_payment_date).toLocaleTimeString()}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-400 italic">Never</div>
+                            )
+                          ) : (
+                            <div className="text-sm text-gray-400">N/A</div>
+                          )}
+                        </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-3">
+                            {employee.role === 'seller' && (
+                              <button 
+                                onClick={() => setMarkPaidModal({ show: true, employee })}
+                                className="text-green-600 hover:text-green-700 font-medium text-sm transition-colors"
+                              >
+                                Mark Paid
+                              </button>
+                            )}
                             <button 
                               onClick={() => setDeleteModal({ show: true, employee })}
                               className="text-red-600 hover:text-red-700 font-medium text-sm transition-colors"
@@ -435,6 +495,76 @@ export default function EmployeesPage() {
                 <p className="text-gray-600">
                   The employee has been successfully added to your team.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Mark Paid Confirmation Modal */}
+          {markPaidModal.show && markPaidModal.employee && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Mark Commissions Paid</h3>
+                  <button
+                    onClick={() => setMarkPaidModal({ show: false, employee: null })}
+                    className="text-gray-400 hover:text-gray-600"
+                    disabled={markingPaid}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-700 mb-2 text-center">
+                    Mark commissions as paid for <strong>{markPaidModal.employee.name}</strong>?
+                  </p>
+                  <p className="text-sm text-gray-600 text-center">
+                    This will update the last payment date and reset their dashboard to show only current week orders.
+                  </p>
+                  {markPaidModal.employee.last_commission_payment_date && (
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        Last payment: {new Date(markPaidModal.employee.last_commission_payment_date).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMarkPaidModal({ show: false, employee: null })}
+                    disabled={markingPaid}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleMarkPaid}
+                    disabled={markingPaid}
+                    className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {markingPaid ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Marking...
+                      </>
+                    ) : (
+                      'Mark Paid'
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}

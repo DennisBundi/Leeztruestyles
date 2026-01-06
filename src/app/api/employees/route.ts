@@ -186,6 +186,7 @@ export async function GET(request: NextRequest) {
           email: userEmail || 'No email',
           role: employee.role,
           created_at: employee.created_at,
+          last_commission_payment_date: employee.last_commission_payment_date || null,
           sales_count,
           total_sales,
           total_commission,
