@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/types";
@@ -24,6 +24,41 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { triggerAnimation } = useCartAnimationContext();
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get all product images
+  const productImages = product.images && Array.isArray(product.images) 
+    ? product.images.filter((img: any) => img && typeof img === 'string' && img.trim() !== '')
+    : product.image 
+    ? [product.image]
+    : product.image_url
+    ? [product.image_url]
+    : [];
+
+  // Handle image cycling on hover
+  useEffect(() => {
+    if (isHovered && productImages.length > 1) {
+      // Start cycling through images
+      intervalRef.current = setInterval(() => {
+        setCurrentImageIndex((prev) => (prev + 1) % productImages.length);
+      }, 2000); // Change image every 2 seconds
+    } else {
+      // Stop cycling and reset to first image
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setCurrentImageIndex(0);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isHovered, productImages.length]);
   
   // If available_stock is undefined, treat as in stock (inventory not set up yet)
   // If it's 0 or less, then it's out of stock
@@ -182,19 +217,37 @@ export default function ProductCard({ product }: ProductCardProps) {
       )}
 
       <Link href={`/products/${product.id}`}>
-        <div className="aspect-square relative bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
-          {product.images && product.images.length > 0 ? (
-            <Image
-              src={product.images[0]}
-              alt={product.name}
-              fill
-              className="object-cover group-hover:scale-110 transition-transform duration-500"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              unoptimized={
-                product.images[0]?.includes("unsplash.com") ||
-                product.images[0]?.includes("unsplash")
-              }
-            />
+        <div 
+          className="aspect-square relative bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {productImages.length > 0 ? (
+            <div className="relative w-full h-full overflow-hidden">
+              <div 
+                className="flex h-full transition-transform duration-700 ease-in-out"
+                style={{
+                  transform: `translateX(-${currentImageIndex * 100}%)`,
+                  width: `${productImages.length * 100}%`
+                }}
+              >
+                {productImages.map((image, index) => (
+                  <div key={index} className="relative flex-shrink-0 w-full h-full" style={{ width: `${100 / productImages.length}%` }}>
+                    <Image
+                      src={image}
+                      alt={`${product.name} - Image ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      unoptimized={
+                        image?.includes("unsplash.com") ||
+                        image?.includes("unsplash")
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">
               <svg
