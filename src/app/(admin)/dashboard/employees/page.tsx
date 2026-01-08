@@ -31,8 +31,8 @@ export default function EmployeesPage() {
   const [successModal, setSuccessModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; employee: Employee | null }>({ show: false, employee: null });
   const [deleting, setDeleting] = useState(false);
-  const [markPaidModal, setMarkPaidModal] = useState<{ show: boolean; employee: Employee | null }>({ show: false, employee: null });
-  const [markingPaid, setMarkingPaid] = useState(false);
+  const [markAllPaidModal, setMarkAllPaidModal] = useState(false);
+  const [markingAllPaid, setMarkingAllPaid] = useState(false);
 
   // Check role and redirect non-admins (only once)
   useEffect(() => {
@@ -138,35 +138,34 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleMarkPaid = async () => {
-    if (!markPaidModal.employee) return;
-
-    setMarkingPaid(true);
+  const handleMarkAllPaid = async () => {
+    setMarkingAllPaid(true);
     try {
-      const response = await fetch('/api/commissions/mark-paid', {
+      const response = await fetch('/api/commissions/mark-paid-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employee_id: markPaidModal.employee.id }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to mark commissions as paid');
+        throw new Error(error.error || 'Failed to mark all commissions as paid');
       }
 
+      const data = await response.json();
+
       // Close modal
-      setMarkPaidModal({ show: false, employee: null });
+      setMarkAllPaidModal(false);
 
       // Refresh employees
       await fetchEmployees();
 
       // Show success message
-      alert('Commissions marked as paid successfully');
+      alert(data.message || `Commissions marked as paid for ${data.count || 0} seller(s)`);
     } catch (error) {
-      console.error('Error marking commissions as paid:', error);
-      alert(error instanceof Error ? error.message : 'Failed to mark commissions as paid');
+      console.error('Error marking all commissions as paid:', error);
+      alert(error instanceof Error ? error.message : 'Failed to mark all commissions as paid');
     } finally {
-      setMarkingPaid(false);
+      setMarkingAllPaid(false);
     }
   };
 
@@ -185,17 +184,31 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex-shrink-0">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Employees</h1>
           <p className="text-gray-600">Manage staff and track sales performance</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark hover:shadow-lg transition-all hover:scale-105"
-        >
-          + Add Employee
-        </button>
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            onClick={() => setMarkAllPaidModal(true)}
+            type="button"
+            className="px-4 md:px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 hover:shadow-lg transition-all hover:scale-105 flex items-center gap-2 text-sm md:text-base whitespace-nowrap"
+            style={{ visibility: 'visible', display: 'flex' }}
+          >
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Mark All Commissions Paid</span>
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            type="button"
+            className="px-4 md:px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark hover:shadow-lg transition-all hover:scale-105 text-sm md:text-base whitespace-nowrap"
+          >
+            + Add Employee
+          </button>
+        </div>
       </div>
 
       {/* Loading State */}
@@ -353,16 +366,25 @@ export default function EmployeesPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-600">
-                            {new Date(employee.created_at).toLocaleDateString()}
+                            {typeof window !== 'undefined'
+                              ? new Date(employee.created_at).toLocaleDateString()
+                              : new Date(employee.created_at).toISOString().split('T')[0]
+                            }
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           {employee.role === 'seller' ? (
                             employee.last_commission_payment_date ? (
                               <div className="text-sm text-gray-600">
-                                {new Date(employee.last_commission_payment_date).toLocaleDateString()}
+                                {typeof window !== 'undefined' 
+                                  ? new Date(employee.last_commission_payment_date).toLocaleDateString()
+                                  : new Date(employee.last_commission_payment_date).toISOString().split('T')[0]
+                                }
                                 <div className="text-xs text-gray-500 mt-0.5">
-                                  {new Date(employee.last_commission_payment_date).toLocaleTimeString()}
+                                  {typeof window !== 'undefined'
+                                    ? new Date(employee.last_commission_payment_date).toLocaleTimeString()
+                                    : new Date(employee.last_commission_payment_date).toISOString().split('T')[1]?.split('.')[0]
+                                  }
                                 </div>
                               </div>
                             ) : (
@@ -374,14 +396,6 @@ export default function EmployeesPage() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-3">
-                            {employee.role === 'seller' && (
-                              <button 
-                                onClick={() => setMarkPaidModal({ show: true, employee })}
-                                className="text-green-600 hover:text-green-700 font-medium text-sm transition-colors"
-                              >
-                                Mark Paid
-                              </button>
-                            )}
                             <button 
                               onClick={() => setDeleteModal({ show: true, employee })}
                               className="text-red-600 hover:text-red-700 font-medium text-sm transition-colors"
@@ -499,16 +513,16 @@ export default function EmployeesPage() {
             </div>
           )}
 
-          {/* Mark Paid Confirmation Modal */}
-          {markPaidModal.show && markPaidModal.employee && (
+          {/* Mark All Paid Confirmation Modal */}
+          {markAllPaidModal && (
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Mark Commissions Paid</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">Mark All Commissions Paid</h3>
                   <button
-                    onClick={() => setMarkPaidModal({ show: false, employee: null })}
+                    onClick={() => setMarkAllPaidModal(false)}
                     className="text-gray-400 hover:text-gray-600"
-                    disabled={markingPaid}
+                    disabled={markingAllPaid}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -523,36 +537,34 @@ export default function EmployeesPage() {
                     </svg>
                   </div>
                   <p className="text-gray-700 mb-2 text-center">
-                    Mark commissions as paid for <strong>{markPaidModal.employee.name}</strong>?
+                    Mark commissions as paid for <strong>all sellers</strong>?
                   </p>
-                  <p className="text-sm text-gray-600 text-center">
-                    This will update the last payment date and reset their dashboard to show only current week orders.
+                  <p className="text-sm text-gray-600 text-center mb-3">
+                    This will update the last payment date for all sales persons and reset their dashboards to show only current week orders.
                   </p>
-                  {markPaidModal.employee.last_commission_payment_date && (
-                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        Last payment: {new Date(markPaidModal.employee.last_commission_payment_date).toLocaleString()}
-                      </p>
-                    </div>
-                  )}
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 text-center">
+                      This action will affect {employees.filter(e => e.role === 'seller').length} seller(s)
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setMarkPaidModal({ show: false, employee: null })}
-                    disabled={markingPaid}
+                    onClick={() => setMarkAllPaidModal(false)}
+                    disabled={markingAllPaid}
                     className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    onClick={handleMarkPaid}
-                    disabled={markingPaid}
+                    onClick={handleMarkAllPaid}
+                    disabled={markingAllPaid}
                     className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {markingPaid ? (
+                    {markingAllPaid ? (
                       <>
                         <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -561,7 +573,7 @@ export default function EmployeesPage() {
                         Marking...
                       </>
                     ) : (
-                      'Mark Paid'
+                      'Mark All Paid'
                     )}
                   </button>
                 </div>
