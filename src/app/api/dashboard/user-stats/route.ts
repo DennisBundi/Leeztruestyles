@@ -33,18 +33,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Calculate current calendar week (Monday 00:00:00 to Sunday 23:59:59)
+    // Calculate today's date range (00:00:00 to 23:59:59 today)
     const now = new Date();
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1; // Days to subtract to get to Monday
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
     
-    const currentWeekStart = new Date(now);
-    currentWeekStart.setDate(now.getDate() - daysToMonday);
-    currentWeekStart.setHours(0, 0, 0, 0);
-    
-    const currentWeekEnd = new Date(currentWeekStart);
-    currentWeekEnd.setDate(currentWeekStart.getDate() + 6);
-    currentWeekEnd.setHours(23, 59, 59, 999);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
 
     // Get last payment date if it exists
     const lastPaymentDate = employeeData.last_commission_payment_date
@@ -69,22 +64,29 @@ export async function GET(request: NextRequest) {
     // Get user role to determine what to show
     const userRole = await getUserRole(user.id);
 
-    // Filter orders based on:
-    // 1. Status must be 'completed'
-    // 2. Order must be in current calendar week (Monday-Sunday)
-    // 3. Order must be created after last_commission_payment_date (if exists)
-    const filteredOrders = (allOrders || []).filter((order: any) => {
+    // Filter orders for TODAY's stats (Total Orders, Completed, Pending) - today only
+    const todayOrders = (allOrders || []).filter((order: any) => {
+      const orderDate = new Date(order.created_at);
+      return orderDate >= todayStart && orderDate <= todayEnd;
+    });
+
+    // Calculate today's stats
+    const totalOrdersToday = todayOrders.length;
+    const completedOrdersToday = todayOrders.filter((o: any) => o.status === 'completed').length;
+    const pendingOrdersToday = todayOrders.filter((o: any) => o.status === 'pending').length;
+    const totalSalesToday = todayOrders
+      .filter((o: any) => o.status === 'completed')
+      .reduce((sum: number, order: any) => sum + parseFloat(order.total_amount || 0), 0);
+
+    // Filter orders for COMMISSION calculation - compounds from last_payment_date until now
+    // Includes all completed orders after last payment date (not limited to today)
+    const commissionOrders = (allOrders || []).filter((order: any) => {
       // Must be completed
       if (order.status !== 'completed') {
         return false;
       }
 
       const orderDate = new Date(order.created_at);
-
-      // Must be in current calendar week
-      if (orderDate < currentWeekStart || orderDate > currentWeekEnd) {
-        return false;
-      }
 
       // Must be after last payment date (if payment date exists)
       if (lastPaymentDate && orderDate <= lastPaymentDate) {
@@ -94,21 +96,16 @@ export async function GET(request: NextRequest) {
       return true;
     });
 
-    // Calculate stats from filtered orders (current week only, after last payment)
-    const totalSales = filteredOrders.reduce(
-      (sum: number, order: any) => sum + parseFloat(order.total_amount || 0),
-      0
-    );
-
-    const totalCommission = filteredOrders.reduce(
+    // Calculate compounded commission from last payment date until now
+    const totalCommission = commissionOrders.reduce(
       (sum: number, order: any) => sum + parseFloat(order.commission || 0),
       0
     );
 
-    const totalOrders = filteredOrders.length;
-
-    // For current week stats, they're the same as totals since we're only showing current week
-    const salesThisWeek = totalSales;
+    // For backward compatibility, keep these fields but use today's values
+    const totalSales = totalSalesToday;
+    const totalOrders = totalOrdersToday;
+    const salesThisWeek = totalSalesToday;
     const commissionThisWeek = totalCommission;
 
     return NextResponse.json({
@@ -117,6 +114,11 @@ export async function GET(request: NextRequest) {
       totalOrders,
       salesThisWeek,
       commissionThisWeek,
+      // Today's stats
+      totalOrdersToday,
+      completedOrdersToday,
+      pendingOrdersToday,
+      totalSalesToday,
       userRole, // Include role so frontend knows what to display
       lastCommissionPaymentDate: employeeData.last_commission_payment_date || null, // Include last payment date
     });

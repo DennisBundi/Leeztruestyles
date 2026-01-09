@@ -30,12 +30,16 @@ export default function OrdersPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [lastPaymentDate, setLastPaymentDate] = useState<Date | null>(null);
+  const [totalCommission, setTotalCommission] = useState<number>(0);
 
   useEffect(() => {
     fetchOrders();
     fetchUserRole();
+  }, []);
+
+  useEffect(() => {
     if (userRole === 'seller') {
-      fetchLastPaymentDate();
+      fetchUserStats();
     }
   }, [userRole]);
 
@@ -49,18 +53,19 @@ export default function OrdersPage() {
     }
   };
 
-  const fetchLastPaymentDate = async () => {
+  const fetchUserStats = async () => {
     try {
-      // Fetch user stats which includes last_commission_payment_date
+      // Fetch user stats which includes last_commission_payment_date and totalCommission
       const response = await fetch('/api/dashboard/user-stats');
       if (response.ok) {
         const data = await response.json();
+        setTotalCommission(data.totalCommission || 0);
         if (data.lastCommissionPaymentDate) {
           setLastPaymentDate(new Date(data.lastCommissionPaymentDate));
         }
       }
     } catch (error) {
-      console.error('Error fetching last payment date:', error);
+      console.error('Error fetching user stats:', error);
     }
   };
 
@@ -96,50 +101,29 @@ export default function OrdersPage() {
     }
   };
 
-  // Calculate current calendar week (Monday 00:00:00 to Sunday 23:59:59)
-  const getCurrentWeekRange = useMemo(() => {
+  // Calculate today's date range (00:00:00 to 23:59:59 today)
+  const getTodayRange = useMemo(() => {
     const now = new Date();
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1; // Days to subtract to get to Monday
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
     
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - daysToMonday);
-    weekStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
     
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    weekEnd.setHours(23, 59, 59, 999);
-    
-    return { weekStart, weekEnd };
+    return { todayStart, todayEnd };
   }, []);
 
-  // Filter orders for stats (current week only, after last payment, for sellers)
-  const statsFilteredOrders = useMemo(() => {
-    if (userRole !== 'seller') {
-      return orders;
-    }
-
+  // Filter orders for TODAY's stats (Total Orders, Completed, Pending) - today only
+  // Note: orders array already contains only today's orders from the API
+  const todayOrders = useMemo(() => {
     return orders.filter((order) => {
-      // Must be completed
-      if (order.status !== 'completed') {
-        return false;
-      }
-
       const orderDate = new Date(order.date);
-
-      // Must be in current calendar week
-      if (orderDate < getCurrentWeekRange.weekStart || orderDate > getCurrentWeekRange.weekEnd) {
-        return false;
-      }
-
-      // Must be after last payment date (if payment date exists)
-      if (lastPaymentDate && orderDate <= lastPaymentDate) {
-        return false;
-      }
-
-      return true;
+      return orderDate >= getTodayRange.todayStart && orderDate <= getTodayRange.todayEnd;
     });
-  }, [orders, userRole, getCurrentWeekRange, lastPaymentDate]);
+  }, [orders, getTodayRange]);
+
+  // Commission is fetched from user-stats API which compounds from last_payment_date until now
+  // This includes all completed orders after last payment date (not limited to today)
 
   // Filter orders based on search, status, and type (for table display)
   const filteredOrders = useMemo(() => {
@@ -198,74 +182,64 @@ export default function OrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Orders</h1>
-          <p className="text-sm text-gray-500">Manage and track all customer orders</p>
+          <p className="text-sm text-gray-500">Today's orders only • Manage and track customer orders</p>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">
-            {userRole === 'seller' ? 'Total Orders (This Week)' : 'Total Orders'}
-          </div>
+          <div className="text-xs text-gray-600 mb-2">Total Orders (Today)</div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <>
               <div className="text-2xl font-bold text-gray-900">
-                {userRole === 'seller' ? statsFilteredOrders.length : orders.length}
+                {todayOrders.length}
               </div>
-              {userRole !== 'seller' && filteredOrders.length !== orders.length && (
-                <div className="text-xs text-gray-500 mt-1">Showing {filteredOrders.length} filtered</div>
-              )}
-              {userRole === 'seller' && (
-                <div className="text-xs text-gray-500 mt-1">Current week only</div>
-              )}
+              <div className="text-xs text-gray-500 mt-1">Today only</div>
             </>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">
-            {userRole === 'seller' ? 'Completed (This Week)' : 'Completed'}
-          </div>
+          <div className="text-xs text-gray-600 mb-2">Completed (Today)</div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <div className="text-2xl font-bold text-green-600">
-              {userRole === 'seller' 
-                ? statsFilteredOrders.length 
-                : filteredOrders.filter(o => o.status === 'completed').length}
+              {todayOrders.filter(o => o.status === 'completed').length}
             </div>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">Pending</div>
+          <div className="text-xs text-gray-600 mb-2">Pending (Today)</div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <div className="text-2xl font-bold text-yellow-600">
-              {filteredOrders.filter(o => o.status === 'pending').length}
+              {todayOrders.filter(o => o.status === 'pending').length}
             </div>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
           <div className="text-xs text-gray-600 mb-2">
-            {userRole === 'seller' ? 'Total Commission' : 'Total Revenue'}
+            {userRole === 'seller' ? 'Total Commission' : 'Total Revenue (Today)'}
           </div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <div className="text-2xl font-bold text-primary">
               KES {userRole === 'seller'
-                ? (statsFilteredOrders
-                    .reduce((sum, o) => sum + (o.commission || 0), 0) || 0).toLocaleString()
-                : (filteredOrders
+                ? totalCommission.toLocaleString()
+                : (todayOrders
                     .filter(o => o.status === 'completed')
                     .reduce((sum, o) => sum + (o.amount || 0), 0) || 0).toLocaleString()}
             </div>
           )}
-          {userRole === 'seller' && (
-            <div className="text-xs text-gray-500 mt-1">3% of total sales • Current week only</div>
+          {userRole === 'seller' ? (
+            <div className="text-xs text-gray-500 mt-1">3% commission • Compounded from last payment</div>
+          ) : (
+            <div className="text-xs text-gray-500 mt-1">Today only</div>
           )}
         </div>
       </div>
@@ -300,11 +274,11 @@ export default function OrdersPage() {
             <option value="pos">POS</option>
           </select>
         </div>
-        {filteredOrders.length !== orders.length && (
-          <div className="mt-3 text-xs text-gray-500">
-            Showing {filteredOrders.length} of {orders.length} orders
-          </div>
-        )}
+        <div className="mt-3 text-xs text-gray-500">
+          {filteredOrders.length !== orders.length 
+            ? `Showing ${filteredOrders.length} of ${orders.length} orders (today)`
+            : `Showing all ${orders.length} orders from today`}
+        </div>
       </div>
 
       {/* Orders Table */}
@@ -364,7 +338,7 @@ export default function OrdersPage() {
                       <p className="text-sm font-medium">No orders found</p>
                       <p className="text-xs mt-1">
                         {orders.length === 0 
-                          ? 'No orders in the system yet' 
+                          ? 'No orders for today yet' 
                           : 'Try adjusting your filters'}
                       </p>
                     </div>

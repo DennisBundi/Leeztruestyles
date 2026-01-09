@@ -25,18 +25,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Build query - all users (sellers, admins, managers) see all orders
-    // Sales persons can view orders from all sellers and admins, not just their own
+    // Calculate today's date range (00:00:00 to 23:59:59 today)
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    // Build query - filter by today's date only (for everyone)
     const query = supabase
       .from('orders')
-      .select('*');
+      .select('*')
+      .gte('created_at', todayStart.toISOString())
+      .lte('created_at', todayEnd.toISOString());
     
-    console.log('Orders API - fetching all orders (role:', userRole, ')');
+    console.log('Orders API - fetching today\'s orders (role:', userRole, ')');
+    console.log('Orders API - date range:', todayStart.toISOString(), 'to', todayEnd.toISOString());
     
     const { data: orders, error: ordersError } = await query
       .order('created_at', { ascending: false });
     
-    console.log('Orders API - fetched orders:', orders?.length || 0);
+    console.log('Orders API - fetched orders for today:', orders?.length || 0);
 
     if (ordersError) {
       console.error('Orders fetch error:', ordersError);

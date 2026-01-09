@@ -51,6 +51,7 @@ export default function CustomProductModal({
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -199,9 +200,8 @@ export default function CustomProductModal({
     };
 
     // Trigger animation from submit button to POS cart
-    const submitButton = e.currentTarget.querySelector('button[type="submit"]') as HTMLElement;
-    if (submitButton) {
-      triggerAnimation(mockProductForAnimation, submitButton, 'pos', '[data-pos-cart]');
+    if (submitButtonRef.current) {
+      triggerAnimation(mockProductForAnimation, submitButtonRef.current, 'pos', '[data-pos-cart]');
     }
 
     onAdd(productData);
@@ -213,14 +213,15 @@ export default function CustomProductModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-300">
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full h-[90vh] max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
+        {/* Header - Fixed */}
+        <div className="flex justify-between items-center p-6 pb-4 flex-shrink-0 border-b border-gray-100">
           <h2 className="text-2xl font-bold text-gray-900">
             Add Custom Product
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
           >
             <svg
               className="w-6 h-6"
@@ -238,7 +239,9 @@ export default function CustomProductModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4" style={{ WebkitOverflowScrolling: 'touch', minHeight: 0 }}>
+          <form onSubmit={handleSubmit} className="space-y-4" id="custom-product-form">
           {/* Product Name */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -484,28 +487,32 @@ export default function CustomProductModal({
             )}
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || uploadingImages}
-              className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading
-                ? "Adding..."
-                : uploadingImages
-                ? "Uploading Images..."
-                : "Add to Cart"}
-            </button>
-          </div>
         </form>
+        </div>
+
+        {/* Buttons - Sticky at bottom for better mobile UX */}
+        <div className="flex gap-3 p-6 pt-4 border-t border-gray-100 bg-white rounded-b-2xl flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            ref={submitButtonRef}
+            type="submit"
+            form="custom-product-form"
+            disabled={loading || uploadingImages}
+            className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading
+              ? "Adding..."
+              : uploadingImages
+              ? "Uploading Images..."
+              : "Add to Cart"}
+          </button>
+        </div>
       </div>
     </div>
   );
