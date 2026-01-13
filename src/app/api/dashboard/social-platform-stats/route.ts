@@ -50,43 +50,56 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get period and dayOfWeek from query params
+    // Get period, dayOfWeek, and customDate from query params
     const searchParams = request.nextUrl.searchParams;
-    const period = (searchParams.get('period') || 'month') as Period;
+    const customDateParam = searchParams.get('customDate');
+    const period = (searchParams.get('period') || (customDateParam ? 'all' : 'month')) as Period;
     const dayOfWeek = (searchParams.get('dayOfWeek') || 'all') as DayOfWeek;
 
-    // Calculate date range based on period
+    // Calculate date range based on period or custom date
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     let startDate: Date | null = null;
     let endDate: Date | null = null;
 
-    switch (period) {
-      case 'day':
-        startDate = new Date(today);
-        endDate = new Date(today);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'week':
-        startDate = new Date(today);
-        startDate.setDate(today.getDate() - 6); // Last 7 days including today
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(today);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case 'all':
-        // No date filter
-        break;
+    // If custom date is provided, use it
+    if (customDateParam) {
+      const customDate = new Date(customDateParam);
+      startDate = new Date(customDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(customDate);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      // Calculate date range based on period
+      switch (period) {
+        case 'day':
+          startDate = new Date(today);
+          endDate = new Date(today);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'week':
+          // Current week: Sunday to Saturday
+          startDate = new Date(today);
+          startDate.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(today);
+          endDate.setDate(today.getDate() + (6 - today.getDay())); // End of week (Saturday)
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'all':
+          // No date filter
+          break;
+      }
     }
 
     // Build query - include created_at for day of week filtering

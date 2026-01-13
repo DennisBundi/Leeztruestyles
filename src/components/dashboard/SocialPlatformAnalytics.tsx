@@ -29,19 +29,27 @@ export default function SocialPlatformAnalytics() {
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>('month');
   const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>('all');
+  const [customDate, setCustomDate] = useState<string>('');
   const [totalOrders, setTotalOrders] = useState(0);
 
   useEffect(() => {
-    fetchData(period, dayOfWeek);
-  }, [period, dayOfWeek]);
+    fetchData(period, dayOfWeek, customDate);
+  }, [period, dayOfWeek, customDate]);
 
-  const fetchData = async (selectedPeriod: Period, selectedDay: DayOfWeek) => {
+  const fetchData = async (selectedPeriod: Period, selectedDay: DayOfWeek, selectedCustomDate: string) => {
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams();
-      params.append('period', selectedPeriod);
+      
+      // If custom date is selected, use it instead of period
+      if (selectedCustomDate) {
+        params.append('customDate', selectedCustomDate);
+      } else {
+        params.append('period', selectedPeriod);
+      }
+      
       if (selectedDay !== 'all') {
         params.append('dayOfWeek', selectedDay);
       }
@@ -124,33 +132,83 @@ export default function SocialPlatformAnalytics() {
         </div>
       </div>
 
-      {/* Period Filter Buttons */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(['day', 'week', 'month', 'year', 'all'] as Period[]).map((p) => (
+      {/* Custom Date Filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <label className="text-sm font-medium text-gray-700">Custom Date:</label>
+        <input
+          type="date"
+          value={customDate}
+          onChange={(e) => {
+            const newDate = e.target.value;
+            setCustomDate(newDate);
+            // Clear day filter when custom date is selected (day filter only works for current week)
+            if (newDate) {
+              setDayOfWeek('all');
+            }
+          }}
+          className="px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+        {customDate && (
           <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              period === p
-                ? 'bg-primary text-white shadow-md hover:bg-primary-dark'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            onClick={() => {
+              setCustomDate('');
+              setPeriod('month');
+            }}
+            className="px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
           >
-            {getPeriodLabel(p)}
+            Clear
           </button>
-        ))}
+        )}
       </div>
 
-      {/* Day of Week Filter Buttons */}
+      {/* Period Filter Buttons */}
+      {!customDate && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {(['day', 'week', 'month', 'year', 'all'] as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => {
+                setPeriod(p);
+                // When selecting a period, clear day filter if it's not 'week'
+                if (p !== 'week' && dayOfWeek !== 'all') {
+                  setDayOfWeek('all');
+                }
+                // If selecting week and a day is already selected, keep it
+                // If selecting a day of week, automatically set period to 'week'
+              }}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                period === p
+                  ? 'bg-primary text-white shadow-md hover:bg-primary-dark'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {getPeriodLabel(p)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Day of Week Filter Buttons - Only shows current week when a day is selected */}
       <div className="flex flex-wrap gap-2 mb-6">
-        <span className="text-sm font-medium text-gray-700 self-center mr-2">Day:</span>
+        <span className="text-sm font-medium text-gray-700 self-center mr-2">Day (Current Week):</span>
         {(['all', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as DayOfWeek[]).map((d) => (
           <button
             key={d}
-            onClick={() => setDayOfWeek(d)}
+            onClick={() => {
+              setDayOfWeek(d);
+              // When selecting a day of week, automatically set period to 'week' (current week only)
+              // Clear custom date as day filter only works for current week
+              if (d !== 'all') {
+                setPeriod('week');
+                setCustomDate('');
+              }
+            }}
+            disabled={customDate !== '' && d !== 'all'}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
               dayOfWeek === d
                 ? 'bg-primary text-white shadow-md hover:bg-primary-dark'
+                : customDate !== '' && d !== 'all'
+                ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -194,7 +252,10 @@ export default function SocialPlatformAnalytics() {
           </svg>
           <p className="text-gray-500 text-lg mb-2">No data available</p>
           <p className="text-gray-400 text-sm">
-            No POS orders with social platform data found for {getPeriodLabel(period).toLowerCase()}
+            No POS orders with social platform data found for{' '}
+            {customDate 
+              ? `date ${new Date(customDate).toLocaleDateString()}`
+              : getPeriodLabel(period).toLowerCase()}
             {dayOfWeek !== 'all' && ` on ${getDayLabel(dayOfWeek)}`}
           </p>
         </div>
@@ -292,7 +353,10 @@ export default function SocialPlatformAnalytics() {
               <div>
                 <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Total Customers</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Across all platforms for {getPeriodLabel(period).toLowerCase()}
+                  Across all platforms for{' '}
+                  {customDate 
+                    ? `date ${new Date(customDate).toLocaleDateString()}`
+                    : getPeriodLabel(period).toLowerCase()}
                   {dayOfWeek !== 'all' && ` on ${getDayLabel(dayOfWeek)}`}
                 </p>
               </div>
