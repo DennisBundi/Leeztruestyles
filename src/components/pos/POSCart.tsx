@@ -142,6 +142,7 @@ export default function POSCart({
               size: extendedProduct.customData.size,
               category_id: extendedProduct.customData.category_id || null,
               description: extendedProduct.customData.description || null,
+              images: extendedProduct.customData.images || [], // Include images from custom product
             },
             quantity: quantity,
             price: customPrice, // Use discounted price if set

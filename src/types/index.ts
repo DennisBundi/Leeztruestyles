@@ -15,6 +15,7 @@ export interface Product {
   flash_sale_start?: string | null;
   flash_sale_end?: string | null;
   status?: "active" | "inactive";
+  source?: "admin" | "pos";
 }
 
 export interface Category {

@@ -31,17 +31,36 @@ export default function OrdersPage() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [lastPaymentDate, setLastPaymentDate] = useState<Date | null>(null);
   const [totalCommission, setTotalCommission] = useState<number>(0);
+  
+  // Date filter state (only for admins/managers)
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
 
   useEffect(() => {
-    fetchOrders();
     fetchUserRole();
   }, []);
 
   useEffect(() => {
-    if (userRole === 'seller') {
-      fetchUserStats();
+    if (userRole) {
+      // Set default date filter based on role
+      if (userRole === 'seller') {
+        setDateFilter('today');
+      }
     }
   }, [userRole]);
+
+  useEffect(() => {
+    if (userRole) {
+      // Only fetch if custom date range has both dates, or if not using custom filter
+      if (dateFilter !== 'custom' || (customStartDate && customEndDate)) {
+        fetchOrders();
+      }
+      if (userRole === 'seller') {
+        fetchUserStats();
+      }
+    }
+  }, [userRole, dateFilter, customStartDate, customEndDate]);
 
   const fetchUserRole = async () => {
     try {
@@ -74,7 +93,20 @@ export default function OrdersPage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/orders');
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (userRole !== 'seller') {
+        // Only add date filter for admins/managers
+        if (dateFilter && dateFilter !== 'all') {
+          params.append('dateFilter', dateFilter);
+        }
+        if (dateFilter === 'custom' && customStartDate && customEndDate) {
+          params.append('startDate', customStartDate);
+          params.append('endDate', customEndDate);
+        }
+      }
+      
+      const response = await fetch(`/api/orders?${params.toString()}`);
       const data = await response.json();
       
       if (!response.ok) {
@@ -101,26 +133,48 @@ export default function OrdersPage() {
     }
   };
 
-  // Calculate today's date range (00:00:00 to 23:59:59 today)
-  const getTodayRange = useMemo(() => {
+  // Calculate date range based on filter
+  const getDateRange = useMemo(() => {
     const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
     
-    const todayEnd = new Date(now);
-    todayEnd.setHours(23, 59, 59, 999);
+    if (userRole === 'seller' || dateFilter === 'today') {
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(now);
+      todayEnd.setHours(23, 59, 59, 999);
+      return { start: todayStart, end: todayEnd, label: 'Today' };
+    } else if (dateFilter === 'week') {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      return { start: weekStart, end: now, label: 'This Week' };
+    } else if (dateFilter === 'month') {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      return { start: monthStart, end: now, label: 'This Month' };
+    } else if (dateFilter === 'custom' && customStartDate && customEndDate) {
+      const start = new Date(customStartDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(customEndDate);
+      end.setHours(23, 59, 59, 999);
+      return { start, end, label: 'Custom Range' };
+    }
     
-    return { todayStart, todayEnd };
-  }, []);
+    // 'all' or no filter - return null to indicate all time
+    return null;
+  }, [dateFilter, customStartDate, customEndDate, userRole]);
 
-  // Filter orders for TODAY's stats (Total Orders, Completed, Pending) - today only
-  // Note: orders array already contains only today's orders from the API
-  const todayOrders = useMemo(() => {
+  // Filter orders for stats based on date range (for display purposes)
+  // Note: The API already filters orders, so this is mainly for consistency
+  const filteredOrdersForStats = useMemo(() => {
+    if (!getDateRange) {
+      // Show all orders
+      return orders;
+    }
     return orders.filter((order) => {
       const orderDate = new Date(order.date);
-      return orderDate >= getTodayRange.todayStart && orderDate <= getTodayRange.todayEnd;
+      return orderDate >= getDateRange.start && orderDate <= getDateRange.end;
     });
-  }, [orders, getTodayRange]);
+  }, [orders, getDateRange]);
 
   // Commission is fetched from user-stats API which compounds from last_payment_date until now
   // This includes all completed orders after last payment date (not limited to today)
@@ -182,48 +236,61 @@ export default function OrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Orders</h1>
-          <p className="text-sm text-gray-500">Today's orders only • Manage and track customer orders</p>
+          <p className="text-sm text-gray-500">
+            {userRole === 'seller' 
+              ? "Today's orders only • Manage and track customer orders"
+              : "All orders • Filter by date to view specific periods"}
+          </p>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">Total Orders (Today)</div>
+          <div className="text-xs text-gray-600 mb-2">
+            Total Orders {userRole !== 'seller' && getDateRange ? `(${getDateRange.label})` : '(Today)'}
+          </div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <>
               <div className="text-2xl font-bold text-gray-900">
-                {todayOrders.length}
+                {filteredOrdersForStats.length}
               </div>
-              <div className="text-xs text-gray-500 mt-1">Today only</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {userRole === 'seller' ? 'Today only' : getDateRange ? getDateRange.label : 'All time'}
+              </div>
             </>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">Completed (Today)</div>
+          <div className="text-xs text-gray-600 mb-2">
+            Completed {userRole !== 'seller' && getDateRange ? `(${getDateRange.label})` : '(Today)'}
+          </div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
           ) : (
             <div className="text-2xl font-bold text-green-600">
-              {todayOrders.filter(o => o.status === 'completed').length}
-            </div>
-          )}
-        </div>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">Pending (Today)</div>
-          {loading ? (
-            <div className="text-2xl font-bold text-gray-400">...</div>
-          ) : (
-            <div className="text-2xl font-bold text-yellow-600">
-              {todayOrders.filter(o => o.status === 'pending').length}
+              {filteredOrdersForStats.filter(o => o.status === 'completed').length}
             </div>
           )}
         </div>
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
           <div className="text-xs text-gray-600 mb-2">
-            {userRole === 'seller' ? 'Total Commission' : 'Total Revenue (Today)'}
+            Pending {userRole !== 'seller' && getDateRange ? `(${getDateRange.label})` : '(Today)'}
+          </div>
+          {loading ? (
+            <div className="text-2xl font-bold text-gray-400">...</div>
+          ) : (
+            <div className="text-2xl font-bold text-yellow-600">
+              {filteredOrdersForStats.filter(o => o.status === 'pending').length}
+            </div>
+          )}
+        </div>
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+          <div className="text-xs text-gray-600 mb-2">
+            {userRole === 'seller' ? 'Total Commission' : 'Total Revenue'}
+            {userRole !== 'seller' && getDateRange ? ` (${getDateRange.label})` : ''}
           </div>
           {loading ? (
             <div className="text-2xl font-bold text-gray-400">...</div>
@@ -231,7 +298,7 @@ export default function OrdersPage() {
             <div className="text-2xl font-bold text-primary">
               KES {userRole === 'seller'
                 ? totalCommission.toLocaleString()
-                : (todayOrders
+                : (filteredOrdersForStats
                     .filter(o => o.status === 'completed')
                     .reduce((sum, o) => sum + (o.amount || 0), 0) || 0).toLocaleString()}
             </div>
@@ -239,7 +306,9 @@ export default function OrdersPage() {
           {userRole === 'seller' ? (
             <div className="text-xs text-gray-500 mt-1">3% commission • Compounded from last payment</div>
           ) : (
-            <div className="text-xs text-gray-500 mt-1">Today only</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {getDateRange ? getDateRange.label : 'All time'}
+            </div>
           )}
         </div>
       </div>
@@ -254,6 +323,49 @@ export default function OrdersPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
+          
+          {/* Date Filter - Only show for admins/managers */}
+          {userRole !== 'seller' && (
+            <>
+              <select
+                value={dateFilter}
+                onChange={(e) => {
+                  setDateFilter(e.target.value);
+                  if (e.target.value !== 'custom') {
+                    setCustomStartDate('');
+                    setCustomEndDate('');
+                  }
+                }}
+                className="px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+              
+              {dateFilter === 'custom' && (
+                <>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    placeholder="Start Date"
+                  />
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    placeholder="End Date"
+                  />
+                </>
+              )}
+            </>
+          )}
+          
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
@@ -276,8 +388,8 @@ export default function OrdersPage() {
         </div>
         <div className="mt-3 text-xs text-gray-500">
           {filteredOrders.length !== orders.length 
-            ? `Showing ${filteredOrders.length} of ${orders.length} orders (today)`
-            : `Showing all ${orders.length} orders from today`}
+            ? `Showing ${filteredOrders.length} of ${orders.length} orders${userRole !== 'seller' && getDateRange ? ` (${getDateRange.label})` : ' (today)'}`
+            : `Showing all ${orders.length} orders${userRole !== 'seller' && getDateRange ? ` (${getDateRange.label})` : ' from today'}`}
         </div>
       </div>
 

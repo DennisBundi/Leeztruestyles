@@ -26,11 +26,14 @@ export default async function ProductsPage({
   // Build query - try with status filter first
   let query = supabase.from("products").select("*");
 
-  // Only filter by status if we have products, otherwise try without
+  // Only filter by status and source if we have products, otherwise try without
   // (in case status field wasn't set on existing products)
   if (searchParams.flash_sale !== "true") {
     query = query.eq("status", "active");
   }
+  
+  // Only show admin-created products in marketplace (exclude POS products)
+  query = query.eq("source", "admin");
 
   // Apply filters
   if (searchParams.q) {

@@ -180,6 +180,7 @@ export default function ProductsPage() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedColorFilter, setSelectedColorFilter] = useState("all");
+  const [selectedSource, setSelectedSource] = useState("all");
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     product: { id: string; name: string } | null;
@@ -204,6 +205,7 @@ export default function ProductsPage() {
     };
     checkRole();
   }, []);
+
 
   // Fetch products from API
   useEffect(() => {
@@ -336,8 +338,10 @@ export default function ProductsPage() {
           (product.colors &&
             Array.isArray(product.colors) &&
             product.colors.includes(selectedColorFilter));
+        const matchesSource =
+          selectedSource === "all" || product.source === selectedSource;
         return (
-          matchesSearch && matchesCategory && matchesStatus && matchesColor
+          matchesSearch && matchesCategory && matchesStatus && matchesColor && matchesSource
         );
       })
       .map((product: any) => {
@@ -350,6 +354,7 @@ export default function ProductsPage() {
     selectedCategoryFilter,
     selectedStatus,
     selectedColorFilter,
+    selectedSource,
     products,
   ]);
 
@@ -535,6 +540,15 @@ export default function ProductsPage() {
               ))}
             </select>
           )}
+          <select
+            value={selectedSource}
+            onChange={(e) => setSelectedSource(e.target.value)}
+            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="all">All Sources</option>
+            <option value="admin">Admin Created</option>
+            <option value="pos">POS Created</option>
+          </select>
         </div>
         {filteredProducts.length !== products.length && (
           <div className="mt-4 text-sm text-gray-600">

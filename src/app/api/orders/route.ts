@@ -25,25 +25,62 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Calculate today's date range (00:00:00 to 23:59:59 today)
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    // Get date filter parameters from query string
+    const { searchParams } = new URL(request.url);
+    const dateFilter = searchParams.get('dateFilter') || null; // 'today', 'week', 'month', 'custom', 'all'
+    const startDate = searchParams.get('startDate') || null;
+    const endDate = searchParams.get('endDate') || null;
 
-    // Build query - filter by today's date only (for everyone)
-    const query = supabase
-      .from('orders')
-      .select('*')
-      .gte('created_at', todayStart.toISOString())
-      .lte('created_at', todayEnd.toISOString());
-    
-    console.log('Orders API - fetching today\'s orders (role:', userRole, ')');
-    console.log('Orders API - date range:', todayStart.toISOString(), 'to', todayEnd.toISOString());
+    // Build query - sellers always see today's orders, admins/managers see all unless filtered
+    let query = supabase.from('orders').select('*');
+
+    // For sellers, always filter to today only
+    if (userRole === 'seller') {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      query = query
+        .gte('created_at', todayStart.toISOString())
+        .lte('created_at', todayEnd.toISOString());
+      
+      console.log('Orders API - fetching today\'s orders for seller');
+    } else {
+      // For admins/managers, apply date filter if provided
+      if (dateFilter === 'today') {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        query = query
+          .gte('created_at', todayStart.toISOString())
+          .lte('created_at', todayEnd.toISOString());
+      } else if (dateFilter === 'week') {
+        const now = new Date();
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+        weekStart.setHours(0, 0, 0, 0);
+        query = query.gte('created_at', weekStart.toISOString());
+      } else if (dateFilter === 'month') {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        query = query.gte('created_at', monthStart.toISOString());
+      } else if (dateFilter === 'custom' && startDate && endDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query = query
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString());
+      }
+      // If dateFilter is 'all' or null, don't apply any date filter (show all orders)
+      
+      console.log('Orders API - fetching orders for admin/manager', { dateFilter, startDate, endDate });
+    }
     
     const { data: orders, error: ordersError } = await query
       .order('created_at', { ascending: false });
     
-    console.log('Orders API - fetched orders for today:', orders?.length || 0);
+    console.log('Orders API - fetched orders:', orders?.length || 0);
 
     if (ordersError) {
       console.error('Orders fetch error:', ordersError);

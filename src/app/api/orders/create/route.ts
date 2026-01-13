@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
           category_id: item.product_data.category_id || null,
           status: "active",
           images: item.product_data.images || [], // Use provided images or empty array
+          source: "pos", // Mark as POS-created product
         }));
 
         const { data: createdProducts, error: productsError } =

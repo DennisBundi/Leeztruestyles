@@ -407,6 +407,14 @@ export default function ProductForm({
     }
   }, [isOpen]);
 
+  // Auto-open modal when a product is passed (for editing)
+  useEffect(() => {
+    if (product) {
+      // Open modal when product is set (for editing from table)
+      setIsOpen(true);
+    }
+  }, [product?.id]); // Only trigger when product ID changes
+
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
@@ -794,6 +802,7 @@ export default function ProductForm({
   return (
     <>
       <button
+        id="product-edit-button"
         onClick={openModal}
         className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark hover:shadow-lg transition-all hover:scale-105"
       >

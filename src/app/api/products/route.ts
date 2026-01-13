@@ -90,6 +90,7 @@ const productSchema = z.object({
     .optional()
     .nullable()
     .transform((val) => val || null),
+  source: z.enum(["admin", "pos"]).optional().default("admin"),
 });
 
 export async function POST(request: NextRequest) {
@@ -127,6 +128,7 @@ export async function POST(request: NextRequest) {
       is_flash_sale: validated.is_flash_sale || false,
       flash_sale_start: validated.flash_sale_start || null,
       flash_sale_end: validated.flash_sale_end || null,
+      source: validated.source || "admin", // Admin-created products
     };
 
     // Only include buying_price if it's provided and is a number
@@ -1127,10 +1129,12 @@ export async function GET(request: NextRequest) {
       )
       .order("created_at", { ascending: false });
     
-    // Only filter by status for non-admin users (marketplace)
-    // Admins should see all products including inactive ones
+    // Only filter by status and source for non-admin users (marketplace)
+    // Admins should see all products including inactive ones and POS products
     if (!isAdminOrManager) {
-      productsQuery = productsQuery.eq("status", "active");
+      productsQuery = productsQuery
+        .eq("status", "active")
+        .eq("source", "admin"); // Only show admin-created products in marketplace
     }
     
     const { data: products, error: productsError } = await productsQuery;

@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { getPlatformDisplayName, getPlatformGradient } from '@/lib/utils/socialPlatform';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
+type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday' | 'all';
 
 interface PlatformStat {
   platform: string;
@@ -27,18 +28,25 @@ export default function SocialPlatformAnalytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>('month');
+  const [dayOfWeek, setDayOfWeek] = useState<DayOfWeek>('all');
   const [totalOrders, setTotalOrders] = useState(0);
 
   useEffect(() => {
-    fetchData(period);
-  }, [period]);
+    fetchData(period, dayOfWeek);
+  }, [period, dayOfWeek]);
 
-  const fetchData = async (selectedPeriod: Period) => {
+  const fetchData = async (selectedPeriod: Period, selectedDay: DayOfWeek) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/dashboard/social-platform-stats?period=${selectedPeriod}`);
+      const params = new URLSearchParams();
+      params.append('period', selectedPeriod);
+      if (selectedDay !== 'all') {
+        params.append('dayOfWeek', selectedDay);
+      }
+
+      const response = await fetch(`/api/dashboard/social-platform-stats?${params.toString()}`);
       const result: SocialPlatformStatsResponse = await response.json();
 
       if (!response.ok) {
@@ -75,6 +83,20 @@ export default function SocialPlatformAnalytics() {
     return labels[p];
   };
 
+  const getDayLabel = (d: DayOfWeek): string => {
+    const labels: Record<DayOfWeek, string> = {
+      monday: 'Monday',
+      tuesday: 'Tuesday',
+      wednesday: 'Wednesday',
+      thursday: 'Thursday',
+      friday: 'Friday',
+      saturday: 'Saturday',
+      sunday: 'Sunday',
+      all: 'All Days',
+    };
+    return labels[d];
+  };
+
   const getRankBadge = (rank: number): string => {
     if (rank === 1) return '🥇';
     if (rank === 2) return '🥈';
@@ -103,7 +125,7 @@ export default function SocialPlatformAnalytics() {
       </div>
 
       {/* Period Filter Buttons */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-4">
         {(['day', 'week', 'month', 'year', 'all'] as Period[]).map((p) => (
           <button
             key={p}
@@ -115,6 +137,24 @@ export default function SocialPlatformAnalytics() {
             }`}
           >
             {getPeriodLabel(p)}
+          </button>
+        ))}
+      </div>
+
+      {/* Day of Week Filter Buttons */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <span className="text-sm font-medium text-gray-700 self-center mr-2">Day:</span>
+        {(['all', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as DayOfWeek[]).map((d) => (
+          <button
+            key={d}
+            onClick={() => setDayOfWeek(d)}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+              dayOfWeek === d
+                ? 'bg-primary text-white shadow-md hover:bg-primary-dark'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {getDayLabel(d)}
           </button>
         ))}
       </div>
@@ -155,6 +195,7 @@ export default function SocialPlatformAnalytics() {
           <p className="text-gray-500 text-lg mb-2">No data available</p>
           <p className="text-gray-400 text-sm">
             No POS orders with social platform data found for {getPeriodLabel(period).toLowerCase()}
+            {dayOfWeek !== 'all' && ` on ${getDayLabel(dayOfWeek)}`}
           </p>
         </div>
       )}
@@ -250,7 +291,10 @@ export default function SocialPlatformAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Total Customers</p>
-                <p className="text-xs text-gray-500 mt-1">Across all platforms for {getPeriodLabel(period).toLowerCase()}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Across all platforms for {getPeriodLabel(period).toLowerCase()}
+                  {dayOfWeek !== 'all' && ` on ${getDayLabel(dayOfWeek)}`}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-bold text-primary">{totalOrders}</p>

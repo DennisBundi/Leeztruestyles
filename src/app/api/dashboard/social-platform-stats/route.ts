@@ -6,12 +6,29 @@ import { createAdminClient } from '@/lib/supabase/admin';
 export const dynamic = 'force-dynamic';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
+type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday' | 'all';
 
 interface PlatformStat {
   platform: string;
   count: number;
   displayName: string;
 }
+
+// Helper function to get day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+const getDayOfWeek = (date: Date): number => {
+  return date.getDay();
+};
+
+// Map day name to day number (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+const dayNameToNumber: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,9 +50,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get period from query params (default to 'month')
+    // Get period and dayOfWeek from query params
     const searchParams = request.nextUrl.searchParams;
     const period = (searchParams.get('period') || 'month') as Period;
+    const dayOfWeek = (searchParams.get('dayOfWeek') || 'all') as DayOfWeek;
 
     // Calculate date range based on period
     const now = new Date();
@@ -71,10 +89,10 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // Build query
+    // Build query - include created_at for day of week filtering
     let query = adminClient
       .from('orders')
-      .select('social_platform')
+      .select('social_platform, created_at')
       .eq('sale_type', 'pos')
       .eq('status', 'completed')
       .not('social_platform', 'is', null);
@@ -106,6 +124,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Filter by day of week if specified
+    let filteredOrders = orders || [];
+    if (dayOfWeek !== 'all') {
+      const targetDayNumber = dayNameToNumber[dayOfWeek];
+      filteredOrders = filteredOrders.filter((order: any) => {
+        if (!order.created_at) return false;
+        const orderDate = new Date(order.created_at);
+        const orderDayOfWeek = getDayOfWeek(orderDate);
+        return orderDayOfWeek === targetDayNumber;
+      });
+    }
+
     // Group by platform and count
     const platformCounts = new Map<string, number>();
     const platformNames: Record<string, string> = {
@@ -115,7 +145,7 @@ export async function GET(request: NextRequest) {
       walkin: 'Walk-in',
     };
 
-    (orders || []).forEach((order: any) => {
+    filteredOrders.forEach((order: any) => {
       if (order.social_platform) {
         const platform = order.social_platform.toLowerCase();
         const currentCount = platformCounts.get(platform) || 0;
