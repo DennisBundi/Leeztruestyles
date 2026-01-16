@@ -136,11 +136,29 @@ export async function POST(request: NextRequest) {
           source: "pos", // Mark as POS-created product
         }));
 
-        const { data: createdProducts, error: productsError } =
-          await adminSupabase
-            .from("products")
-            .insert(productsToInsert)
-            .select();
+        const insertProducts = async (records: typeof productsToInsert) =>
+          adminSupabase.from("products").insert(records).select();
+
+        let { data: createdProducts, error: productsError } =
+          await insertProducts(productsToInsert);
+
+        if (productsError && productsError.message) {
+          // Retry without columns that may not exist in older schemas
+          if (
+            productsError.message.includes("source") ||
+            productsError.message.includes("images")
+          ) {
+            console.warn(
+              "⚠️ Optional columns not found on products table. Retrying without source/images."
+            );
+            const fallbackProducts = productsToInsert.map(
+              ({ source: _source, images: _images, ...rest }) => rest
+            );
+            const retryResult = await insertProducts(fallbackProducts);
+            createdProducts = retryResult.data;
+            productsError = retryResult.error;
+          }
+        }
 
         if (productsError || !createdProducts) {
           console.error("Error creating custom products:", productsError);

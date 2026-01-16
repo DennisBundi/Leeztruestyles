@@ -127,7 +127,25 @@ export async function POST(request: NextRequest) {
     console.log('Initiating payment with method:', validated.method);
     
     if (validated.method === 'mpesa') {
+      // Validate phone number format before sending to Daraja
+      if (!validated.phone) {
+        return NextResponse.json(
+          { error: 'Phone number is required for M-Pesa payment' },
+          { status: 400 }
+        );
+      }
+      
       paymentResponse = await PaymentService.initiateMpesaPayment(paymentRequest);
+      
+      // Log detailed Daraja errors if payment failed
+      if (!paymentResponse.success) {
+        console.error('M-Pesa payment initiation failed:', {
+          order_id: validated.order_id,
+          amount: validated.amount,
+          phone: validated.phone,
+          error: paymentResponse.error,
+        });
+      }
     } else {
       paymentResponse = await PaymentService.initiateCardPayment(paymentRequest);
     }

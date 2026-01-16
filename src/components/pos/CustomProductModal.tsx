@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useCartAnimationContext } from "@/components/cart/CartAnimationProvider";
+import { uploadProductImages } from "@/lib/supabase/storage";
 import Image from "next/image";
 
 interface Category {
@@ -75,14 +76,17 @@ export default function CustomProductModal({
     }
   }, [isOpen]);
 
+  const hasSupabase =
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL !== "placeholder" &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== "" &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim() !== "";
+
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const hasDatabase =
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== "placeholder";
-
-    if (!hasDatabase) {
+    if (!hasSupabase) {
       // Preview mode - create object URLs for preview
       const newPreviews: ImagePreview[] = Array.from(files).map((file) => ({
         file,
@@ -96,30 +100,12 @@ export default function CustomProductModal({
     // Real upload via API route (bypasses RLS)
     setUploadingImages(true);
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const response = await fetch("/api/upload/image", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to upload image");
-        }
-
-        const { url } = await response.json();
-
-        return {
-          file,
-          url: url,
-          isUploaded: true,
-        };
-      });
-
-      const uploadedPreviews = await Promise.all(uploadPromises);
+      const uploadedUrls = await uploadProductImages(Array.from(files));
+      const uploadedPreviews: ImagePreview[] = uploadedUrls.map((url, index) => ({
+        file: files[index],
+        url,
+        isUploaded: true,
+      }));
       setImagePreviews((prev) => [...prev, ...uploadedPreviews]);
     } catch (error) {
       console.error("Error uploading images:", error);
@@ -175,7 +161,9 @@ export default function CustomProductModal({
     setLoading(true);
 
     // Extract image URLs from previews
-    const imageUrls = imagePreviews.map((preview) => preview.url);
+    const imageUrls = imagePreviews
+      .filter((preview) => preview.isUploaded || !hasSupabase)
+      .map((preview) => preview.url);
 
     const productData = {
       name: formData.name.trim(),

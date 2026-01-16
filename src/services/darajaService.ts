@@ -49,12 +49,33 @@ export class DarajaService {
                 return { success: false, error: 'Payment configuration missing (Daraja)' };
             }
 
+            // Validate BusinessShortCode is numeric
+            if (!/^\d+$/.test(DARAJA_BUSINESS_SHORTCODE)) {
+                console.error('Invalid BusinessShortCode: must be numeric');
+                return { success: false, error: 'Invalid BusinessShortCode configuration' };
+            }
+
+            // Validate phone number format (2547XXXXXXXX - 12 digits starting with 2547)
+            if (!/^2547\d{9}$/.test(phone)) {
+                console.error('Invalid phone number format:', phone);
+                return { 
+                    success: false, 
+                    error: 'Invalid phone number format. Must be 2547XXXXXXXX (12 digits starting with 2547)' 
+                };
+            }
+
             const token = await this.getAccessToken();
 
             const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
             const password = Buffer.from(
                 `${DARAJA_BUSINESS_SHORTCODE}${DARAJA_PASSKEY}${timestamp}`
             ).toString('base64');
+
+            // AccountReference: max 12 characters (alphanumeric)
+            const accountReference = orderId.slice(0, 12);
+            
+            // TransactionDesc: max 13 characters
+            const transactionDesc = `Order${orderId.slice(0, 7)}`; // "Order" (5) + 7 chars = 12 chars (safe)
 
             const payload = {
                 BusinessShortCode: DARAJA_BUSINESS_SHORTCODE,
@@ -66,8 +87,8 @@ export class DarajaService {
                 PartyB: DARAJA_BUSINESS_SHORTCODE, // Shortcode receiving money
                 PhoneNumber: phone,
                 CallBackURL: DARAJA_CALLBACK_URL,
-                AccountReference: `Order ${orderId.slice(0, 8)}`, // Max 12 chars usually
-                TransactionDesc: `Payment for Order ${orderId}`
+                AccountReference: accountReference, // Max 12 chars
+                TransactionDesc: transactionDesc // Max 13 chars
             };
 
             console.log('Sending Daraja STK Push:', { ...payload, Password: 'REDACTED' });
@@ -78,24 +99,92 @@ export class DarajaService {
                 }
             });
 
-            if (response.data.ResponseCode === '0') {
+            // Handle response codes
+            const responseCode = response.data.ResponseCode;
+            const responseDescription = response.data.ResponseDescription || response.data.CustomerMessage || '';
+
+            if (responseCode === '0') {
                 return {
                     success: true,
                     reference: response.data.CheckoutRequestID,
-                    message: response.data.CustomerMessage
+                    message: response.data.CustomerMessage || responseDescription
                 };
             } else {
+                // Parse Daraja-specific error codes
+                let errorMessage = 'STK Push failed';
+                
+                if (response.data.errorCode) {
+                    // Handle specific Daraja error codes
+                    const errorCode = response.data.errorCode;
+                    switch (errorCode) {
+                        case '400.002.02':
+                            errorMessage = 'Invalid Business ShortCode';
+                            break;
+                        case '404.001.03':
+                            errorMessage = 'Invalid Access Token. Please try again.';
+                            break;
+                        case '404.001.01':
+                            errorMessage = 'Resource not found. Invalid API endpoint.';
+                            break;
+                        case '500.001.001':
+                            errorMessage = response.data.errorMessage || 'Merchant does not exist or wrong credentials';
+                            break;
+                        default:
+                            errorMessage = response.data.errorMessage || responseDescription || `Error: ${errorCode}`;
+                    }
+                } else if (responseDescription) {
+                    errorMessage = responseDescription;
+                } else if (response.data.errorMessage) {
+                    errorMessage = response.data.errorMessage;
+                }
+
+                console.error('Daraja STK Push failed:', {
+                    ResponseCode: responseCode,
+                    ResponseDescription: responseDescription,
+                    ErrorCode: response.data.errorCode,
+                    ErrorMessage: response.data.errorMessage,
+                });
+
                 return {
                     success: false,
-                    error: response.data.errorMessage || 'STK Push failed'
+                    error: errorMessage
                 };
             }
 
         } catch (error: any) {
             console.error('Daraja STK Error:', error.response?.data || error.message);
+            
+            // Parse error response if available
+            let errorMessage = 'Failed to initiate M-Pesa payment';
+            
+            if (error.response?.data) {
+                const errorData = error.response.data;
+                
+                if (errorData.errorCode) {
+                    // Handle specific Daraja error codes
+                    switch (errorData.errorCode) {
+                        case '400.002.02':
+                            errorMessage = 'Invalid Business ShortCode';
+                            break;
+                        case '404.001.03':
+                            errorMessage = 'Invalid Access Token. Please try again.';
+                            break;
+                        case '404.001.01':
+                            errorMessage = 'Resource not found. Invalid API endpoint.';
+                            break;
+                        default:
+                            errorMessage = errorData.errorMessage || errorData.errorMessage || `Error: ${errorData.errorCode}`;
+                    }
+                } else if (errorData.errorMessage) {
+                    errorMessage = errorData.errorMessage;
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
             return {
                 success: false,
-                error: error.response?.data?.errorMessage || 'Failed to initiate M-Pesa payment'
+                error: errorMessage
             };
         }
     }

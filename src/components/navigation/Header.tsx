@@ -82,10 +82,11 @@ export default function Header() {
 
   useEffect(() => {
     let mounted = true;
-    const supabase = createClient();
     const hasSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL &&
       process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder' &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '';
+      process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '' &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim() !== '';
 
     // Set a maximum loading time - always show auth buttons after 500ms
     // Reduced timeout to show buttons faster and prevent blocking
@@ -104,6 +105,7 @@ export default function Header() {
     }, 2000);
 
     if (hasSupabase) {
+      const supabase = createClient();
       const checkUserRole = async (userId: string) => {
         try {
           const { data: employeeData } = await supabase
@@ -226,11 +228,19 @@ export default function Header() {
   }, []);
 
   const handleSignOut = async () => {
-    const supabase = createClient();
+    const hasSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL !== 'placeholder' &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '' &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim() !== '';
+
+    const supabase = hasSupabase ? createClient() : null;
     // Clear cart specific to this user session
     useCartStore.getState().clearCart();
 
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
     setUserRole(null);
     setIsAdmin(false);

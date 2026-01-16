@@ -5,7 +5,8 @@ const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!;
 
 export class PaymentService {
   /**
-   * Format phone number to 254 format
+   * Format phone number to 2547XXXXXXXX format (12 digits starting with 2547)
+   * Validates that the final format matches M-Pesa requirements
    */
   private static formatPhoneNumber(phone: string): string {
     // Remove all non-digit characters
@@ -13,13 +14,16 @@ export class PaymentService {
 
     // Handle standard cases
     if (formatted.startsWith('254')) {
-      return formatted;
+      formatted = formatted;
+    } else if (formatted.startsWith('0')) {
+      formatted = `254${formatted.substring(1)}`;
+    } else if (formatted.startsWith('7') || formatted.startsWith('1')) {
+      formatted = `254${formatted}`;
     }
-    if (formatted.startsWith('0')) {
-      return `254${formatted.substring(1)}`;
-    }
-    if (formatted.startsWith('7') || formatted.startsWith('1')) {
-      return `254${formatted}`;
+
+    // Validate final format: must be 2547XXXXXXXX (12 digits, starts with 2547)
+    if (!/^2547\d{9}$/.test(formatted)) {
+      throw new Error(`Invalid phone number format. Expected 2547XXXXXXXX (12 digits starting with 2547), got: ${formatted}`);
     }
 
     return formatted;
@@ -36,8 +40,23 @@ export class PaymentService {
   ): Promise<PaymentResponse> {
     const { DarajaService } = await import('./darajaService');
 
-    // Format phone: Remove +, spaces. Ensure 254 prefix.
-    const formattedPhone = request.phone ? this.formatPhoneNumber(request.phone) : '';
+    // Format and validate phone: Remove +, spaces. Ensure 2547XXXXXXXX format.
+    if (!request.phone) {
+      return {
+        success: false,
+        error: 'Phone number is required for M-Pesa payment',
+      };
+    }
+
+    let formattedPhone: string;
+    try {
+      formattedPhone = this.formatPhoneNumber(request.phone);
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Invalid phone number format',
+      };
+    }
 
     return DarajaService.initiateSTKPush(formattedPhone, request.amount, request.order_id);
   }

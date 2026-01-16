@@ -1284,6 +1284,10 @@ export async function GET(request: NextRequest) {
       const colorStocks = colorStocksMap.get(product.id) || null;
       // If no inventory record exists, stock is 0 (not undefined)
       const stockValue = inv?.available ?? inv?.stock ?? 0;
+      const derivedSource =
+        product.source ||
+        (product.images && product.images.length > 0 ? "admin" : "pos");
+
       const result = {
         ...product,
         category: product.categories?.name || null,
@@ -1296,6 +1300,7 @@ export async function GET(request: NextRequest) {
           product.images && product.images.length > 0
             ? product.images[0]
             : null,
+        source: derivedSource,
       };
 
       // Log if stock is missing for debugging
