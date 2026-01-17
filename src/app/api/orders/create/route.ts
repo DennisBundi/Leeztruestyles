@@ -43,6 +43,7 @@ const createOrderSchema = z
     social_platform: z
       .enum(["tiktok", "instagram", "whatsapp", "walkin"])
       .optional(), // Required for POS orders
+    sale_date: z.string().optional(), // Optional custom sale date (ISO string) for POS
   })
   .refine(
     (data) => {
@@ -328,6 +329,18 @@ export async function POST(request: NextRequest) {
       total_amount: total,
       status: validated.sale_type === "pos" ? "completed" : "pending", // POS orders are completed immediately
     };
+
+    // Override created_at when a POS custom date is provided
+    if (validated.sale_type === "pos" && validated.sale_date) {
+      const parsedDate = new Date(validated.sale_date);
+      if (Number.isNaN(parsedDate.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid sale_date format. Expected ISO string." },
+          { status: 400 }
+        );
+      }
+      orderData.created_at = parsedDate.toISOString();
+    }
 
     // Add social_platform if provided
     if (validated.social_platform) {

@@ -36,6 +36,7 @@ export default function POSCart({
     "cash"
   );
   const [socialPlatform, setSocialPlatform] = useState<"tiktok" | "instagram" | "whatsapp" | "walkin" | "">("");
+  const [saleDateTime, setSaleDateTime] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -199,6 +200,12 @@ export default function POSCart({
         social_platform: socialPlatform, // Include social platform
       };
 
+      // Include custom sale date (Africa/Nairobi) if provided
+      if (saleDateTime) {
+        const saleDateIso = new Date(`${saleDateTime}:00+03:00`).toISOString();
+        orderData.sale_date = saleDateIso;
+      }
+
       // Include seller_id if employeeId is a valid UUID
       if (
         employeeId &&
@@ -345,6 +352,7 @@ export default function POSCart({
       setCustomerName("");
       setPaymentMethod("cash"); // Reset to default
       setSocialPlatform(""); // Reset social platform
+      setSaleDateTime(""); // Reset sale date
 
       // Refresh products to show updated inventory
       if (onOrderComplete) {
@@ -688,6 +696,22 @@ export default function POSCart({
                 <option value="whatsapp">WhatsApp</option>
                 <option value="walkin">Walk-in</option>
               </select>
+            </div>
+
+            {/* Sale Date (Optional) */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Sale Date (Optional)
+              </label>
+              <input
+                type="datetime-local"
+                value={saleDateTime}
+                onChange={(e) => setSaleDateTime(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Timezone: Africa/Nairobi (UTC+3)
+              </p>
             </div>
 
             {/* Payment Method */}
