@@ -6,6 +6,8 @@ import { useCartStore, type ExtendedProduct } from "@/store/cartStore";
 import { useRouter } from "next/navigation";
 import { formatOrderId } from "@/lib/utils/orderId";
 
+const NAIROBI_UTC_OFFSET_HOURS = 3;
+
 interface POSCartProps {
   employeeId?: string;
   employeeCode?: string;
@@ -30,14 +32,20 @@ export default function POSCart({
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editingSize, setEditingSize] = useState<string>("");
   const [editingColor, setEditingColor] = useState<string>("");
-  const [editingSalePrice, setEditingSalePrice] = useState<{ [productId: string]: string }>({});
-  const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
+  const [editingSalePrice, setEditingSalePrice] = useState<{
+    [productId: string]: string;
+  }>({});
+  const [availableSizes, setAvailableSizes] = useState<
+    Array<{ size: string; available: number }>
+  >([]);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "mpesa" | "card">(
     "cash"
   );
-  const [socialPlatform, setSocialPlatform] = useState<"tiktok" | "instagram" | "whatsapp" | "walkin" | "">("");
-  const [saleDateTime, setSaleDateTime] = useState("");
+  const [socialPlatform, setSocialPlatform] = useState<
+    "tiktok" | "instagram" | "whatsapp" | "walkin" | ""
+  >("");
   const [customerName, setCustomerName] = useState("");
+  const [saleDateTime, setSaleDateTime] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [saleDetails, setSaleDetails] = useState<{
@@ -47,6 +55,22 @@ export default function POSCart({
   } | null>(null);
 
   const total = getTotal();
+
+  const toNairobiIso = (dateTimeLocal: string) => {
+    const [datePart, timePart] = dateTimeLocal.split("T");
+    if (!datePart || !timePart) {
+      return null;
+    }
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+    if (!year || !month || !day || Number.isNaN(hour) || Number.isNaN(minute)) {
+      return null;
+    }
+    const utcDate = new Date(
+      Date.UTC(year, month - 1, day, hour - NAIROBI_UTC_OFFSET_HOURS, minute)
+    );
+    return utcDate.toISOString();
+  };
 
   const handleCompleteSale = async () => {
     if (items.length === 0) {
@@ -69,6 +93,13 @@ export default function POSCart({
     setProcessing(true);
 
     try {
+      const saleDateIso = saleDateTime ? toNairobiIso(saleDateTime) : null;
+      if (saleDateTime && !saleDateIso) {
+        alert("Invalid sale date/time. Please select a valid date.");
+        setProcessing(false);
+        return;
+      }
+
       const hasDatabase =
         process.env.NEXT_PUBLIC_SUPABASE_URL &&
         process.env.NEXT_PUBLIC_SUPABASE_URL !== "placeholder";
@@ -85,6 +116,7 @@ export default function POSCart({
         setShowSuccessModal(true);
         clearCart();
         setCustomerName("");
+        setSaleDateTime("");
         setPaymentMethod("cash");
         setSocialPlatform("");
 
@@ -135,7 +167,8 @@ export default function POSCart({
         if (isCustom && extendedProduct.customData) {
           // Custom product - send product_data
           // Use salePrice if set (for discounts), otherwise use customData.price
-          const customPrice = item.salePrice ?? extendedProduct.customData.price;
+          const customPrice =
+            item.salePrice ?? extendedProduct.customData.price;
           customProductItems.push({
             product_data: {
               name: extendedProduct.customData.name,
@@ -175,10 +208,7 @@ export default function POSCart({
       });
 
       // Combine items (existing products with product_id, custom products with product_data)
-      const orderItems = [
-        ...existingProductItems,
-        ...customProductItems,
-      ];
+      const orderItems = [...existingProductItems, ...customProductItems];
 
       // Log the order data for debugging
       console.log("Creating order with items:", {
@@ -198,13 +228,8 @@ export default function POSCart({
         },
         sale_type: "pos",
         social_platform: socialPlatform, // Include social platform
+        sale_datetime: saleDateIso || undefined,
       };
-
-      // Include custom sale date (Africa/Nairobi) if provided
-      if (saleDateTime) {
-        const saleDateIso = new Date(`${saleDateTime}:00+03:00`).toISOString();
-        orderData.sale_date = saleDateIso;
-      }
 
       // Include seller_id if employeeId is a valid UUID
       if (
@@ -350,9 +375,9 @@ export default function POSCart({
       setShowSuccessModal(true);
       clearCart();
       setCustomerName("");
+      setSaleDateTime("");
       setPaymentMethod("cash"); // Reset to default
       setSocialPlatform(""); // Reset social platform
-      setSaleDateTime(""); // Reset sale date
 
       // Refresh products to show updated inventory
       if (onOrderComplete) {
@@ -446,7 +471,10 @@ export default function POSCart({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-4" data-pos-cart>
+      <div
+        className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-4"
+        data-pos-cart
+      >
         <h2 className="text-2xl font-bold mb-6 text-gray-900">Cart</h2>
 
         {/* Customer Name (Optional) */}
@@ -462,6 +490,24 @@ export default function POSCart({
               placeholder="Enter customer name..."
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
+          </div>
+        )}
+
+        {/* Sale Date/Time (Optional) */}
+        {items.length > 0 && (
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Sale Date/Time (Optional)
+            </label>
+            <input
+              type="datetime-local"
+              value={saleDateTime}
+              onChange={(e) => setSaleDateTime(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Timezone: Africa/Nairobi. Leave blank to use current time.
+            </p>
           </div>
         )}
 
@@ -590,7 +636,13 @@ export default function POSCart({
                   </div>
                   <div className="space-y-1">
                     {/* Original Price */}
-                    <div className={`text-xs ${item.salePrice ? 'line-through text-gray-400' : 'text-gray-600'}`}>
+                    <div
+                      className={`text-xs ${
+                        item.salePrice
+                          ? "line-through text-gray-400"
+                          : "text-gray-600"
+                      }`}
+                    >
                       KES {(item.product.price || 0).toLocaleString()} each
                     </div>
                     {/* Discount Price Input */}
@@ -600,17 +652,23 @@ export default function POSCart({
                         min="0"
                         step="0.01"
                         placeholder="Discount price (optional)"
-                        value={editingSalePrice[item.product.id] ?? (item.salePrice ? item.salePrice.toString() : '')}
+                        value={
+                          editingSalePrice[item.product.id] ??
+                          (item.salePrice ? item.salePrice.toString() : "")
+                        }
                         onChange={(e) => {
                           const value = e.target.value;
-                          setEditingSalePrice(prev => ({ ...prev, [item.product.id]: value }));
+                          setEditingSalePrice((prev) => ({
+                            ...prev,
+                            [item.product.id]: value,
+                          }));
                         }}
                         onBlur={(e) => {
                           const value = e.target.value.trim();
-                          if (value === '') {
+                          if (value === "") {
                             // Clear discount - use original price
                             updateSalePrice(item.product.id, undefined);
-                            setEditingSalePrice(prev => {
+                            setEditingSalePrice((prev) => {
                               const newState = { ...prev };
                               delete newState[item.product.id];
                               return newState;
@@ -621,10 +679,11 @@ export default function POSCart({
                               updateSalePrice(item.product.id, numValue);
                             } else {
                               // Invalid value, revert to current salePrice or clear
-                              setEditingSalePrice(prev => {
+                              setEditingSalePrice((prev) => {
                                 const newState = { ...prev };
                                 if (item.salePrice) {
-                                  newState[item.product.id] = item.salePrice.toString();
+                                  newState[item.product.id] =
+                                    item.salePrice.toString();
                                 } else {
                                   delete newState[item.product.id];
                                 }
@@ -634,7 +693,7 @@ export default function POSCart({
                           }
                         }}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
+                          if (e.key === "Enter") {
                             e.currentTarget.blur();
                           }
                         }}
@@ -651,7 +710,11 @@ export default function POSCart({
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-primary text-lg">
-                    KES {((item.salePrice ?? item.product.price || 0) * item.quantity).toLocaleString()}
+                    KES{" "}
+                    {(
+                      (item.salePrice ?? (item.product.price || 0)) *
+                      item.quantity
+                    ).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -686,7 +749,16 @@ export default function POSCart({
               </label>
               <select
                 value={socialPlatform}
-                onChange={(e) => setSocialPlatform(e.target.value as "tiktok" | "instagram" | "whatsapp" | "walkin" | "")}
+                onChange={(e) =>
+                  setSocialPlatform(
+                    e.target.value as
+                      | "tiktok"
+                      | "instagram"
+                      | "whatsapp"
+                      | "walkin"
+                      | ""
+                  )
+                }
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                 required
               >
@@ -696,22 +768,6 @@ export default function POSCart({
                 <option value="whatsapp">WhatsApp</option>
                 <option value="walkin">Walk-in</option>
               </select>
-            </div>
-
-            {/* Sale Date (Optional) */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Sale Date (Optional)
-              </label>
-              <input
-                type="datetime-local"
-                value={saleDateTime}
-                onChange={(e) => setSaleDateTime(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Timezone: Africa/Nairobi (UTC+3)
-              </p>
             </div>
 
             {/* Payment Method */}

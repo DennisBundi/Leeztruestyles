@@ -43,7 +43,7 @@ const createOrderSchema = z
     social_platform: z
       .enum(["tiktok", "instagram", "whatsapp", "walkin"])
       .optional(), // Required for POS orders
-    sale_date: z.string().optional(), // Optional custom sale date (ISO string) for POS
+    sale_datetime: z.string().optional(), // Optional custom sale datetime (ISO)
   })
   .refine(
     (data) => {
@@ -87,6 +87,19 @@ export async function POST(request: NextRequest) {
         { error: "Authentication required. Please sign in to place an order." },
         { status: 401 }
       );
+    }
+
+    // Optional custom sale datetime for POS (override created_at)
+    let saleDateIso: string | null = null;
+    if (validated.sale_type === "pos" && validated.sale_datetime) {
+      const parsed = new Date(validated.sale_datetime);
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid sale_datetime. Provide a valid ISO datetime." },
+          { status: 400 }
+        );
+      }
+      saleDateIso = parsed.toISOString();
     }
 
     // Separate existing products and custom products
@@ -329,17 +342,8 @@ export async function POST(request: NextRequest) {
       total_amount: total,
       status: validated.sale_type === "pos" ? "completed" : "pending", // POS orders are completed immediately
     };
-
-    // Override created_at when a POS custom date is provided
-    if (validated.sale_type === "pos" && validated.sale_date) {
-      const parsedDate = new Date(validated.sale_date);
-      if (Number.isNaN(parsedDate.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid sale_date format. Expected ISO string." },
-          { status: 400 }
-        );
-      }
-      orderData.created_at = parsedDate.toISOString();
+    if (saleDateIso) {
+      orderData.created_at = saleDateIso;
     }
 
     // Add social_platform if provided
