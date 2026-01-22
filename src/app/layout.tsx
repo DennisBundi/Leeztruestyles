@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Header from "@/components/navigation/Header";
 import Footer from "@/components/navigation/Footer";
@@ -54,6 +55,7 @@ export default function RootLayout({
           <CartNotificationProvider />
           <InstallPrompt />
         </ChunkLoadErrorBoundary>
+        <Analytics />
       </body>
     </html>
   );
