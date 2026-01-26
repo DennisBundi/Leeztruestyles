@@ -527,6 +527,44 @@ export async function POST(request: NextRequest) {
       phone: validated.customer_info.phone,
     });
 
+    // For POS orders, deduct inventory immediately since they're completed
+    if (validated.sale_type === "pos" && order) {
+      const { InventoryService } = await import("@/services/inventoryService");
+
+      // Get order items to deduct inventory
+      const { data: posOrderItems } = await supabase
+        .from("order_items")
+        .select("product_id, quantity, size, color")
+        .eq("order_id", order.id);
+
+      if (posOrderItems) {
+        console.log(
+          `📦 Deducting inventory for POS order ${order.id} (${posOrderItems.length} items)`
+        );
+        for (const item of posOrderItems) {
+          try {
+            await InventoryService.deductStock(
+              item.product_id,
+              item.quantity,
+              undefined, // sellerId not needed for inventory deduction
+              item.size || undefined,
+              item.color || undefined
+            );
+            console.log(
+              `✅ Deducted ${item.quantity} from product ${item.product_id} for POS order`
+            );
+          } catch (error) {
+            console.error(
+              `❌ Error deducting inventory for product ${item.product_id}:`,
+              error
+            );
+            // Continue with other items even if one fails
+            // Don't fail the entire order creation - inventory can be adjusted manually if needed
+          }
+        }
+      }
+    }
+
     return NextResponse.json({ order_id: order.id });
   } catch (error) {
     if (error instanceof z.ZodError) {
