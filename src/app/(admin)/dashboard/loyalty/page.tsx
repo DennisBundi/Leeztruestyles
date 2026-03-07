@@ -21,22 +21,10 @@ export default function LoyaltyAnalyticsPage() {
 
   const fetchStats = async () => {
     try {
-      // Fetch all stats in parallel
-      const [accountsRes, reviewsRes] = await Promise.all([
-        fetch("/api/loyalty/account"),
-        fetch("/api/reviews/pending?status=all"),
-      ]);
-
-      // For now, build stats from available data
-      // In production, you'd create a dedicated /api/loyalty/analytics endpoint
-      setStats({
-        totalAccounts: 0,
-        tierBreakdown: { bronze: 0, silver: 0, gold: 0 },
-        totalPointsIssued: 0,
-        totalPointsRedeemed: 0,
-        topReferrers: [],
-        reviewStats: { pending: 0, approved: 0, rejected: 0 },
-      });
+      const res = await fetch("/api/loyalty/analytics");
+      if (!res.ok) throw new Error("Failed to fetch analytics");
+      const data = await res.json();
+      setStats(data);
     } catch (error) {
       console.error("Error fetching loyalty stats:", error);
     } finally {
@@ -104,10 +92,25 @@ export default function LoyaltyAnalyticsPage() {
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-800 text-sm">
-        Analytics will populate as customers join Leez Rewards and interact with the loyalty program.
-        For detailed stats, a dedicated analytics API endpoint will be created.
-      </div>
+      {/* Top Referrers */}
+      {stats?.topReferrers && stats.topReferrers.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Referrers</h2>
+          <div className="space-y-3">
+            {stats.topReferrers.map((referrer, i) => (
+              <div key={referrer.user_id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-primary-light text-primary-dark text-xs font-bold flex items-center justify-center">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm font-medium text-gray-700">{referrer.name}</span>
+                </div>
+                <span className="text-sm text-gray-500">{referrer.referral_count} referrals</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
