@@ -4,14 +4,34 @@ import { ReconciliationService } from '@/services/reconciliationService';
 import { InventoryService } from '@/services/inventoryService';
 import { LoyaltyService } from '@/services/loyaltyService';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createHmac } from 'crypto';
+import { logger } from '@/lib/logger';
+
+function verifyPaystackSignature(rawBody: string, signature: string | null): boolean {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret || !signature) return false;
+
+  const hash = createHmac('sha512', secret).update(rawBody).digest('hex');
+  return hash === signature;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { event, data } = body;
+    // Read raw body for signature verification
+    const rawBody = await request.text();
+    const signature = request.headers.get('x-paystack-signature');
 
-    // Verify webhook signature (Paystack sends a signature header)
-    // In production, verify the signature for security
+    if (!verifyPaystackSignature(rawBody, signature)) {
+      logger.warn('Paystack webhook: invalid or missing signature');
+      return NextResponse.json(
+        { error: 'Invalid signature' },
+        { status: 401 }
+      );
+    }
+
+    // Parse JSON only after signature is verified
+    const body = JSON.parse(rawBody);
+    const { event, data } = body;
 
     if (event === 'charge.success') {
       const reference = data.reference;
@@ -25,6 +45,18 @@ export async function POST(request: NextRequest) {
       }
 
       const orderId = metadata.order_id;
+
+      // Idempotency: skip if already completed (verify route may have processed first)
+      const checkClient = createAdminClient();
+      const { data: existingOrder } = await checkClient
+        .from('orders')
+        .select('status')
+        .eq('id', orderId)
+        .single();
+
+      if (existingOrder?.status === 'completed') {
+        return NextResponse.json({ success: true, message: 'Already processed' });
+      }
 
       // Reconcile the transaction
       const reconciled = await ReconciliationService.reconcileTransaction(
@@ -68,7 +100,7 @@ export async function POST(request: NextRequest) {
             completedOrder.total_amount
           );
           if (pointsAwarded > 0) {
-            console.log(`Awarded ${pointsAwarded} loyalty points for order ${orderId}`);
+            logger.info(`Awarded ${pointsAwarded} loyalty points for order ${orderId}`);
           }
 
           // Check and complete any pending referral for this user
@@ -90,19 +122,18 @@ export async function POST(request: NextRequest) {
               pendingReferral.id
             );
             if (referralPoints > 0) {
-              console.log(`Awarded ${referralPoints} referral points to referrer for order ${orderId}`);
+              logger.info(`Awarded ${referralPoints} referral points to referrer for order ${orderId}`);
             }
           }
         }
       } catch (loyaltyError) {
-        console.error('Error awarding loyalty points:', loyaltyError);
+        logger.error('Error awarding loyalty points:', loyaltyError);
       }
 
       return NextResponse.json({ success: true });
     }
 
     if (event === 'charge.failed') {
-      // Handle failed payment
       const reference = data.reference;
       const supabase = await createClient();
 
@@ -116,11 +147,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Paystack webhook error:', error);
+    logger.error('Paystack webhook error:', error);
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
     );
   }
 }
-
