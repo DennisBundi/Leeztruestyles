@@ -71,8 +71,9 @@ export class PaymentService {
       formatted = `254${formatted}`;
     }
 
-    if (!/^254[17]\d{8}$/.test(formatted)) {
-      throw new Error(`Invalid phone number format. Expected 2547XXXXXXXX or 2541XXXXXXXX (12 digits), got: ${formatted}`);
+    // Accept any 12-digit Kenyan number: 2547xx (Safaricom/Airtel), 25411x (Safaricom), 25410x (Airtel)
+    if (!/^254\d{9}$/.test(formatted)) {
+      throw new Error(`Invalid phone number format. Expected a 12-digit Kenyan number starting with 254, got: ${formatted}`);
     }
 
     return formatted;
