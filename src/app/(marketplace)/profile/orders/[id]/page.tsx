@@ -7,7 +7,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import type { CustomerOrder } from '../types'
 
-const TIMELINE_STEPS: Array<CustomerOrder['status']> = ['pending', 'processing', 'completed']
+const TIMELINE_STEPS: Array<CustomerOrder['status']> = ['pending', 'paid', 'shipped', 'delivered']
 const TERMINAL_STATUSES: Array<CustomerOrder['status']> = ['cancelled', 'refunded']
 
 function StatusTimeline({ status }: { status: CustomerOrder['status'] }) {
@@ -66,6 +66,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<CustomerOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [delivering, setDelivering] = useState(false)
+  const [deliverError, setDeliverError] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -90,6 +92,22 @@ export default function OrderDetailPage() {
         .finally(() => setLoading(false))
     })
   }, [router, orderId])
+
+  async function handleMarkDelivered() {
+    if (!order || delivering) return
+    setDelivering(true)
+    setDeliverError(null)
+    try {
+      const res = await fetch(`/api/orders/${orderId}/deliver`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error ?? 'Failed to confirm delivery')
+      setOrder((prev) => prev ? { ...prev, status: 'delivered' } : prev)
+    } catch (err: unknown) {
+      setDeliverError(err instanceof Error ? err.message : 'Failed to confirm delivery')
+    } finally {
+      setDelivering(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -142,6 +160,20 @@ export default function OrderDetailPage() {
         <div className="bg-white shadow rounded-2xl p-6 mb-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">Order Status</h2>
           <StatusTimeline status={order.status} />
+          {order.status === 'shipped' && (
+            <div className="mt-4">
+              <button
+                onClick={handleMarkDelivered}
+                disabled={delivering}
+                className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {delivering ? 'Confirming...' : 'Mark as Received'}
+              </button>
+              {deliverError && (
+                <p className="mt-2 text-xs text-red-600">{deliverError}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Items Card */}
@@ -189,7 +221,7 @@ export default function OrderDetailPage() {
                   <p className="text-sm text-gray-500 mt-1">
                     Qty: {item.quantity} × KSh {item.unit_price.toLocaleString('en-KE')}
                   </p>
-                  {order.status === 'completed' && (
+                  {(order.status === 'completed' || order.status === 'delivered') && (
                     <Link
                       href={`/products/${item.product_id}`}
                       className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-primary-dark hover:text-primary transition-colors"
