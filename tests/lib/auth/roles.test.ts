@@ -127,18 +127,20 @@ describe('Auth Role Utilities', () => {
     it('should restrict sellers from certain sections', async () => {
       const { canAccessSection } = await import('@/lib/auth/roles');
 
-      // Sellers can access
+      // Sellers can access (matches AdminNav seller permissions)
       expect(canAccessSection('seller', 'orders')).toBe(true);
+      expect(canAccessSection('seller', 'products')).toBe(true);
       expect(canAccessSection('seller', 'pos')).toBe(true);
       expect(canAccessSection('seller', 'profile')).toBe(true);
       expect(canAccessSection('seller', 'settings')).toBe(true);
 
       // Sellers cannot access
       expect(canAccessSection('seller', 'dashboard')).toBe(false);
-      expect(canAccessSection('seller', 'products')).toBe(false);
       expect(canAccessSection('seller', 'inventory')).toBe(false);
       expect(canAccessSection('seller', 'employees')).toBe(false);
       expect(canAccessSection('seller', 'payments')).toBe(false);
+      expect(canAccessSection('seller', 'reviews')).toBe(false);
+      expect(canAccessSection('seller', 'loyalty')).toBe(false);
     });
 
     it('should allow admin and manager to access most sections', async () => {
@@ -149,11 +151,16 @@ describe('Auth Role Utilities', () => {
       expect(canAccessSection('admin', 'inventory')).toBe(true);
       expect(canAccessSection('admin', 'employees')).toBe(true);
       expect(canAccessSection('admin', 'payments')).toBe(true);
+      expect(canAccessSection('admin', 'reviews')).toBe(true);
+      expect(canAccessSection('admin', 'loyalty')).toBe(true);
 
       expect(canAccessSection('manager', 'dashboard')).toBe(true);
       expect(canAccessSection('manager', 'products')).toBe(true);
       expect(canAccessSection('manager', 'inventory')).toBe(true);
       expect(canAccessSection('manager', 'payments')).toBe(true);
+      expect(canAccessSection('manager', 'reviews')).toBe(true);
+      expect(canAccessSection('manager', 'loyalty')).toBe(true);
+      expect(canAccessSection('manager', 'employees')).toBe(false);
     });
 
     it('should restrict employees section to admin only', async () => {
@@ -165,6 +172,26 @@ describe('Auth Role Utilities', () => {
     });
   });
 
+  describe('canAccessSection - importation', () => {
+    it('should allow admin to access importation section', async () => {
+      const { canAccessSection } = await import('@/lib/auth/roles');
+
+      expect(canAccessSection('admin', 'importation')).toBe(true);
+    });
+
+    it('should allow manager to access importation section', async () => {
+      const { canAccessSection } = await import('@/lib/auth/roles');
+
+      expect(canAccessSection('manager', 'importation')).toBe(true);
+    });
+
+    it('should deny seller access to importation section', async () => {
+      const { canAccessSection } = await import('@/lib/auth/roles');
+
+      expect(canAccessSection('seller', 'importation')).toBe(false);
+    });
+  });
+
   describe('getAllowedSections', () => {
     it('should return allowed sections for each role', async () => {
       const { getAllowedSections } = await import('@/lib/auth/roles');
@@ -172,13 +199,23 @@ describe('Auth Role Utilities', () => {
       const adminSections = getAllowedSections('admin');
       expect(adminSections).toContain('dashboard');
       expect(adminSections).toContain('employees');
+      expect(adminSections).toContain('reviews');
+      expect(adminSections).toContain('loyalty');
       expect(adminSections.length).toBeGreaterThan(5);
+
+      const managerSections = getAllowedSections('manager');
+      expect(managerSections).toContain('reviews');
+      expect(managerSections).toContain('loyalty');
+      expect(managerSections).not.toContain('employees');
 
       const sellerSections = getAllowedSections('seller');
       expect(sellerSections).toContain('orders');
+      expect(sellerSections).toContain('products');
       expect(sellerSections).toContain('pos');
       expect(sellerSections).not.toContain('employees');
       expect(sellerSections).not.toContain('dashboard');
+      expect(sellerSections).not.toContain('reviews');
+      expect(sellerSections).not.toContain('loyalty');
 
       expect(getAllowedSections(null)).toEqual([]);
     });

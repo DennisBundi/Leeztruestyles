@@ -55,14 +55,14 @@ export function canAccessPOS(userRole: UserRole | null): boolean {
   return hasRole(userRole, 'admin') || hasRole(userRole, 'manager') || hasRole(userRole, 'seller');
 }
 
-export type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings';
+export type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings' | 'reviews' | 'loyalty' | 'importation';
 
 export function canAccessSection(userRole: UserRole | null, section: DashboardSection): boolean {
   if (!userRole) return false;
 
-  // Sellers can only access: orders, pos, profile, settings (NOT payments)
+  // Sellers can only access: orders, products, pos, profile, settings (NOT payments)
   if (userRole === 'seller') {
-    return ['orders', 'pos', 'profile', 'settings'].includes(section);
+    return ['orders', 'products', 'pos', 'profile', 'settings'].includes(section);
   }
 
   // Admin and manager can access these sections
@@ -71,7 +71,7 @@ export function canAccessSection(userRole: UserRole | null, section: DashboardSe
   }
 
   // Only admin and manager can access these sections
-  if (['dashboard', 'products', 'inventory'].includes(section)) {
+  if (['dashboard', 'products', 'inventory', 'reviews', 'loyalty'].includes(section)) {
     return userRole === 'admin' || userRole === 'manager';
   }
 
@@ -80,13 +80,18 @@ export function canAccessSection(userRole: UserRole | null, section: DashboardSe
     return userRole === 'admin';
   }
 
+  // Admin and manager only for importation
+  if (section === 'importation') {
+    return userRole === 'admin' || userRole === 'manager';
+  }
+
   return false;
 }
 
 export function getAllowedSections(userRole: UserRole | null): DashboardSection[] {
   if (!userRole) return [];
 
-  const allSections: DashboardSection[] = ['dashboard', 'products', 'orders', 'inventory', 'employees', 'payments', 'pos', 'profile', 'settings'];
+  const allSections: DashboardSection[] = ['dashboard', 'products', 'orders', 'inventory', 'employees', 'payments', 'pos', 'profile', 'settings', 'reviews', 'loyalty', 'importation'];
   
   return allSections.filter(section => canAccessSection(userRole, section));
 }
