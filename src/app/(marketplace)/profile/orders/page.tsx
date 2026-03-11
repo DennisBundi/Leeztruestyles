@@ -4,26 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-
-type OrderItem = {
-  id: string
-  product_name: string
-  product_image: string | null
-  size: string | null
-  color: string | null
-  quantity: number
-  unit_price: number
-}
-
-type Order = {
-  id: string
-  order_number: string
-  date: string
-  status: 'pending' | 'processing' | 'completed' | 'cancelled' | 'refunded'
-  payment_method: string
-  total_amount: number
-  items: OrderItem[]
-}
+import type { CustomerOrder } from './types'
 
 const STATUS_STYLES: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -35,7 +16,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function OrdersPage() {
   const router = useRouter()
-  const [orders, setOrders] = useState<Order[]>([])
+  const [orders, setOrders] = useState<CustomerOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
