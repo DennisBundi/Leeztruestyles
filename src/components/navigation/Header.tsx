@@ -365,7 +365,7 @@ export default function Header() {
                           setShowSignOutModal(false);
                           handleSignOut();
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         type="button"
                       >
                         Sign Out
@@ -423,7 +423,7 @@ export default function Header() {
             {/* Cart Icon */}
             <Link
               href="/checkout"
-              className="relative p-2 text-gray-700 hover:text-primary transition-colors"
+              className="relative p-2 text-gray-700 dark:text-gray-300 hover:text-primary transition-colors"
               aria-label="Shopping cart"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -439,7 +439,7 @@ export default function Header() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-gray-700 hover:text-primary transition-colors"
+              className="md:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-primary transition-colors"
               aria-label="Toggle menu"
             >
               <svg
@@ -482,7 +482,7 @@ export default function Header() {
                     <Link
                       href={userRole ? (userRole === 'seller' ? "/dashboard/products" : "/dashboard") : "/profile"}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center cursor-pointer"
+                      className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors text-center cursor-pointer"
                     >
                       {userRole ? "Dashboard" : "Profile"}
                     </Link>
@@ -491,7 +491,7 @@ export default function Header() {
                         setMobileMenuOpen(false);
                         handleSignOut();
                       }}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-none hover:bg-gray-200 transition-colors font-medium cursor-pointer"
+                      className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-none hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium cursor-pointer"
                     >
                       Sign Out
                     </button>
@@ -502,7 +502,7 @@ export default function Header() {
                     <Link
                       href="/signin"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors text-center cursor-pointer"
+                      className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors text-center cursor-pointer"
                     >
                       Sign In
                     </Link>
