@@ -60,19 +60,22 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (orderError || !order) {
-      if (orderError?.code === 'PGRST116' || !order) {
+    if (orderError) {
+      if (orderError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Order not found' }, { status: 404 });
       }
       console.error('Order fetch error:', orderError);
       return NextResponse.json(
-        { error: 'Failed to fetch order', details: orderError?.message },
+        { error: 'Failed to fetch order', details: orderError.message },
         { status: 500 }
       );
     }
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
 
     // Fetch customer info from users table
-    let customer = { full_name: 'Guest Customer', email: 'N/A', phone: null as string | null };
+    let customer = { full_name: 'Guest Customer', email: 'N/A', phone: null };
     if (order.user_id) {
       const { data: userData, error: userError } = await adminClient
         .from('users')
@@ -119,7 +122,7 @@ export async function GET(
         size: item.size || null,
         color: item.color || null,
         quantity: item.quantity,
-        unit_price: parseFloat(item.price || 0),
+        unit_price: parseFloat(item.price ?? '0'),
       };
     });
 
@@ -131,7 +134,7 @@ export async function GET(
         status: order.status || 'pending',
         payment_method: order.payment_method || 'N/A',
         sale_type: order.sale_type || 'online',
-        total_amount: parseFloat(order.total_amount || 0),
+        total_amount: parseFloat(order.total_amount ?? '0'),
         customer,
         seller,
         items,
