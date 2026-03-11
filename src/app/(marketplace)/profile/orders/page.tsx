@@ -44,6 +44,7 @@ export default function OrdersPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         router.push('/signin')
+        setLoading(false)
         return
       }
       fetch('/api/orders/customer')
@@ -114,7 +115,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-bold text-gray-900">
-                    KSh {order.total_amount.toLocaleString()}
+                    KSh {order.total_amount.toLocaleString('en-KE')}
                   </p>
                   <span
                     className={`mt-1 inline-block text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${STATUS_STYLES[order.status] ?? 'bg-gray-100 text-gray-600'}`}
