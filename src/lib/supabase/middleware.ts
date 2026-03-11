@@ -84,6 +84,18 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // Redirect authenticated users away from auth pages
+  if (
+    user &&
+    (request.nextUrl.pathname.startsWith('/signin') ||
+      request.nextUrl.pathname.startsWith('/signup'))
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    url.search = ''
+    return NextResponse.redirect(url)
+  }
+
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/signin') &&
