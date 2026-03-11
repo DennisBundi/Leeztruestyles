@@ -40,8 +40,8 @@ export default function MyReviewsPage() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
-        router.push('/signin')
         setLoading(false)
+        router.push('/signin')
         return
       }
       fetch('/api/reviews/my')
@@ -124,7 +124,7 @@ export default function MyReviewsPage() {
                 href="/home"
                 className="px-5 py-2.5 bg-primary text-white font-semibold rounded-none hover:bg-primary-dark transition-all"
               >
-                Start Shopping
+                Start Shopping →
               </Link>
             )}
           </div>
