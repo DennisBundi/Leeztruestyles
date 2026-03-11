@@ -1,5 +1,5 @@
 // Service Worker for Leeztruestyles PWA
-const CACHE_NAME = 'leeztruestyles-v1';
+const CACHE_NAME = 'leeztruestyles-v2';
 
 // Install event - cache resources with error handling
 self.addEventListener('install', (event) => {
