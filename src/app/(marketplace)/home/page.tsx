@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import ProductGrid from "@/components/products/ProductGrid";
 import FlashSaleCountdown from "@/components/products/FlashSaleCountdown";
 import ReviewSection from "@/components/home/ReviewSection";
+import ImportationSection from "@/components/home/ImportationSection";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -487,6 +488,9 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* Importation Waitlist Section */}
+      <ImportationSection />
 
       {/* Customer Reviews Section */}
       <ReviewSection />
