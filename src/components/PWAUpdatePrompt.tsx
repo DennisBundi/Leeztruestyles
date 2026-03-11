@@ -3,22 +3,22 @@
 import { useEffect, useState } from 'react';
 
 export default function PWAUpdatePrompt() {
-  const [show, setShow] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const handleUpdate = () => setShow(true);
-    window.addEventListener('pwa-updated', handleUpdate);
-    return () => window.removeEventListener('pwa-updated', handleUpdate);
+    const handlePwaUpdatedEvent = () => setIsVisible(true);
+    window.addEventListener('pwa-updated', handlePwaUpdatedEvent);
+    return () => window.removeEventListener('pwa-updated', handlePwaUpdatedEvent);
   }, []);
 
-  if (!show) return null;
+  if (!isVisible) return null;
 
   const handleUpdate = () => {
     window.location.reload();
   };
 
   const handleDismiss = () => {
-    setShow(false);
+    setIsVisible(false);
   };
 
   return (
