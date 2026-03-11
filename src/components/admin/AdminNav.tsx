@@ -9,7 +9,7 @@ import { useEffect, useState, useRef } from 'react';
 import type { Employee } from '@/types';
 
 type UserRole = 'admin' | 'manager' | 'seller';
-type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings' | 'reviews' | 'loyalty';
+type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings' | 'reviews' | 'loyalty' | 'importation';
 
 function canAccessSection(userRole: UserRole | null, section: DashboardSection): boolean {
   if (!userRole) return false;
@@ -130,6 +130,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
     { href: '/dashboard/payments', label: 'Payments', icon: '💳', section: 'payments' as const },
     { href: '/dashboard/reviews', label: 'Reviews', icon: '⭐', section: 'reviews' as const },
     { href: '/dashboard/loyalty', label: 'Loyalty', icon: '🎁', section: 'loyalty' as const },
+    { href: '/dashboard/importation', label: 'Importation', icon: '🌏', section: 'importation' as const },
     { href: '/pos', label: 'POS System', icon: '💰', section: 'pos' as const },
     { href: '/dashboard/profile', label: 'Profile', icon: '👤', section: 'profile' as const },
     { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', section: 'settings' as const },
