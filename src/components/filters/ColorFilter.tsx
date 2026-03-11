@@ -31,9 +31,9 @@ export default function ColorFilter({ availableColors }: ColorFilterProps) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <label className="font-medium text-gray-700">Color:</label>
-      <div className="flex items-center gap-2 bg-white border-2 border-gray-200 rounded-xl p-1 shadow-sm min-w-[180px]">
+    <div className="flex items-center gap-2 w-full sm:w-auto">
+      <label className="font-medium text-gray-700 whitespace-nowrap shrink-0">Color:</label>
+      <div className="flex items-center gap-2 bg-white border-2 border-gray-200 rounded-xl p-1 shadow-sm flex-1 sm:flex-none">
         <select
           value={selectedColor || ""}
           onChange={(e) => handleColorChange(e.target.value || null)}

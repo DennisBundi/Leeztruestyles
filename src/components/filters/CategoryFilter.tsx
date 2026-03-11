@@ -33,12 +33,12 @@ export default function CategoryFilter({ categories }: CategoryFilterProps) {
   );
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 w-full sm:w-auto">
       <label className="font-medium text-gray-700 whitespace-nowrap shrink-0">Category:</label>
       <select
         value={selectedCategorySlug || ""}
         onChange={(e) => handleCategoryChange(e.target.value || null)}
-        className="px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all bg-white text-gray-900 shadow-sm font-medium"
+        className="flex-1 sm:flex-none px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all bg-white text-gray-900 shadow-sm font-medium"
       >
         <option value="">All Categories</option>
         {categories.map((category) => (

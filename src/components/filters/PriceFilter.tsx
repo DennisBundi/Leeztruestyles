@@ -44,9 +44,9 @@ export default function PriceFilter() {
   const hasFilters = minPrice || maxPrice;
 
   return (
-    <div className="flex items-center gap-2">
-      <label className="font-medium text-gray-700">Price:</label>
-      <div className="flex items-center gap-2 bg-white border-2 border-gray-200 rounded-xl p-1 shadow-sm">
+    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+      <label className="font-medium text-gray-700 whitespace-nowrap shrink-0">Price:</label>
+      <div className="flex items-center gap-2 bg-white border-2 border-gray-200 rounded-xl p-1 shadow-sm flex-1 sm:flex-none">
         <input
           type="number"
           placeholder="Min"
