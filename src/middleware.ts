@@ -25,14 +25,22 @@ export async function middleware(request: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
 
     if (origin && appUrl) {
-      let allowedOrigin: string;
+      const allowedOrigins = new Set<string>();
+
+      // Primary configured origin
       try {
-        allowedOrigin = new URL(appUrl).origin;
+        allowedOrigins.add(new URL(appUrl).origin);
       } catch {
         // Malformed URL config - skip CSRF check rather than crash all requests
         return await updateSession(request);
       }
-      if (origin !== allowedOrigin) {
+
+      // Also allow the Vercel deployment URL (covers *.vercel.app aliases)
+      if (process.env.VERCEL_URL) {
+        allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
+      }
+
+      if (!allowedOrigins.has(origin)) {
         return NextResponse.json(
           { error: 'Forbidden: origin mismatch' },
           { status: 403 }
