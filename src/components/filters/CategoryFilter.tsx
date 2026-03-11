@@ -38,7 +38,7 @@ export default function CategoryFilter({ categories }: CategoryFilterProps) {
       <select
         value={selectedCategorySlug || ""}
         onChange={(e) => handleCategoryChange(e.target.value || null)}
-        className="flex-1 sm:flex-none px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all bg-white text-gray-900 shadow-sm font-medium"
+        className="w-full sm:w-auto min-w-0 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all bg-white text-gray-900 shadow-sm font-medium"
       >
         <option value="">All Categories</option>
         {categories.map((category) => (
