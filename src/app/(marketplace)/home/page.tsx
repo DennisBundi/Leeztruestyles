@@ -200,7 +200,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative text-white min-h-[60vh] flex items-center overflow-hidden">
+      <section className="relative text-white min-h-[calc(60vh+150px)] flex items-center overflow-hidden">
         {/* Background image */}
         <div
           className="absolute inset-0 bg-cover bg-top bg-no-repeat"

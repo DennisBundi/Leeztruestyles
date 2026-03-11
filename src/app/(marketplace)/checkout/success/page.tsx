@@ -71,6 +71,17 @@ function SuccessContent() {
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        {orderId && (
+          <Link
+            href={`/profile/orders/${orderId}`}
+            className="px-8 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 justify-center"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            View Order Details
+          </Link>
+        )}
         <Link
           href="/products"
           className="px-8 py-4 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark hover:shadow-xl transition-all hover:scale-105"
