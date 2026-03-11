@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
     );
 
     // Find user by email using Admin API
-    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    // Note: perPage is set high to cover most use cases. For very large user bases, implement pagination.
+    const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
 
     if (listError) {
       console.error('Error listing users:', listError);
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Create admin client for getUserById
+    // Create admin client for user lookups
     const supabaseAdmin = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -138,6 +139,10 @@ export async function GET(request: NextRequest) {
         }
       }
     );
+
+    // Fetch all auth users once and build a lookup map — avoids N+1 getUserById calls
+    const { data: { users: authUsers } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    const userMap = new Map((authUsers ?? []).map(u => [u.id, u]));
 
     // Fetch all employees
     const { data: employees, error: employeesError } = await supabase
@@ -177,14 +182,10 @@ export async function GET(request: NextRequest) {
         let userName = employee.name || '';
 
         if (employee.user_id) {
-          try {
-            const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(employee.user_id);
-            if (user) {
-              userEmail = user.email || userEmail;
-              userName = user.user_metadata?.name || user.email?.split('@')[0] || userName;
-            }
-          } catch (err) {
-            console.error('Error fetching user:', err);
+          const authUser = userMap.get(employee.user_id);
+          if (authUser) {
+            userEmail = authUser.email || userEmail;
+            userName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || userName;
           }
         }
 
@@ -263,7 +264,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if employee has any orders - warn but allow deletion
+    // Block deletion if employee has existing order history — would orphan seller_id references
     const { data: orders } = await supabaseAdmin
       .from('orders')
       .select('id')
@@ -271,7 +272,10 @@ export async function DELETE(request: NextRequest) {
       .limit(1);
 
     if (orders && orders.length > 0) {
-      console.warn(`Employee ${employeeId} has ${orders.length} orders. Proceeding with deletion.`);
+      return NextResponse.json(
+        { error: 'Cannot delete employee with existing order history. Reassign or archive their orders first.' },
+        { status: 409 }
+      );
     }
 
     // Delete employee record first
@@ -283,7 +287,7 @@ export async function DELETE(request: NextRequest) {
     if (deleteEmployeeError) {
       console.error('Error deleting employee:', deleteEmployeeError);
       return NextResponse.json(
-        { error: 'Failed to delete employee record', details: deleteEmployeeError.message },
+        { error: 'Failed to delete employee record' },
         { status: 500 }
       );
     }
@@ -294,24 +298,15 @@ export async function DELETE(request: NextRequest) {
         const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(employee.user_id);
         if (deleteUserError) {
           console.error('Error deleting user:', deleteUserError);
-          // Employee is already deleted, but user deletion failed
           return NextResponse.json(
-            { 
-              error: 'Employee deleted but failed to delete user account', 
-              details: deleteUserError.message,
-              warning: 'User account may still exist in auth system'
-            },
+            { error: 'Employee deleted but failed to delete user account' },
             { status: 500 }
           );
         }
       } catch (userDeleteErr) {
         console.error('Exception deleting user:', userDeleteErr);
         return NextResponse.json(
-          { 
-            error: 'Employee deleted but failed to delete user account', 
-            details: userDeleteErr instanceof Error ? userDeleteErr.message : 'Unknown error',
-            warning: 'User account may still exist in auth system'
-          },
+          { error: 'Employee deleted but failed to delete user account' },
           { status: 500 }
         );
       }
@@ -324,7 +319,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Employee deletion error:', error);
     return NextResponse.json(
-      { error: 'Failed to delete employee', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to delete employee' },
       { status: 500 }
     );
   }

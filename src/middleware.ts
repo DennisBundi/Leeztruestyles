@@ -24,6 +24,14 @@ export async function middleware(request: NextRequest) {
     const origin = request.headers.get('origin');
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
 
+    // If app URL is configured but origin header is absent, reject — missing origin is suspicious
+    if (appUrl && !origin) {
+      return NextResponse.json(
+        { error: 'Forbidden: origin header required' },
+        { status: 403 }
+      );
+    }
+
     if (origin && appUrl) {
       const allowedOrigins = new Set<string>();
 
@@ -31,8 +39,8 @@ export async function middleware(request: NextRequest) {
       try {
         allowedOrigins.add(new URL(appUrl).origin);
       } catch {
-        // Malformed URL config - skip CSRF check rather than crash all requests
-        return await updateSession(request);
+        // Malformed URL config - fail closed rather than silently skip CSRF
+        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
       }
 
       // Always allow the server's own origin (handles any domain/alias dynamically)

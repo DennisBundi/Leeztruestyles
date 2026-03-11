@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('Error updating commission payment date:', updateError);
       return NextResponse.json(
-        { error: 'Failed to mark commissions as paid', details: updateError.message },
+        { error: 'Failed to mark commissions as paid' },
         { status: 500 }
       );
     }
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

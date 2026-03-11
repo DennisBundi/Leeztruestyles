@@ -3,9 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-
-// List of emails that should automatically get admin role
-const ADMIN_EMAILS = ["leeztruestyles44@gmail.com"];
+import { ADMIN_EMAILS } from "@/config/admin";
 
 export type SignInResult = {
   success: boolean;

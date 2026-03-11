@@ -53,31 +53,17 @@ export async function GET(request: NextRequest) {
       dateMap.set(dateString, dayName);
     }
 
-    // Fetch ALL completed orders (we'll filter by date in JavaScript)
-    // This ensures we don't miss any orders due to timezone issues
+    // Fetch completed orders for the last 7 days only — filtered at DB level for performance
     const { data: allCompletedOrders, error: weekOrdersError } = await adminClient
       .from('orders')
       .select('id, total_amount, created_at, status')
       .eq('status', 'completed')
+      .gte('created_at', weekAgo.toISOString())
       .order('created_at', { ascending: true });
-    
-    // Filter orders to last 7 days (including today)
-    const weekOrders = (allCompletedOrders || []).filter((order: any) => {
-      const orderDate = new Date(order.created_at);
-      // Compare dates by setting both to start of day
-      const orderDateStart = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
-      return orderDateStart >= weekAgo;
-    });
-    
-    // Debug logging
-    console.log('Dashboard stats query:', {
-      weekAgo: weekAgo.toISOString(),
-      today: today.toISOString(),
-      allCompletedOrders: allCompletedOrders?.length || 0,
-      weekOrders: weekOrders.length,
-      error: weekOrdersError?.message,
-    });
 
+    // allCompletedOrders is already scoped to the last 7 days
+    const weekOrders = allCompletedOrders || [];
+    
     if (weekOrdersError) {
       console.error('Error fetching week orders:', weekOrdersError);
     }
@@ -88,28 +74,6 @@ export async function GET(request: NextRequest) {
       salesByDayMap.set(date, 0);
     });
     
-    // Debug: Log order dates and date matching
-    console.log('Sales by day - date keys:', Array.from(salesByDayMap.keys()));
-    if (weekOrders && weekOrders.length > 0) {
-      console.log('Sales by day - orders found:', weekOrders.length);
-      console.log('Sample order dates:', weekOrders.slice(0, 3).map((o: any) => {
-        const orderDateObj = new Date(o.created_at);
-        const year = orderDateObj.getFullYear();
-        const month = String(orderDateObj.getMonth() + 1).padStart(2, '0');
-        const day = String(orderDateObj.getDate()).padStart(2, '0');
-        const orderDate = `${year}-${month}-${day}`;
-        return {
-          id: o.id,
-          created_at: o.created_at,
-          date_local: orderDate,
-          amount: o.total_amount,
-          matched: salesByDayMap.has(orderDate),
-        };
-      }));
-    } else {
-      console.log('Sales by day - no orders found in date range');
-    }
-
     weekOrders.forEach((order: any) => {
       // Extract date from order.created_at - use local date
       const orderDateObj = new Date(order.created_at);
@@ -123,13 +87,7 @@ export async function GET(request: NextRequest) {
         const currentSales = salesByDayMap.get(orderDate) || 0;
         salesByDayMap.set(orderDate, currentSales + parseFloat(order.total_amount || 0));
       } else {
-        // Log if date doesn't match (shouldn't happen, but helps debug)
-        console.warn('Order date not in week range:', {
-          orderDate,
-          orderId: order.id,
-          created_at: order.created_at,
-          availableDates: Array.from(salesByDayMap.keys()),
-        });
+        // Date not in map — order outside expected range (shouldn't happen with DB filter)
       }
     });
 
@@ -139,17 +97,11 @@ export async function GET(request: NextRequest) {
       sales: salesByDayMap.get(date) || 0,
     }));
 
-    // Reuse allCompletedOrders from above for top products calculation
-    // We already fetched all completed orders, so we can use them here
-    console.log('Top products - completed orders found:', allCompletedOrders?.length || 0);
-
     // Fetch order items for completed orders to calculate product sales
     const orderIds = (allCompletedOrders || []).map((o: any) => o.id);
     let topProducts: any[] = [];
 
     if (orderIds.length > 0) {
-      console.log('Top products - fetching order items for', orderIds.length, 'orders');
-      
       const { data: orderItems, error: itemsError } = await adminClient
         .from('order_items')
         .select('product_id, quantity')
@@ -158,23 +110,16 @@ export async function GET(request: NextRequest) {
       if (itemsError) {
         console.error('Error fetching order items:', itemsError);
       } else {
-        console.log('Top products - order items found:', orderItems?.length || 0);
-        
         if (orderItems && orderItems.length > 0) {
           // Aggregate product sales
           const productSalesMap = new Map<string, { quantity: number; product_id: string }>();
           
           orderItems.forEach((item: any) => {
-            if (!item.product_id || !item.quantity) {
-              console.warn('Invalid order item:', item);
-              return;
-            }
+            if (!item.product_id || !item.quantity) return;
             const existing = productSalesMap.get(item.product_id) || { quantity: 0, product_id: item.product_id };
             existing.quantity += parseInt(item.quantity) || 0;
             productSalesMap.set(item.product_id, existing);
           });
-
-          console.log('Top products - unique products:', productSalesMap.size);
 
           // Get product details for top products
           const productIds = Array.from(productSalesMap.keys());
@@ -187,8 +132,6 @@ export async function GET(request: NextRequest) {
             if (productsError) {
               console.error('Error fetching products:', productsError);
             } else {
-              console.log('Top products - products found:', products?.length || 0);
-              
               if (products && products.length > 0) {
                 // Combine product data with sales count
                 topProducts = Array.from(productSalesMap.entries())
@@ -203,57 +146,29 @@ export async function GET(request: NextRequest) {
                   .sort((a, b) => b.sales - a.sales) // Sort by sales count (highest to lowest)
                   .slice(0, 5); // Top 5 products
                 
-                console.log('Top products - final result:', topProducts.length, 'products');
-              } else {
-                console.warn('Top products - no products found for IDs:', productIds);
               }
             }
-          } else {
-            console.warn('Top products - no product IDs to fetch');
           }
-        } else {
-          console.warn('Top products - no order items found for completed orders');
         }
       }
-    } else {
-      console.warn('Top products - no completed orders found');
     }
 
     // Fetch all orders for total count and total sales calculation
-    console.log('🔍 [API] Fetching all orders for totals...');
+    // Limit is a safety cap — use aggregate queries if order volume exceeds this
     const { data: allOrders, error: allOrdersError } = await adminClient
       .from('orders')
-      .select('id, total_amount, status, created_at');
+      .select('id, total_amount, status, created_at')
+      .limit(10000);
 
     if (allOrdersError) {
-      console.error('❌ [API] Error fetching all orders:', allOrdersError);
-    } else {
-      console.log('✅ [API] Fetched orders:', {
-        count: allOrders?.length || 0,
-        sampleOrders: allOrders?.slice(0, 3).map((o: any) => ({
-          id: o.id,
-          amount: o.total_amount,
-          status: o.status,
-          amountType: typeof o.total_amount
-        }))
-      });
+      console.error('Error fetching all orders:', allOrdersError);
     }
 
-    // Improved calculation with better error handling
     const totalOrdersCount = allOrders?.length || 0;
     const totalSalesAmount = (allOrders || []).reduce((sum: number, order: any) => {
       const amount = parseFloat(order.total_amount || 0);
-      if (isNaN(amount)) {
-        console.warn('⚠️ [API] Invalid total_amount for order:', order.id, order.total_amount);
-        return sum;
-      }
-      return sum + amount;
+      return isNaN(amount) ? sum : sum + amount;
     }, 0);
-
-    console.log('💰 [API] Calculated totals:', {
-      totalOrders: totalOrdersCount,
-      totalSales: totalSalesAmount
-    });
 
     // Fetch order counts by status
     const { count: completedCount, error: completedError } = await adminClient
@@ -328,14 +243,7 @@ export async function GET(request: NextRequest) {
       allProducts = [];
     }
     
-    // Log for debugging
     const totalProductsCount = allProducts.length;
-    console.log('📦 Dashboard products fetch result:', {
-      count: totalProductsCount,
-      hasError: !!allProductsError,
-      errorMessage: allProductsError?.message,
-      sampleProductIds: allProducts.slice(0, 3).map((p: any) => p?.id),
-    });
 
     let productStockMap = new Map<string, { stock: number; reserved: number; available: number }>();
     let finalProductsCount = 0;
@@ -421,48 +329,6 @@ export async function GET(request: NextRequest) {
         return availableStock > 0;
       }).length;
       
-      // Debug logging - always log to help diagnose
-      console.log('📊 Dashboard total products calculation:', {
-        totalProducts: allProducts.length,
-        productsWithInventory: productStockMap.size,
-        productsWithImages: productsWithImages.length,
-        productsWithStock: productsWithStock.length,
-        finalCount: finalProductsCount,
-        sampleProducts: allProducts.slice(0, 5).map((p: any) => {
-          const stockData = productStockMap.get(p.id);
-          const hasImage = !!(p.image || p.image_url || (Array.isArray(p.images) && p.images.length > 0 && p.images[0]));
-          return {
-            name: p.name,
-            hasImage,
-            stock: stockData?.available ?? 0,
-            totalStock: stockData?.stock ?? 0,
-            reserved: stockData?.reserved ?? 0,
-          };
-        }),
-      });
-      
-      // If finalProductsCount is 0 but we have products, log more details
-      if (finalProductsCount === 0 && allProducts.length > 0) {
-        console.warn('⚠️ Total products count is 0 but we have products. Checking why...');
-        const noImageCount = allProducts.filter((p: any) => {
-          return !(p.image || p.image_url || (Array.isArray(p.images) && p.images.length > 0 && p.images[0]));
-        }).length;
-        const noStockCount = allProducts.filter((p: any) => {
-          const stockData = productStockMap.get(p.id);
-          return !stockData || stockData.available <= 0;
-        }).length;
-        console.warn('Products breakdown:', {
-          total: allProducts.length,
-          noImage: noImageCount,
-          noStock: noStockCount,
-          hasBoth: allProducts.filter((p: any) => {
-            const hasImage = !!(p.image || p.image_url || (Array.isArray(p.images) && p.images.length > 0 && p.images[0]));
-            const stockData = productStockMap.get(p.id);
-            const hasStock = stockData && stockData.available > 0;
-            return hasImage && hasStock;
-          }).length,
-        });
-      }
 
       // Categorize products for low stock alerts
       allProducts.forEach((product: any) => {
@@ -499,25 +365,6 @@ export async function GET(request: NextRequest) {
       // Combine low stock and out of stock, limit to top 15 total
       const allStockAlerts = [...lowStockProducts, ...outOfStockProducts].slice(0, 15);
       
-      console.log('📦 Stock products found:', {
-        totalProducts: allProducts.length,
-        productsWithInventory: productStockMap.size,
-        lowStock: lowStockProducts.length,
-        outOfStock: outOfStockProducts.length,
-        totalAlerts: allStockAlerts.length,
-        totalProductsWithStock: finalProductsCount,
-        sampleLowStock: lowStockProducts.slice(0, 3).map((item: any) => ({
-          name: item.name,
-          stock: item.stock_quantity,
-          status: item.status,
-        })),
-        sampleOutOfStock: outOfStockProducts.slice(0, 3).map((item: any) => ({
-          name: item.name,
-          stock: item.stock_quantity,
-          status: item.status,
-        })),
-      });
-
       // Return combined list for low stock alerts
       lowStockProducts = allStockAlerts;
     } else if (allProductsError) {
@@ -525,13 +372,6 @@ export async function GET(request: NextRequest) {
       // If there's an error, allProducts is already set to empty array above
     }
     
-    // Log products count for debugging
-    console.log('📦 Total products count for dashboard:', {
-      allProductsLength: allProducts.length,
-      allProductsError: allProductsError?.message,
-      sampleProductIds: allProducts.slice(0, 3).map((p: any) => p.id),
-    });
-
     // Calculate today's sales and orders
     // Use local timezone for "today" but convert to UTC for database query
     // Database stores timestamps in UTC, so we need to query the full UTC day
@@ -550,17 +390,7 @@ export async function GET(request: NextRequest) {
     const todayStartUTC = new Date(Date.UTC(localYear, localMonth, localDate, 0, 0, 0, 0));
     const todayEndUTC = new Date(Date.UTC(localYear, localMonth, localDate, 23, 59, 59, 999));
     
-    console.log('📅 [API] Today date range:', {
-      localDate: nowLocal.toLocaleDateString(),
-      localTime: nowLocal.toLocaleTimeString(),
-      todayStartLocal: todayStartLocal.toISOString(),
-      todayEndLocal: todayEndLocal.toISOString(),
-      todayStartUTC: todayStartUTC.toISOString(),
-      todayEndUTC: todayEndUTC.toISOString(),
-      timezoneOffset: nowLocal.getTimezoneOffset()
-    });
-
-    // Fetch today's orders - include sale_type for debugging
+    // Fetch today's orders
     // Query using UTC dates to match database storage
     const { data: todayOrders, error: todayOrdersError } = await adminClient
       .from('orders')
@@ -570,33 +400,14 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (todayOrdersError) {
-      console.error('❌ [API] Error fetching today\'s orders:', todayOrdersError);
-    } else {
-      console.log('📅 [API] Today\'s orders found:', {
-        count: todayOrders?.length || 0,
-        orders: todayOrders?.map((o: any) => ({
-          id: o.id,
-          amount: o.total_amount,
-          created_at: o.created_at,
-          status: o.status
-        }))
-      });
+      console.error('Error fetching today\'s orders:', todayOrdersError);
     }
 
     // Calculate today's sales (sum of all orders created today)
     const todaySales = (todayOrders || []).reduce((sum: number, order: any) => {
       const amount = parseFloat(order.total_amount || 0);
-      if (isNaN(amount)) {
-        console.warn('⚠️ [API] Invalid total_amount for today\'s order:', order.id, order.total_amount);
-        return sum;
-      }
-      return sum + amount;
+      return isNaN(amount) ? sum : sum + amount;
     }, 0);
-    
-    console.log('💰 [API] Today\'s sales calculated:', {
-      todaySales,
-      orderCount: todayOrders?.length || 0
-    });
 
     // Count today's orders
     const todayOrdersCount = todayOrders?.length || 0;
@@ -607,23 +418,6 @@ export async function GET(request: NextRequest) {
     const eligibleTodayOrders = (todayOrders || []).filter((order: any) => 
       order.status !== 'cancelled' && order.status !== 'refunded'
     );
-    
-    // Log all today's orders for debugging
-    console.log('📊 [API] Today\'s orders breakdown:', {
-      total: todayOrders?.length || 0,
-      byStatus: (todayOrders || []).reduce((acc: any, order: any) => {
-        acc[order.status] = (acc[order.status] || 0) + 1;
-        return acc;
-      }, {}),
-      eligible: eligibleTodayOrders.length,
-      allOrders: (todayOrders || []).map((o: any) => ({
-        id: o.id,
-        status: o.status,
-        amount: o.total_amount,
-        created_at: o.created_at,
-        sale_type: o.sale_type,
-      })),
-    });
     
     if (eligibleTodayOrders.length > 0) {
       const eligibleOrderIds = eligibleTodayOrders.map((order: any) => order.id);
@@ -703,131 +497,8 @@ export async function GET(request: NextRequest) {
           todayProfits += totalProfit;
         });
         
-        // Build detailed profit breakdown
-        const profitBreakdown = eligibleTodayOrders.map((order: any) => {
-          const orderItems = todayOrderItems.filter((item: any) => item.order_id === order.id);
-          const orderProfit = orderItems.reduce((sum: number, item: any) => {
-            if (!item.product_id) return sum;
-            const buyingPrice = productsMap.get(item.product_id);
-            if (!buyingPrice || buyingPrice <= 0) return sum;
-            const sellingPrice = parseFloat(item.price || 0);
-            const quantity = parseInt(item.quantity || 0);
-            if (sellingPrice > 0 && quantity > 0) {
-              return sum + (sellingPrice - buyingPrice) * quantity;
-            }
-            return sum;
-          }, 0);
-          
-          const orderItemsDetails = orderItems.map((item: any) => {
-            const buyingPrice = productsMap.get(item.product_id);
-            return {
-              product_id: item.product_id,
-              buying_price: buyingPrice || 'N/A',
-              selling_price: item.price,
-              quantity: item.quantity,
-              profit: buyingPrice && buyingPrice > 0 
-                ? (parseFloat(item.price || 0) - buyingPrice) * parseInt(String(item.quantity || 0), 10)
-                : 'N/A (no buying price)',
-            };
-          });
-          
-          return {
-            orderId: order.id,
-            status: order.status,
-            sale_type: order.sale_type,
-            amount: order.total_amount,
-            profit: orderProfit,
-            itemsCount: orderItems.length,
-            items: orderItemsDetails,
-          };
-        });
-        
-        console.log('💰 [API] Today\'s profits calculation - DETAILED:', {
-          totalTodayOrders: todayOrders?.length || 0,
-          eligibleOrders: eligibleTodayOrders.length,
-          orderItems: todayOrderItems.length,
-          uniqueProducts: productIds.length,
-          productsWithBuyingPrice: productsMap.size,
-          productsWithoutBuyingPrice: productIds.length - productsMap.size,
-          skippedItems,
-          todayProfits,
-          profitBreakdown,
-          productsMap: Array.from(productsMap.entries()).map(([id, price]) => ({ id, buying_price: price })),
-        });
-        
-        // If profit is 0 but we have orders, log detailed warning
-        if (todayProfits === 0 && eligibleTodayOrders.length > 0 && todayOrderItems.length > 0) {
-          console.warn('⚠️ [API] WARNING: Profit is 0 but orders and items exist!', {
-            reason: skippedItems.noBuyingPrice > 0 
-              ? `Products are missing buying_price. ${skippedItems.noBuyingPrice} items skipped.`
-              : skippedItems.noProductId > 0
-              ? `Custom products (no product_id) cannot calculate profit. ${skippedItems.noProductId} items skipped.`
-              : 'Unknown reason',
-            orders: eligibleTodayOrders.map((order: any) => ({
-              id: order.id,
-              status: order.status,
-              sale_type: order.sale_type,
-              total_amount: order.total_amount,
-            })),
-            orderItemsSample: todayOrderItems.slice(0, 5).map((item: any) => ({
-              order_id: item.order_id,
-              product_id: item.product_id || 'CUSTOM (no product_id)',
-              quantity: item.quantity,
-              price: item.price,
-              hasBuyingPrice: item.product_id ? productsMap.has(item.product_id) : false,
-              buyingPrice: item.product_id ? productsMap.get(item.product_id) : null,
-            })),
-            action: 'Please set buying_price for products in the database to calculate profits',
-          });
-        }
-      } else {
-        console.log('💰 [API] Today\'s profits calculation: No order items found for eligible orders', {
-          eligibleOrderIds,
-          orderItemsError: 'No order items returned',
-        });
-      }
-    } else {
-      console.log('💰 [API] Today\'s profits calculation: No eligible orders found', {
-        totalTodayOrders: todayOrders?.length || 0,
-        allStatuses: (todayOrders || []).reduce((acc: any, order: any) => {
-          acc[order.status] = (acc[order.status] || 0) + 1;
-          return acc;
-        }, {}),
-        message: 'Only orders with status other than "cancelled" or "refunded" are included',
-      });
-      
-      // If there are orders but none are eligible, log them for debugging
-      if (todayOrders && todayOrders.length > 0) {
-        console.warn('⚠️ [API] Orders found but not eligible for profit calculation:', {
-          orders: todayOrders.map((o: any) => ({
-            id: o.id,
-            status: o.status,
-            amount: o.total_amount,
-            created_at: o.created_at,
-            note: o.status === 'pending' ? 'Pending orders are excluded. POS orders should be "completed".' : 
-                  o.status === 'cancelled' ? 'Cancelled orders are excluded.' :
-                  o.status === 'refunded' ? 'Refunded orders are excluded.' : 'Unknown status',
-          })),
-        });
       }
     }
-
-    // Debug: Log final results
-    const weekTotalSales = formattedSalesByDay.reduce((sum, day) => sum + day.sales, 0);
-    console.log('Dashboard stats response:', {
-      salesByDayCount: formattedSalesByDay.length,
-      weekTotalSales,
-      totalSales: totalSalesAmount,
-      totalOrders: totalOrdersCount,
-      totalProducts: allProducts.length,
-      todaySales,
-      todayOrders: todayOrdersCount,
-      completedOrders: completedCount || 0,
-      pendingOrders: pendingCount || 0,
-      totalCustomers: customersCount || 0,
-      topProductsCount: topProducts.length,
-      todayProfits,
-    });
 
     // Ensure we always return data, even if empty - with consistent structure
     const responseData = {
@@ -844,18 +515,6 @@ export async function GET(request: NextRequest) {
       pendingOrders: pendingCount || 0,
       totalCustomers: customersCount || 0,
     };
-    
-    console.log('✅ [API] Dashboard stats response prepared:', {
-      hasSalesByDay: Array.isArray(responseData.salesByDay),
-      hasTopProducts: Array.isArray(responseData.topProducts),
-      hasLowStock: Array.isArray(responseData.lowStock),
-      totalSales: responseData.totalSales,
-      totalOrders: responseData.totalOrders,
-      todaySales: responseData.todaySales,
-      todayOrders: responseData.todayOrders,
-      todayProfits: responseData.todayProfits,
-      allFieldsPresent: Object.keys(responseData).length === 11
-    });
     
     return NextResponse.json(responseData);
   } catch (error) {
