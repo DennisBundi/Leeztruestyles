@@ -1,17 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-
-const GOODS_CATEGORIES = [
-  "Clothing",
-  "Footwear",
-  "Accessories",
-  "Home Goods",
-  "Electronics",
-  "Other",
-];
-
-type Status = "pending" | "approved" | "rejected";
+import { GOODS_CATEGORIES } from "@/lib/constants/importation";
+import type { Status } from "@/types/importation";
 
 interface Application {
   id: string;
@@ -41,10 +32,12 @@ const STATUS_STYLES: Record<Status, string> = {
 export default function ImportationAdmin() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, approved: 0 });
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [actionId, setActionId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [confirmingAppId, setConfirmingAppId] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState("");
   const [pendingAction, setPendingAction] = useState<{
     id: string;
@@ -53,44 +46,70 @@ export default function ImportationAdmin() {
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     const params = new URLSearchParams();
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (categoryFilter !== "all") params.set("category", categoryFilter);
 
-    const res = await fetch(`/api/importation/admin?${params}`);
-    if (res.ok) {
-      const json = await res.json();
-      setApplications(json.data || []);
-      setStats(json.stats || { total: 0, pending: 0, approved: 0 });
+    try {
+      const res = await fetch(`/api/importation/admin?${params}`);
+      if (res.ok) {
+        const json = await res.json() as { data: Application[]; stats: Stats };
+        setApplications(json.data || []);
+        setStats(json.stats || { total: 0, pending: 0, approved: 0 });
+      } else {
+        setFetchError("Failed to load applications.");
+      }
+    } catch {
+      setFetchError("Network error. Could not load applications.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [statusFilter, categoryFilter]);
 
   useEffect(() => {
     fetchApplications();
   }, [fetchApplications]);
 
-  async function handleUpdateStatus(id: string, status: Status, note: string) {
-    const res = await fetch("/api/importation/admin", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status, admin_note: note }),
-    });
-
-    if (res.ok) {
-      setApplications((prev) =>
-        prev.map((app) =>
-          app.id === id ? { ...app, status, admin_note: note || null } : app
-        )
-      );
+  async function handleUpdateStatus(id: string, status: Status, note: string): Promise<void> {
+    setUpdateError(null);
+    try {
+      const res = await fetch("/api/importation/admin", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status, admin_note: note }),
+      });
+      if (res.ok) {
+        setApplications((prev) =>
+          prev.map((app) =>
+            app.id === id ? { ...app, status, admin_note: note || null } : app
+          )
+        );
+      } else {
+        setUpdateError("Failed to update application. Please try again.");
+      }
+    } catch {
+      setUpdateError("Network error. Could not update application.");
+    } finally {
+      setConfirmingAppId(null);
+      setPendingAction(null);
+      setNoteInput("");
     }
-    setActionId(null);
-    setPendingAction(null);
-    setNoteInput("");
   }
 
   return (
     <div className="space-y-6">
+      {fetchError && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+          {fetchError}
+        </div>
+      )}
+      {updateError && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+          {updateError}
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
@@ -112,7 +131,7 @@ export default function ImportationAdmin() {
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-wrap gap-3">
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => setStatusFilter(e.target.value as Status | "all")}
           className="border border-gray-300 px-3 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="all">All Statuses</option>
@@ -153,12 +172,12 @@ export default function ImportationAdmin() {
                     "Date",
                     "Status",
                     "Actions",
-                  ].map((h) => (
+                  ].map((header) => (
                     <th
-                      key={h}
+                      key={header}
                       className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
                     >
-                      {h}
+                      {header}
                     </th>
                   ))}
                 </tr>
@@ -204,7 +223,7 @@ export default function ImportationAdmin() {
                           {app.status !== "approved" && (
                             <button
                               onClick={() => {
-                                setActionId(app.id);
+                                setConfirmingAppId(app.id);
                                 setPendingAction({ id: app.id, status: "approved" });
                                 setNoteInput("");
                               }}
@@ -216,7 +235,7 @@ export default function ImportationAdmin() {
                           {app.status !== "rejected" && (
                             <button
                               onClick={() => {
-                                setActionId(app.id);
+                                setConfirmingAppId(app.id);
                                 setPendingAction({ id: app.id, status: "rejected" });
                                 setNoteInput("");
                               }}
@@ -229,7 +248,7 @@ export default function ImportationAdmin() {
                       </td>
                     </tr>
                     {/* Inline confirmation panel */}
-                    {actionId === app.id && pendingAction && (
+                    {confirmingAppId === app.id && pendingAction && (
                       <tr key={`${app.id}-action`} className="bg-indigo-50">
                         <td colSpan={7} className="px-4 py-3">
                           <div className="flex items-center gap-3 flex-wrap">
@@ -258,7 +277,7 @@ export default function ImportationAdmin() {
                             </button>
                             <button
                               onClick={() => {
-                                setActionId(null);
+                                setConfirmingAppId(null);
                                 setPendingAction(null);
                               }}
                               className="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-300"
