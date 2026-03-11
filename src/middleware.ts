@@ -35,7 +35,10 @@ export async function middleware(request: NextRequest) {
         return await updateSession(request);
       }
 
-      // Also allow the Vercel deployment URL (covers *.vercel.app aliases)
+      // Always allow the server's own origin (handles any domain/alias dynamically)
+      allowedOrigins.add(request.nextUrl.origin);
+
+      // Also allow the Vercel deployment URL if set
       if (process.env.VERCEL_URL) {
         allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
       }
