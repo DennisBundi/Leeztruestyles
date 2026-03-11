@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 interface EligibleProduct {
   product_id: string;
   order_id: string;
-  status: "eligible" | "pending" | "approved" | "blocked";
 }
 
 interface ReviewFormProps {
@@ -51,7 +50,7 @@ export default function ReviewForm({ productId, onSubmitted }: ReviewFormProps) 
         if (!match) {
           setHasPurchased(false);
         } else {
-          setEligibility({ ...match, status: match.status || "eligible" });
+          setEligibility({ ...match });
         }
       } catch {
         setError("Failed to check review eligibility.");
@@ -167,26 +166,6 @@ export default function ReviewForm({ productId, onSubmitted }: ReviewFormProps) 
   }
 
   if (!hasPurchased) {
-    return null;
-  }
-
-  if (eligibility?.status === "pending") {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-        <p className="text-gray-600">Your review is under review</p>
-      </div>
-    );
-  }
-
-  if (eligibility?.status === "approved") {
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-        <p className="text-gray-600">You&apos;ve already reviewed this product</p>
-      </div>
-    );
-  }
-
-  if (eligibility?.status === "blocked") {
     return null;
   }
 
