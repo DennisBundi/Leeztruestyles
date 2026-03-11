@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserRole } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
-async function requireAdmin() {
+async function requireAdmin(): Promise<User | null> {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (!user || error) return null;
@@ -26,33 +27,44 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
 
   // Stats (always returned)
-  const [totalRes, pendingRes, approvedRes] = await Promise.all([
-    admin.from("import_waitlist").select("*", { count: "exact", head: true }),
-    admin.from("import_waitlist").select("*", { count: "exact", head: true }).eq("status", "pending"),
-    admin.from("import_waitlist").select("*", { count: "exact", head: true }).eq("status", "approved"),
-  ]);
+  try {
+    const [totalRes, pendingRes, approvedRes] = await Promise.all([
+      admin.from("import_waitlist").select("*", { count: "exact", head: true }),
+      admin.from("import_waitlist").select("*", { count: "exact", head: true }).eq("status", "pending"),
+      admin.from("import_waitlist").select("*", { count: "exact", head: true }).eq("status", "approved"),
+    ]);
 
-  const stats = {
-    total: totalRes.count || 0,
-    pending: pendingRes.count || 0,
-    approved: approvedRes.count || 0,
-  };
+    const stats = {
+      total: totalRes.count || 0,
+      pending: pendingRes.count || 0,
+      approved: approvedRes.count || 0,
+    };
 
-  let query = admin
-    .from("import_waitlist")
-    .select("*")
-    .order("created_at", { ascending: false });
+    let query = admin
+      .from("import_waitlist")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  if (status && status !== "all") query = query.eq("status", status);
-  if (category && category !== "all") query = query.eq("goods_category", category);
+    if (status && status !== "all") query = query.eq("status", status);
+    if (category && category !== "all") query = query.eq("goods_category", category);
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("Importation admin GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch applications." }, { status: 500 });
+    const { data, error } = await query;
+    if (error) {
+      console.error("Importation admin GET error:", error);
+      return NextResponse.json({ error: "Failed to fetch applications." }, { status: 500 });
+    }
+
+    return NextResponse.json({ data, stats });
+  } catch (err) {
+    console.error("Importation admin GET error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
+}
 
-  return NextResponse.json({ data, stats });
+interface AdminPatchBody {
+  id: string;
+  status: "pending" | "approved" | "rejected";
+  admin_note?: string | null;
 }
 
 // PATCH: update status and optional admin_note for one application
@@ -60,7 +72,7 @@ export async function PATCH(request: NextRequest) {
   const user = await requireAdmin();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json();
+  const body = await request.json() as AdminPatchBody;
   const { id, status, admin_note } = body;
 
   if (!id || !status) {
