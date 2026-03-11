@@ -51,7 +51,7 @@ export async function GET(_request: NextRequest) {
       date: order.created_at,
       status: order.status,
       payment_method: order.payment_method ?? 'N/A',
-      total_amount: parseFloat(order.total_amount ?? 0),
+      total_amount: Number(order.total_amount ?? 0),
       items: (order.order_items ?? []).map((item: any) => ({
         id: item.id,
         product_id: item.product_id,
@@ -60,7 +60,7 @@ export async function GET(_request: NextRequest) {
         size: item.size ?? null,
         color: item.color ?? null,
         quantity: item.quantity,
-        unit_price: parseFloat(item.price ?? 0),
+        unit_price: Number(item.price ?? 0),
       })),
     }));
 
