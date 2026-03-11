@@ -30,7 +30,7 @@ function canAccessSection(userRole: UserRole | null, section: DashboardSection):
     return userRole === 'admin';
   }
 
-  if (['reviews', 'loyalty'].includes(section)) {
+  if (['reviews', 'loyalty', 'importation'].includes(section)) {
     return userRole === 'admin' || userRole === 'manager';
   }
 
