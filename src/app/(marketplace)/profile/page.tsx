@@ -126,6 +126,24 @@ export default function ProfilePage() {
                     </form>
                 </div>
 
+                {/* My Orders Section */}
+                <div className="mt-8 bg-white rounded-2xl p-6 shadow border border-gray-100">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-900">My Orders</h2>
+                            <p className="text-gray-600 text-sm mt-1">
+                                Track your order history and status
+                            </p>
+                        </div>
+                        <Link
+                            href="/profile/orders"
+                            className="px-5 py-2.5 bg-primary text-white font-semibold rounded-none hover:bg-primary-dark transition-all hover:scale-105"
+                        >
+                            View Orders
+                        </Link>
+                    </div>
+                </div>
+
                 {/* Leez Rewards Section */}
                 <div className="mt-8 bg-gradient-to-r from-primary-light to-pink-50 rounded-2xl p-6 border border-primary/20">
                     <div className="flex items-center justify-between">
