@@ -27,6 +27,12 @@ export default function CartDrawer() {
     }
   }, [isMounted, itemCount]);
 
+  useEffect(() => {
+    if (pathname.startsWith('/checkout')) {
+      setIsOpen(false);
+    }
+  }, [pathname]);
+
   return (
     <>
       {/* Cart Button - Floating (only visible when cart has items and not on checkout pages) */}
