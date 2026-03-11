@@ -90,6 +90,19 @@ html {
   background: #f472b6;
 }
 
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #f9a8d4;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #f472b6;
+}
+
 /* Hide scrollbar for thumbnail strip */
 .scrollbar-hide {
   -ms-overflow-style: none;
