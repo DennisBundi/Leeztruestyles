@@ -7,12 +7,55 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import type { CustomerOrder } from '../types'
 
-const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  processing: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-gray-100 text-gray-600',
-  refunded: 'bg-gray-100 text-gray-600',
+const TIMELINE_STEPS: Array<CustomerOrder['status']> = ['pending', 'processing', 'completed']
+const TERMINAL_STATUSES: Array<CustomerOrder['status']> = ['cancelled', 'refunded']
+
+function StatusTimeline({ status }: { status: CustomerOrder['status'] }) {
+  if (TERMINAL_STATUSES.includes(status)) {
+    return (
+      <div className="mb-2">
+        <span className="inline-block px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 capitalize">
+          Order {status}
+        </span>
+      </div>
+    )
+  }
+
+  const currentIndex = TIMELINE_STEPS.indexOf(status)
+
+  return (
+    <div className="mb-2">
+      <div className="flex items-center">
+        {TIMELINE_STEPS.map((step, i) => {
+          const isActive = i <= currentIndex
+          const isLast = i === TIMELINE_STEPS.length - 1
+          return (
+            <div key={step} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
+                    isActive
+                      ? 'bg-primary border-primary text-white'
+                      : 'bg-white border-gray-300 text-gray-400'
+                  }`}
+                >
+                  {isActive ? '✓' : i + 1}
+                </div>
+                <span className={`mt-1 text-xs capitalize ${isActive ? 'text-primary font-semibold' : 'text-gray-400'}`}>
+                  {step}
+                </span>
+              </div>
+              {!isLast && (
+                <div
+                  className={`flex-1 h-0.5 mx-1 mb-4 ${i < currentIndex ? 'bg-primary' : 'bg-gray-200'}`}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export default function OrderDetailPage() {
@@ -71,8 +114,6 @@ export default function OrderDetailPage() {
     )
   }
 
-  const isCompleted = order.status === 'completed'
-
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
@@ -84,27 +125,23 @@ export default function OrderDetailPage() {
           <h1 className="text-2xl font-bold text-gray-900">{order.order_number}</h1>
         </div>
 
-        {/* Order Meta Card */}
+        {/* Order Meta */}
         <div className="bg-white shadow rounded-2xl p-6 mb-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="space-y-1">
-              <p className="text-sm text-gray-500">
-                {new Date(order.date).toLocaleDateString('en-KE', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </p>
-              <p className="text-sm text-gray-500 capitalize">
-                Payment: <span className="text-gray-700 font-medium">{order.payment_method}</span>
-              </p>
-            </div>
-            <span
-              className={`text-sm font-semibold px-3 py-1.5 rounded-full capitalize ${STATUS_STYLES[order.status] ?? 'bg-gray-100 text-gray-600'}`}
-            >
-              {order.status}
-            </span>
-          </div>
+          <p className="text-sm text-gray-500 mb-1">
+            {new Date(order.date).toLocaleDateString('en-KE', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+            {' · '}
+            {order.payment_method.toUpperCase()}
+          </p>
+        </div>
+
+        {/* Status Timeline */}
+        <div className="bg-white shadow rounded-2xl p-6 mb-4">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Order Status</h2>
+          <StatusTimeline status={order.status} />
         </div>
 
         {/* Items Card */}
@@ -124,7 +161,6 @@ export default function OrderDetailPage() {
                       width={64}
                       height={64}
                       className="w-full h-full object-cover"
-                      unoptimized
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -153,7 +189,7 @@ export default function OrderDetailPage() {
                   <p className="text-sm text-gray-500 mt-1">
                     Qty: {item.quantity} × KSh {item.unit_price.toLocaleString('en-KE')}
                   </p>
-                  {isCompleted && (
+                  {order.status === 'completed' && (
                     <Link
                       href={`/products/${item.product_id}`}
                       className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-primary-dark hover:text-primary transition-colors"

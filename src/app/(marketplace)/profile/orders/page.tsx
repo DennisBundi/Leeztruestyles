@@ -5,14 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { CustomerOrder } from './types'
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  processing: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-gray-100 text-gray-600',
-  refunded: 'bg-gray-100 text-gray-600',
-}
+import { STATUS_STYLES } from './types'
 
 export default function OrdersPage() {
   const router = useRouter()

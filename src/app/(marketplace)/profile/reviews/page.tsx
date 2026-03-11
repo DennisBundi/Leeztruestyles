@@ -13,7 +13,7 @@ type MyReview = {
   rating: number
   text: string
   status: 'pending' | 'approved'
-  image_urls: string[]
+  image_urls: string[] | null
   created_at: string
 }
 
@@ -153,9 +153,9 @@ export default function MyReviewsPage() {
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-gray-600 line-clamp-2">{review.text}</p>
-                  {review.image_urls?.length > 0 && (
+                  {(review.image_urls?.length ?? 0) > 0 && (
                     <p className="mt-1.5 text-xs text-gray-400">
-                      {review.image_urls.length} photo{review.image_urls.length > 1 ? 's' : ''} attached
+                      {review.image_urls!.length} photo{review.image_urls!.length > 1 ? 's' : ''} attached
                     </p>
                   )}
                 </div>

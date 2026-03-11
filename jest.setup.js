@@ -20,6 +20,7 @@ jest.mock('next/navigation', () => ({
   useSearchParams() {
     return new URLSearchParams();
   },
+  useParams: jest.fn().mockReturnValue({ id: '' }),
 }));
 
 // Mock Next.js Image component
