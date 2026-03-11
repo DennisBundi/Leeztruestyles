@@ -202,6 +202,62 @@ export default async function AboutPage() {
               </div>
             </section>
 
+            {/* Importation Waitlist Section */}
+            <section className="mb-16 bg-gradient-to-br from-navy-900 to-indigo-900 rounded-2xl shadow-xl p-8 md:p-12 border border-indigo-700/30 text-white" style={{background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)'}}>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex-shrink-0 w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center">
+                  <svg className="w-8 h-8 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-semibold text-white m-0">Direct Importation Service</h2>
+              </div>
+              <div className="grid md:grid-cols-2 gap-8 items-center">
+                <div className="space-y-4">
+                  <p className="text-indigo-200 text-lg leading-relaxed">
+                    We're launching a direct importation service — bringing goods straight from <span className="text-white font-semibold">China 🇨🇳</span> to <span className="text-white font-semibold">Kenya 🇰🇪</span> at unbeatable prices. Skip the middlemen and get what you need sourced directly.
+                  </p>
+                  <p className="text-indigo-200 text-lg leading-relaxed">
+                    Whether it's fashion, electronics, home goods, or bulk merchandise, our team handles the sourcing, shipping, and customs clearance so you don't have to.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <a
+                      href="/importation/status"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all hover:scale-105"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Check Waitlist Status
+                    </a>
+                    <a
+                      href="/#importation"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all hover:scale-105"
+                    >
+                      Join the Waitlist
+                    </a>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center justify-center text-center py-6">
+                  <div className="text-6xl mb-4">🇰🇪 ↔ 🇨🇳</div>
+                  <p className="text-indigo-300 text-sm font-medium uppercase tracking-widest">Nairobi · Guangzhou · Shenzhen</p>
+                  <div className="mt-6 grid grid-cols-2 gap-4 w-full max-w-xs text-left">
+                    {[
+                      { label: 'Direct Sourcing', icon: '📦' },
+                      { label: 'Bulk Orders', icon: '🏭' },
+                      { label: 'Customs Handled', icon: '✅' },
+                      { label: 'Competitive Rates', icon: '💰' },
+                    ].map(({ label, icon }) => (
+                      <div key={label} className="bg-white/10 rounded-lg p-3 text-center">
+                        <div className="text-2xl mb-1">{icon}</div>
+                        <div className="text-white text-xs font-medium">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+
             {/* Why Choose Us Section */}
             <section className="bg-gradient-to-br from-primary/5 to-primary-light/10 rounded-2xl shadow-lg p-8 md:p-12 border border-primary/20">
               <div className="flex items-center gap-4 mb-8">
