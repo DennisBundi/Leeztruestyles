@@ -15,9 +15,18 @@ const REQUIRED_FIELDS = [
 const VALID_CATEGORIES = ["Clothing", "Footwear", "Accessories", "Home Goods", "Electronics", "Other"];
 const VALID_ORDER_VALUES = ["Under KES 50k", "KES 50k–100k", "KES 100k–500k", "Over KES 500k"];
 
+interface WaitlistRequestBody {
+  full_name: string;
+  email: string;
+  phone: string;
+  business_name: string;
+  goods_category: string;
+  monthly_order_value: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json() as WaitlistRequestBody;
 
     // Validate required fields
     for (const field of REQUIRED_FIELDS) {
@@ -52,6 +61,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json({ error: "An application with this email already exists." }, { status: 409 });
+      }
       console.error("Waitlist insert error:", error);
       return NextResponse.json({ error: "Failed to save application." }, { status: 500 });
     }
