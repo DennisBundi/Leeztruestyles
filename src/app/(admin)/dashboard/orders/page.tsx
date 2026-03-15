@@ -37,6 +37,11 @@ export default function OrdersPage() {
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
 
+  // Bulk delete state (admin only)
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
   useEffect(() => {
     fetchUserRole();
   }, []);
@@ -228,6 +233,53 @@ export default function OrdersPage() {
   const handleDeleteCancel = () => {
     setShowDeleteModal(false);
     setOrderToDelete(null);
+  };
+
+  const handleSelectOrder = (orderId: string, checked: boolean) => {
+    setSelectedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(orderId);
+      else next.delete(orderId);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedOrderIds(new Set(filteredOrders.map((o) => o.id)));
+    } else {
+      setSelectedOrderIds(new Set());
+    }
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedOrderIds.size === 0) return;
+    setIsBulkDeleting(true);
+    const ids = Array.from(selectedOrderIds);
+    let failCount = 0;
+    const deletedIds: string[] = [];
+
+    for (const id of ids) {
+      try {
+        const response = await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
+        if (response.ok) {
+          deletedIds.push(id);
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+
+    setOrders((prev) => prev.filter((o) => !deletedIds.includes(o.id)));
+    setSelectedOrderIds(new Set());
+    setShowBulkDeleteModal(false);
+    setIsBulkDeleting(false);
+
+    if (failCount > 0) {
+      alert(`${deletedIds.length} order(s) deleted. ${failCount} failed — please try again.`);
+    }
   };
 
   return (
