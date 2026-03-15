@@ -12,6 +12,8 @@ interface ProductSizeColorModalProps {
   product: Product | null;
   availableSizes?: Array<{ size: string; available: number }>;
   availableColors?: string[];
+  isAdmin?: boolean;
+  onEditProduct?: () => void;
 }
 
 export default function ProductSizeColorModal({
@@ -21,6 +23,8 @@ export default function ProductSizeColorModal({
   product,
   availableSizes = [],
   availableColors = [],
+  isAdmin = false,
+  onEditProduct,
 }: ProductSizeColorModalProps) {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
@@ -69,24 +73,32 @@ export default function ProductSizeColorModal({
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-300">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900">Select Options</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="flex items-center gap-2">
+            {isAdmin && onEditProduct && (
+              <button
+                onClick={onEditProduct}
+                className="text-gray-400 hover:text-primary transition-colors"
+                title="Edit product"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Product Preview */}
