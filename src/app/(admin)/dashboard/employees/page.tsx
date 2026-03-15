@@ -33,6 +33,7 @@ export default function EmployeesPage() {
   const [deleting, setDeleting] = useState(false);
   const [markAllPaidModal, setMarkAllPaidModal] = useState(false);
   const [markingAllPaid, setMarkingAllPaid] = useState(false);
+  const [markAllPaidSuccess, setMarkAllPaidSuccess] = useState(false);
 
   // Check role and redirect non-admins (only once)
   useEffect(() => {
@@ -159,8 +160,9 @@ export default function EmployeesPage() {
       // Refresh employees
       await fetchEmployees();
 
-      // Show success message
-      alert(data.message || `Commissions marked as paid for ${data.count || 0} seller(s)`);
+      // Show success modal
+      setMarkAllPaidSuccess(true);
+      setTimeout(() => setMarkAllPaidSuccess(false), 2500);
     } catch (error) {
       console.error('Error marking all commissions as paid:', error);
       alert(error instanceof Error ? error.message : 'Failed to mark all commissions as paid');
@@ -577,6 +579,21 @@ export default function EmployeesPage() {
                     )}
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mark All Paid Success Modal */}
+          {markAllPaidSuccess && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-scale-in">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Commissions Paid!</h3>
+                <p className="text-gray-600">All seller commissions have been marked as paid.</p>
               </div>
             </div>
           )}

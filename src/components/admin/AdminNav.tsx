@@ -302,13 +302,15 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
 
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-          <Image
-            src="/images/leeztruelogo.jpeg"
-            alt="Leez True Styles"
-            width={36}
-            height={36}
-            className="rounded-full object-cover ring-2 ring-rose-400/50"
-          />
+          <div className="w-10 h-10 shrink-0 rounded-full overflow-hidden ring-2 ring-rose-400/50">
+            <Image
+              src="/images/leeztruelogo.jpeg"
+              alt="Leez True Styles"
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
+            />
+          </div>
           <div>
             <span className="text-white font-bold text-lg tracking-wide">LEEZ</span>
             <span className="text-rose-400 text-xs font-semibold ml-1.5 uppercase tracking-widest">Admin</span>
@@ -393,11 +395,10 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
           {employee && (
             <div className="px-3 mb-3">
               <div className="text-sm font-medium text-white truncate">
-                {employee.employee_code || 'Admin'}
+                {userRole === 'admin' ? 'Administrator' : userRole === 'manager' ? 'Manager' : 'Sales Person'}
               </div>
               <div className="text-xs text-white/40 mt-0.5">
-                {userRole === 'admin' ? 'Administrator' : userRole === 'manager' ? 'Manager' : 'Sales Person'}
-                {employee.employee_code && ` · ${employee.employee_code}`}
+                {employee.employee_code || ''}
               </div>
             </div>
           )}
