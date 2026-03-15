@@ -302,7 +302,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
 
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-          <div className="w-10 h-10 shrink-0 rounded-full overflow-hidden ring-2 ring-rose-400/50">
+          <div className="w-10 h-10 shrink-0 rounded-full overflow-hidden ring-2 ring-primary/50">
             <Image
               src="/images/leeztruelogo.jpeg"
               alt="Leez True Styles"
@@ -313,7 +313,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
           </div>
           <div>
             <span className="text-white font-bold text-lg tracking-wide">LEEZ</span>
-            <span className="text-rose-400 text-xs font-semibold ml-1.5 uppercase tracking-widest">Admin</span>
+            <span className="text-primary text-xs font-semibold ml-1.5 uppercase tracking-widest">Admin</span>
           </div>
         </div>
 
@@ -329,7 +329,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
                 : 'text-white/60 hover:text-white hover:bg-white/10'
             }`}
           >
-            <span className={isDashboardActive ? 'text-rose-400' : 'text-white/50'}>
+            <span className={isDashboardActive ? 'text-primary' : 'text-white/50'}>
               <DashboardIcon />
             </span>
             <span className="text-sm font-medium">Dashboard</span>
@@ -352,7 +352,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
                       : 'text-white/60 hover:text-white hover:bg-white/10'
                   }`}
                 >
-                  <span className={hasActiveChild ? 'text-rose-400' : 'text-white/50'}>
+                  <span className={hasActiveChild ? 'text-primary' : 'text-white/50'}>
                     {group.icon}
                   </span>
                   <span className="text-sm font-medium flex-1 text-left">{group.label}</span>
@@ -376,7 +376,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
                               : 'text-white/50 hover:text-white hover:bg-white/10'
                           }`}
                         >
-                          <span className={isActive ? 'text-rose-400' : 'text-white/40'}>
+                          <span className={isActive ? 'text-primary' : 'text-white/40'}>
                             {item.icon}
                           </span>
                           <span className="text-sm">{item.label}</span>
@@ -424,7 +424,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <span className="text-white font-bold tracking-wide">LEEZ <span className="text-rose-400 text-xs font-semibold">ADMIN</span></span>
+        <span className="text-white font-bold tracking-wide">LEEZ <span className="text-primary text-xs font-semibold">ADMIN</span></span>
         <Link href="/" className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

@@ -94,7 +94,7 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-400 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-white/60">Redirecting to products...</p>
         </div>
       </div>
@@ -267,15 +267,15 @@ export default function DashboardPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="glass-card border-l-4 border-rose-400 p-4">
+        <div className="glass-card border-l-4 border-primary p-4">
           <div className="flex items-center gap-3">
-            <svg className="w-5 h-5 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <p className="text-white/80 text-sm flex-1">{error}</p>
             <button
               onClick={() => { setError(null); fetchDashboardData(); }}
-              className="text-rose-400 hover:text-rose-300 text-sm font-medium underline"
+              className="text-primary hover:text-primary text-sm font-medium underline"
             >
               Retry
             </button>
@@ -288,7 +288,7 @@ export default function DashboardPage() {
         <Link href="/dashboard/orders" className="glass-card p-5 hover:bg-white/15 transition-all duration-200 cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white/50 text-xs font-medium uppercase tracking-widest">Total Sales</h3>
-            <svg className="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
@@ -301,7 +301,7 @@ export default function DashboardPage() {
         <Link href="/dashboard/orders" className="glass-card p-5 hover:bg-white/15 transition-all duration-200 cursor-pointer">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white/50 text-xs font-medium uppercase tracking-widest">Total Orders</h3>
-            <svg className="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
@@ -316,7 +316,7 @@ export default function DashboardPage() {
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white/50 text-xs font-medium uppercase tracking-widest">Today's Sales</h3>
-            <svg className="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
@@ -331,7 +331,7 @@ export default function DashboardPage() {
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white/50 text-xs font-medium uppercase tracking-widest">Today's Profits</h3>
-            <svg className="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
@@ -357,13 +357,13 @@ export default function DashboardPage() {
         if (lowStockItems.length === 0 && outOfStockItems.length === 0) return null;
 
         return (
-          <div className="glass-card border-l-4 border-rose-400 p-5">
+          <div className="glass-card border-l-4 border-primary p-5">
             <div className="flex items-center gap-3 mb-4">
-              <svg className="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <h2 className="text-white font-semibold">Stock Alerts</h2>
-              <span className="ml-auto bg-rose-500/20 text-rose-300 px-2.5 py-0.5 rounded-full text-xs font-semibold">
+              <span className="ml-auto bg-primary/20 text-primary px-2.5 py-0.5 rounded-full text-xs font-semibold">
                 {lowStockItems.length + outOfStockItems.length}
               </span>
             </div>
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                 {lowStockItems.map((item: any) => (
                   <div key={item.id} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
                     <span className="text-white/70 text-sm">{item.name || 'Unknown Product'}</span>
-                    <span className="text-rose-300 text-xs font-semibold bg-rose-500/15 px-2 py-0.5 rounded-full">
+                    <span className="text-primary text-xs font-semibold bg-primary/15 px-2 py-0.5 rounded-full">
                       {item.stock_quantity} units
                     </span>
                   </div>
@@ -399,7 +399,7 @@ export default function DashboardPage() {
           <h2 className="text-white font-semibold mb-4">Sales This Week</h2>
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-rose-400"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
           ) : salesByDay.length === 0 ? (
             <div className="text-center py-8 text-white/30">
@@ -430,9 +430,9 @@ export default function DashboardPage() {
                   <Line
                     type="monotone"
                     dataKey="sales"
-                    stroke="#fb7185"
+                    stroke="#f9a8d4"
                     strokeWidth={2.5}
-                    dot={{ fill: '#fb7185', r: 4, strokeWidth: 0 }}
+                    dot={{ fill: '#f9a8d4', r: 4, strokeWidth: 0 }}
                     activeDot={{ r: 6, fill: '#f43f5e', stroke: 'rgba(255,255,255,0.3)', strokeWidth: 2 }}
                   />
                 </LineChart>
@@ -450,13 +450,13 @@ export default function DashboardPage() {
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white font-semibold">Top Products</h2>
-            <Link href="/dashboard/products" className="text-rose-400 hover:text-rose-300 text-xs font-medium transition-colors">
+            <Link href="/dashboard/products" className="text-primary hover:text-primary text-xs font-medium transition-colors">
               View All
             </Link>
           </div>
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-rose-400"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
           ) : topProducts.length === 0 ? (
             <div className="text-center py-8 text-white/30">
@@ -467,7 +467,7 @@ export default function DashboardPage() {
               {topProducts.map((product, index) => (
                 <div key={product.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                   <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400 text-xs font-bold">
+                    <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">
                       {index + 1}
                     </div>
                     <div>
@@ -475,7 +475,7 @@ export default function DashboardPage() {
                       <div className="text-xs text-white/40">{product.sales} units sold</div>
                     </div>
                   </div>
-                  <span className="text-rose-400 text-sm font-bold">{product.sales}</span>
+                  <span className="text-primary text-sm font-bold">{product.sales}</span>
                 </div>
               ))}
             </div>
@@ -487,7 +487,7 @@ export default function DashboardPage() {
       <div className="glass-card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-white font-semibold">Recent Orders</h2>
-          <Link href="/dashboard/orders" className="text-rose-400 hover:text-rose-300 text-xs font-medium flex items-center gap-1 transition-colors">
+          <Link href="/dashboard/orders" className="text-primary hover:text-primary text-xs font-medium flex items-center gap-1 transition-colors">
             View All
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -542,7 +542,7 @@ export default function DashboardPage() {
                       {order.date instanceof Date ? order.date.toLocaleDateString() : new Date(order.date).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-3">
-                      <Link href={`/dashboard/orders/${order.id}`} className="text-rose-400 hover:text-rose-300 text-xs font-medium transition-colors">
+                      <Link href={`/dashboard/orders/${order.id}`} className="text-primary hover:text-primary text-xs font-medium transition-colors">
                         View
                       </Link>
                     </td>

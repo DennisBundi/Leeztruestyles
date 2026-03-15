@@ -143,7 +143,7 @@ export default function SocialPlatformAnalytics() {
             setCustomDate(newDate);
             if (newDate) setDayOfWeek('all');
           }}
-          className="px-3 py-2 glass rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-rose-400/40"
+          className="px-3 py-2 glass rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         {customDate && (
           <button
@@ -167,7 +167,7 @@ export default function SocialPlatformAnalytics() {
               }}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 period === p
-                  ? 'bg-rose-500/30 text-white border border-rose-400/40'
+                  ? 'bg-primary/30 text-white border border-primary/40'
                   : 'glass text-white/60 hover:text-white hover:bg-white/15'
               }`}
             >
@@ -190,7 +190,7 @@ export default function SocialPlatformAnalytics() {
             disabled={customDate !== '' && d !== 'all'}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
               dayOfWeek === d
-                ? 'bg-rose-500/30 text-white border border-rose-400/40'
+                ? 'bg-primary/30 text-white border border-primary/40'
                 : customDate !== '' && d !== 'all'
                 ? 'glass text-white/20 cursor-not-allowed'
                 : 'glass text-white/60 hover:text-white hover:bg-white/15'
@@ -203,9 +203,9 @@ export default function SocialPlatformAnalytics() {
 
       {/* Error State */}
       {error && (
-        <div className="glass border-l-4 border-rose-400 rounded-lg p-4 mb-4">
+        <div className="glass border-l-4 border-primary rounded-lg p-4 mb-4">
           <div className="flex items-start">
-            <svg className="w-5 h-5 text-rose-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-primary mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div>
@@ -223,7 +223,7 @@ export default function SocialPlatformAnalytics() {
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-400"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <span className="ml-3 text-white/50">Loading statistics...</span>
         </div>
       )}
@@ -263,7 +263,7 @@ export default function SocialPlatformAnalytics() {
                   <p className="text-xs text-white/40 mt-1 uppercase tracking-wide">Social Platform</p>
                 </div>
                 <div className="pt-3 border-t border-white/10">
-                  <p className="text-2xl font-bold text-rose-400">{platform.count}</p>
+                  <p className="text-2xl font-bold text-primary">{platform.count}</p>
                   <p className="text-xs text-white/40 mt-1">Customers</p>
                 </div>
               </div>
@@ -296,8 +296,8 @@ export default function SocialPlatformAnalytics() {
                 />
                 <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={72}>
                   {chartData.map((entry, index) => {
-                    const colors = ['#f472b6', '#db2777', '#9d174d', '#831843'];
-                    return <Cell key={`cell-${index}`} fill={colors[index] || '#f472b6'} />;
+                    const colors = ['#f9a8d4', '#db2777', '#9d174d', '#831843'];
+                    return <Cell key={`cell-${index}`} fill={colors[index] || '#f9a8d4'} />;
                   })}
                 </Bar>
               </BarChart>
@@ -305,7 +305,7 @@ export default function SocialPlatformAnalytics() {
           </div>
 
           {/* Total Summary */}
-          <div className="mt-6 glass rounded-xl p-5 border-l-4 border-rose-400">
+          <div className="mt-6 glass rounded-xl p-5 border-l-4 border-primary">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-white/50 uppercase tracking-wide">Total Customers</p>
@@ -318,7 +318,7 @@ export default function SocialPlatformAnalytics() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-rose-400">{totalOrders}</p>
+                <p className="text-3xl font-bold text-primary">{totalOrders}</p>
                 <p className="text-xs text-white/40 mt-1">Total Orders</p>
               </div>
             </div>
