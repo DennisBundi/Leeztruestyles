@@ -222,7 +222,7 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
           ) : (
             <POSProductGrid
               products={filteredProducts}
-              isAdmin={userRole === 'admin'}
+              isAdmin={userRole === 'admin'} // Edit icon is admin-only; managers use /dashboard/products
               categories={categories}
               onProductsRefresh={fetchProducts}
               userRole={userRole}
