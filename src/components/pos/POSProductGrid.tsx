@@ -167,8 +167,9 @@ export default function POSProductGrid({
   };
 
   const handleEditProduct = () => {
+    const productToEdit = selectedProduct;
     setShowSizeColorModal(false);
-    setEditingProduct(selectedProduct);
+    setEditingProduct(productToEdit);
     setSelectedProduct(null);
   };
 
