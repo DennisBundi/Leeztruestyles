@@ -259,26 +259,29 @@ export default function OrdersPage() {
     let failCount = 0;
     const deletedIds: string[] = [];
 
-    for (const id of ids) {
-      try {
-        const response = await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
-        if (response.ok) {
-          deletedIds.push(id);
-        } else {
+    try {
+      for (const id of ids) {
+        try {
+          const response = await fetch(`/api/orders?id=${id}`, { method: 'DELETE' });
+          if (response.ok) {
+            deletedIds.push(id);
+          } else {
+            failCount++;
+          }
+        } catch {
           failCount++;
         }
-      } catch {
-        failCount++;
       }
-    }
 
-    setOrders((prev) => prev.filter((o) => !deletedIds.includes(o.id)));
-    setSelectedOrderIds(new Set());
-    setShowBulkDeleteModal(false);
-    setIsBulkDeleting(false);
+      setOrders((prev) => prev.filter((o) => !deletedIds.includes(o.id)));
+      setSelectedOrderIds(new Set());
+      setShowBulkDeleteModal(false);
 
-    if (failCount > 0) {
-      alert(`${deletedIds.length} order(s) deleted. ${failCount} failed — please try again.`);
+      if (failCount > 0) {
+        alert(`${deletedIds.length} order(s) deleted. ${failCount} failed — please try again.`);
+      }
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
