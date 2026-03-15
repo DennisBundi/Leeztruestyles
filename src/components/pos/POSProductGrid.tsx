@@ -14,6 +14,7 @@ interface POSProductGridProps {
   isAdmin?: boolean;
   categories?: Category[];
   onProductsRefresh?: () => void;
+  userRole?: string | null;
 }
 
 export default function POSProductGrid({
@@ -21,6 +22,7 @@ export default function POSProductGrid({
   isAdmin = false,
   categories = [],
   onProductsRefresh,
+  userRole,
 }: POSProductGridProps) {
   const addItem = useCartStore((state) => state.addItem);
   const items = useCartStore((state) => state.items);
@@ -189,7 +191,7 @@ export default function POSProductGrid({
         <ProductForm
           categories={categories}
           product={editingProduct}
-          userRole="admin"
+          userRole={userRole}
           onSuccess={() => {
             setEditingProduct(null);
             onProductsRefresh?.();
