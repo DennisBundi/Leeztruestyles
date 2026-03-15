@@ -17,6 +17,7 @@ interface Category {
   id: string;
   name: string;
   slug: string;
+  description: string | null;
 }
 
 export default function POSInterface({ employeeId, employeeCode }: POSInterfaceProps) {
@@ -219,7 +220,13 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
               </p>
             </div>
           ) : (
-            <POSProductGrid products={filteredProducts} />
+            <POSProductGrid
+              products={filteredProducts}
+              isAdmin={userRole === 'admin'}
+              categories={categories}
+              onProductsRefresh={fetchProducts}
+              userRole={userRole}
+            />
           )}
         </div>
 
