@@ -192,6 +192,7 @@ export default function POSProductGrid({
           categories={categories}
           product={editingProduct}
           userRole={userRole}
+          hideButton
           onSuccess={() => {
             setEditingProduct(null);
             onProductsRefresh?.();

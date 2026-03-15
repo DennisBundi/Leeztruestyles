@@ -11,6 +11,7 @@ interface ProductFormProps {
   onSuccess?: () => void;
   onClose?: () => void;
   userRole?: string | null;
+  hideButton?: boolean;
 }
 
 interface ImagePreview {
@@ -25,6 +26,7 @@ export default function ProductForm({
   onSuccess,
   onClose,
   userRole,
+  hideButton = false,
 }: ProductFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -801,13 +803,15 @@ export default function ProductForm({
 
   return (
     <>
-      <button
-        id="product-edit-button"
-        onClick={openModal}
-        className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark hover:shadow-lg transition-all hover:scale-105"
-      >
-        {product ? "✏️ Edit Product" : "+ Add Product"}
-      </button>
+      {!hideButton && (
+        <button
+          id="product-edit-button"
+          onClick={openModal}
+          className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary-dark hover:shadow-lg transition-all hover:scale-105"
+        >
+          {product ? "✏️ Edit Product" : "+ Add Product"}
+        </button>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-2 sm:p-4">
