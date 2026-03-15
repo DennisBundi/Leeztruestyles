@@ -454,6 +454,20 @@ export default function OrdersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                    {userRole === 'admin' && (
+                      <th className="px-4 py-3 w-10">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-primary focus:ring-primary"
+                          checked={filteredOrders.length > 0 && selectedOrderIds.size === filteredOrders.length}
+                          ref={(el) => {
+                            if (el) el.indeterminate = selectedOrderIds.size > 0 && selectedOrderIds.size < filteredOrders.length;
+                          }}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
+                          disabled={filteredOrders.length === 0}
+                        />
+                      </th>
+                    )}
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Order ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Customer</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Seller</th>
