@@ -211,26 +211,20 @@ export default async function HomePage() {
 
         <div className="container mx-auto px-4 text-center relative z-10 animate-slide-up w-full py-24 md:py-0">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
-            Welcome to{" "}
+            Dress Like You{" "}
             <span className="bg-white/20 px-4 py-2 rounded-2xl">
-              Leeztruestyles
+              Mean It
             </span>
           </h1>
           <p className="text-xl md:text-2xl mb-10 text-white/90 max-w-2xl mx-auto">
-            Discover the latest fashion trends. Style that speaks to you.
+            Bold, fresh styles for the woman who walks in and owns the room. Shop Nairobi&apos;s go-to fashion destination.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/products"
               className="inline-block px-8 py-4 bg-white text-primary rounded-none font-semibold hover:bg-gray-50 transition-all hover:scale-105 shadow-lg hover:shadow-xl"
             >
-              Shop Now
-            </Link>
-            <Link
-              href="/about"
-              className="inline-block px-8 py-4 bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 rounded-none font-semibold hover:bg-white/20 transition-all"
-            >
-              Learn More
+              Shop the Collection
             </Link>
           </div>
         </div>
@@ -257,10 +251,10 @@ export default async function HomePage() {
               NEW ARRIVALS
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
-              Just In
+              Fresh Drops
             </h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              Discover our latest additions. Fresh styles added just for you.
+              New styles every week. Be the first to wear what everyone else wishes they had.
             </p>
           </div>
 
@@ -272,7 +266,7 @@ export default async function HomePage() {
                   href="/products"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark hover:shadow-xl transition-all hover:scale-105"
                 >
-                  View All Products
+                  Shop New Arrivals
                   <svg
                     className="w-5 h-5"
                     fill="none"
@@ -363,11 +357,10 @@ export default async function HomePage() {
               FLASH SALE
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
-              Limited Time Offers
+              Snag It Before It&apos;s Gone
             </h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-6">
-              Don't miss out on these amazing deals! Limited quantities
-              available.
+              These prices won&apos;t last — and neither will the stock.
             </p>
 
             {flashSaleWithStock.length > 0 &&
@@ -414,10 +407,10 @@ export default async function HomePage() {
       <section className="container mx-auto px-4 py-16 md:py-24">
         <div className="text-center mb-12 animate-fade-in">
           <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
-            Featured Products
+            Fan Favourites
           </h2>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            Curated collection of our most popular items
+            The pieces our customers keep coming back for.
           </p>
         </div>
 
@@ -428,7 +421,7 @@ export default async function HomePage() {
             href="/products"
             className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-none font-semibold hover:bg-primary-dark hover:shadow-xl transition-all hover:scale-105"
           >
-            View All Products
+            Shop Everything
             <svg
               className="w-5 h-5"
               fill="none"
