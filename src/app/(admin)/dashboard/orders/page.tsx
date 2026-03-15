@@ -484,7 +484,7 @@ export default function OrdersPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center">
+                  <td colSpan={userRole === 'admin' ? 10 : userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                       <span className="ml-2 text-xs text-gray-600">Loading orders...</span>
@@ -493,7 +493,7 @@ export default function OrdersPage() {
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
+                  <td colSpan={userRole === 'admin' ? 10 : userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
                     <div className="text-red-500">
                       <svg className="w-10 h-10 mx-auto mb-3 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -511,7 +511,7 @@ export default function OrdersPage() {
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
+                  <td colSpan={userRole === 'admin' ? 10 : userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
                     <div className="text-gray-500">
                       <svg className="w-10 h-10 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -527,7 +527,21 @@ export default function OrdersPage() {
                 </tr>
               ) : (
                 filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                <tr
+                  key={order.id}
+                  className={`hover:bg-gray-50 transition-colors ${selectedOrderIds.has(order.id) ? 'bg-red-50' : ''}`}
+                >
+                  {userRole === 'admin' && (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                        checked={selectedOrderIds.has(order.id)}
+                        onChange={(e) => handleSelectOrder(order.id, e.target.checked)}
+                        disabled={isBulkDeleting}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="font-mono text-xs font-semibold text-gray-900">
                       {order.order_number || order.id}
