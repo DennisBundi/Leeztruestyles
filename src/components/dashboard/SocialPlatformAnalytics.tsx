@@ -294,10 +294,10 @@ export default function SocialPlatformAnalytics() {
                   }}
                   labelStyle={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600, marginBottom: '4px' }}
                 />
-                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={72}>
                   {chartData.map((entry, index) => {
-                    const colors = ['#f472b6', '#f9a8d4', '#fbcfe8', '#fce7f3'];
-                    return <Cell key={`cell-${index}`} fill={colors[index] || '#f9a8d4'} />;
+                    const colors = ['#f472b6', '#db2777', '#9d174d', '#831843'];
+                    return <Cell key={`cell-${index}`} fill={colors[index] || '#f472b6'} />;
                   })}
                 </Bar>
               </BarChart>
