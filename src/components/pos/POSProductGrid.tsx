@@ -6,12 +6,22 @@ import { useCartStore } from '@/store/cartStore';
 import type { Product } from '@/types';
 import { useCartAnimationContext } from '@/components/cart/CartAnimationProvider';
 import ProductSizeColorModal from './ProductSizeColorModal';
+import type { Category } from '@/types';
+import ProductForm from '@/components/admin/ProductForm';
 
 interface POSProductGridProps {
   products: (Product & { available_stock?: number })[];
+  isAdmin?: boolean;
+  categories?: Category[];
+  onProductsRefresh?: () => void;
 }
 
-export default function POSProductGrid({ products }: POSProductGridProps) {
+export default function POSProductGrid({
+  products,
+  isAdmin = false,
+  categories = [],
+  onProductsRefresh,
+}: POSProductGridProps) {
   const addItem = useCartStore((state) => state.addItem);
   const items = useCartStore((state) => state.items);
   const { triggerAnimation } = useCartAnimationContext();
@@ -19,6 +29,7 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
   const [showSizeColorModal, setShowSizeColorModal] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<Array<{ size: string; available: number }>>([]);
   const [processingProductId, setProcessingProductId] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Filter out products with 0 stock - only show products with stock > 0
   const availableProducts = products.filter((product) => {
@@ -153,6 +164,12 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
     setSelectedProduct(null);
   };
 
+  const handleEditProduct = () => {
+    setShowSizeColorModal(false);
+    setEditingProduct(selectedProduct);
+    setSelectedProduct(null);
+  };
+
   return (
     <>
       <ProductSizeColorModal
@@ -165,7 +182,21 @@ export default function POSProductGrid({ products }: POSProductGridProps) {
         product={selectedProduct}
         availableSizes={availableSizes}
         availableColors={(selectedProduct as any)?.colors || []}
+        isAdmin={isAdmin}
+        onEditProduct={handleEditProduct}
       />
+      {editingProduct && (
+        <ProductForm
+          categories={categories}
+          product={editingProduct}
+          userRole="admin"
+          onSuccess={() => {
+            setEditingProduct(null);
+            onProductsRefresh?.();
+          }}
+          onClose={() => setEditingProduct(null)}
+        />
+      )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {availableProducts.map((product) => {
           return (
