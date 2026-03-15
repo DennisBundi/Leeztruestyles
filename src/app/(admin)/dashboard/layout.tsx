@@ -26,7 +26,7 @@ export default async function AdminLayout({
   if (!hasSupabase) {
     return (
       <div className="min-h-screen relative">
-        <div className="fixed inset-0 bg-gradient-to-br from-rose-900 via-pink-800 to-purple-900 -z-10" />
+        <div className="fixed inset-0 bg-gradient-to-br from-fuchsia-950 via-purple-950 to-violet-950 -z-10" />
         <AdminNav />
         <div className="ml-0 lg:ml-64 transition-all duration-300 pt-16 lg:pt-0">
           <main className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
@@ -137,7 +137,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen relative">
       {/* Fixed gradient background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-rose-900 via-pink-800 to-purple-900 -z-10" />
+      <div className="fixed inset-0 bg-gradient-to-br from-fuchsia-950 via-purple-950 to-violet-950 -z-10" />
       <AdminNav userRole={userRole} employee={employee} />
       <div className="ml-0 lg:ml-64 transition-all duration-300">
         <main className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
