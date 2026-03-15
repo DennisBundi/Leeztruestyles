@@ -147,6 +147,13 @@ export default function CustomProductModal({
       newErrors.social_platform = "Social platform is required";
     }
 
+    const uploadedImages = imagePreviews.filter(
+      (preview) => preview.isUploaded || !hasSupabase
+    );
+    if (uploadedImages.length === 0) {
+      newErrors.images = "At least one product image is required";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -346,7 +353,7 @@ export default function CustomProductModal({
           {/* Image Upload */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Product Images (Optional)
+              Product Image <span className="text-red-500">*</span>
             </label>
             <input
               ref={fileInputRef}
@@ -360,7 +367,9 @@ export default function CustomProductModal({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingImages}
-              className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full px-4 py-3 border-2 border-dashed rounded-xl hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                errors.images ? "border-red-300" : "border-gray-300"
+              }`}
             >
               {uploadingImages ? (
                 <>
@@ -444,6 +453,9 @@ export default function CustomProductModal({
                   </div>
                 ))}
               </div>
+            )}
+            {errors.images && (
+              <p className="text-red-500 text-xs mt-1">{errors.images}</p>
             )}
           </div>
 
