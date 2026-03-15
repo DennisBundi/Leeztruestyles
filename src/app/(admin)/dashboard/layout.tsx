@@ -28,7 +28,7 @@ export default async function AdminLayout({
       <div className="min-h-screen relative">
         <div className="fixed inset-0 bg-gradient-to-br from-rose-950 via-pink-900 to-purple-950 -z-10" />
         <AdminNav />
-        <div className="lg:ml-64 transition-all duration-300 min-h-[calc(100vh-4rem)]">
+        <div className="ml-0 lg:ml-64 transition-all duration-300 pt-16 lg:pt-0">
           <main className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
             {/* Preview Mode Banner */}
             <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4 animate-fade-in">
@@ -139,7 +139,7 @@ export default async function AdminLayout({
       {/* Fixed gradient background */}
       <div className="fixed inset-0 bg-gradient-to-br from-rose-950 via-pink-900 to-purple-950 -z-10" />
       <AdminNav userRole={userRole} employee={employee} />
-      <div className="ml-20 lg:ml-64 transition-all duration-300 min-h-[calc(100vh-4rem)]">
+      <div className="ml-0 lg:ml-64 transition-all duration-300">
         <main className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
           {children}
         </main>
