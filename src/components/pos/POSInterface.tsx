@@ -11,6 +11,7 @@ import CartAnimationProvider from '@/components/cart/CartAnimationProvider';
 interface POSInterfaceProps {
   employeeId?: string;
   employeeCode?: string;
+  userRole?: 'admin' | 'manager' | 'seller' | null;
 }
 
 interface Category {
@@ -20,7 +21,7 @@ interface Category {
   description: string | null;
 }
 
-export default function POSInterface({ employeeId, employeeCode }: POSInterfaceProps) {
+export default function POSInterface({ employeeId, employeeCode, userRole: initialUserRole }: POSInterfaceProps) {
   const [products, setProducts] = useState<(Product & { available_stock?: number })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +29,7 @@ export default function POSInterface({ employeeId, employeeCode }: POSInterfaceP
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showCustomProductModal, setShowCustomProductModal] = useState(false);
-  const [userRole, setUserRole] = useState<'admin' | 'manager' | 'seller' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'manager' | 'seller' | null>(initialUserRole ?? null);
   const addCustomItem = useCartStore((state) => state.addCustomItem);
 
   const fetchProducts = async () => {

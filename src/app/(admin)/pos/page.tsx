@@ -61,7 +61,7 @@ export default async function POSPage() {
           </div>
         </div>
       </div>
-      <POSInterface employeeId={employee.id} employeeCode={employee.employee_code} />
+      <POSInterface employeeId={employee.id} employeeCode={employee.employee_code} userRole={userRole} />
     </div>
   );
 }
