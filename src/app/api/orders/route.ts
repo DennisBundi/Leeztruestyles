@@ -209,6 +209,13 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) {
+      return NextResponse.json(
+        { error: 'Invalid order ID format' },
+        { status: 400 }
+      );
+    }
+
     // Use admin client to ensure deletion works (order_items will be deleted via CASCADE)
     const adminClient = createAdminClient();
 

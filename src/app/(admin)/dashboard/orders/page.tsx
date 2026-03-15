@@ -187,7 +187,7 @@ export default function OrdersPage() {
   // Clear selection when filters change
   useEffect(() => {
     setSelectedOrderIds(new Set());
-  }, [searchQuery, selectedStatus, selectedType, dateFilter]);
+  }, [searchQuery, selectedStatus, selectedType, dateFilter, customStartDate, customEndDate]);
 
   // Filter orders based on search, status, and type (for table display)
   const filteredOrders = useMemo(() => {
