@@ -114,52 +114,52 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Profile</h1>
-          <p className="text-gray-600">Manage your account information</p>
+          <h1 className="text-2xl font-bold text-white mb-2">Profile</h1>
+          <p className="text-white/60">Manage your account information</p>
         </div>
       </div>
 
       {/* Profile Form */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+      <div className="glass-card p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email (Read-only) */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Email Address
             </label>
             <input
               type="email"
               value={user?.email || ''}
               disabled
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white/50 cursor-not-allowed placeholder:text-white/30"
             />
-            <p className="mt-1 text-xs text-gray-400">Email cannot be changed</p>
+            <p className="mt-1 text-xs text-white/40">Email cannot be changed</p>
           </div>
 
           {/* Full Name */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Full Name
             </label>
             <input
               type="text"
               value={profile?.full_name || ''}
               onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15 placeholder:text-white/30"
               placeholder="Enter your full name"
             />
           </div>
 
           {/* Phone */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Phone Number
             </label>
             <input
               type="tel"
               value={profile?.phone || ''}
               onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15 placeholder:text-white/30"
               placeholder="Enter your phone number"
             />
           </div>
@@ -167,33 +167,33 @@ export default function ProfilePage() {
           {/* Employee Code (Read-only if exists) */}
           {employee && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-white/70 mb-2">
                 Employee Code
               </label>
               <input
                 type="text"
                 value={employee.employee_code}
                 disabled
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white/50 cursor-not-allowed placeholder:text-white/30"
               />
-              <p className="mt-1 text-xs text-gray-400">Employee code cannot be changed</p>
+              <p className="mt-1 text-xs text-white/40">Employee code cannot be changed</p>
             </div>
           )}
 
           {/* Role (Read-only if employee) */}
           {employee && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-white/70 mb-2">
                 Role
               </label>
               <input
                 type="text"
-                value={employee.role === 'admin' ? 'Administrator' : 
-                       employee.role === 'manager' ? 'Manager' : 
-                       employee.role === 'seller' ? 'Sales Person' : 
+                value={employee.role === 'admin' ? 'Administrator' :
+                       employee.role === 'manager' ? 'Manager' :
+                       employee.role === 'seller' ? 'Sales Person' :
                        employee.role}
                 disabled
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed capitalize"
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white/50 cursor-not-allowed capitalize placeholder:text-white/30"
               />
             </div>
           )}
@@ -201,9 +201,9 @@ export default function ProfilePage() {
           {/* Message */}
           {message && (
             <div className={`p-4 rounded-xl ${
-              message.type === 'success' 
-                ? 'bg-green-50 text-green-700 border border-green-200' 
-                : 'bg-red-50 text-red-700 border border-red-200'
+              message.type === 'success'
+                ? 'bg-green-500/20 text-green-300 border border-white/10'
+                : 'bg-red-500/20 text-red-300 border border-white/10'
             }`}>
               {message.text}
             </div>
@@ -224,9 +224,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-
-
-
-
-
