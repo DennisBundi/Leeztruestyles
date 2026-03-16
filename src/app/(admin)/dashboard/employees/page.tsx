@@ -186,8 +186,8 @@ export default function EmployeesPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex-shrink-0">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Employees</h1>
-          <p className="text-gray-600">Manage staff and track sales performance</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Employees</h1>
+          <p className="text-white/60">Manage staff and track sales performance</p>
         </div>
         <div className="flex flex-wrap gap-3 items-center">
           <button
@@ -219,7 +219,7 @@ export default function EmployeesPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-            <p className="text-gray-600">Loading employees...</p>
+            <p className="text-white/60">Loading employees...</p>
           </div>
         </div>
       ) : (
@@ -227,21 +227,21 @@ export default function EmployeesPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-              <div className="text-sm text-gray-600 mb-2">Total Employees</div>
-              <div className="text-3xl font-bold text-gray-900">{employees.length}</div>
+            <div className="glass-card p-6">
+              <div className="text-sm text-white/60 mb-2">Total Employees</div>
+              <div className="text-3xl font-bold text-white">{employees.length}</div>
               {filteredEmployees.length !== employees.length && (
-                <div className="text-xs text-gray-500 mt-1">Showing {filteredEmployees.length} filtered</div>
+                <div className="text-xs text-white/50 mt-1">Showing {filteredEmployees.length} filtered</div>
               )}
             </div>
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-              <div className="text-sm text-gray-600 mb-2">Total Sales</div>
+            <div className="glass-card p-6">
+              <div className="text-sm text-white/60 mb-2">Total Sales</div>
               <div className="text-3xl font-bold text-primary">
                 KES {(filteredEmployees.reduce((sum, e) => sum + (e.total_sales || 0), 0) || 0).toLocaleString()}
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-              <div className="text-sm text-gray-600 mb-2">Total Commission</div>
+            <div className="glass-card p-6">
+              <div className="text-sm text-white/60 mb-2">Total Commission</div>
               <div className="text-3xl font-bold text-green-600">
                 KES {(filteredEmployees.reduce((sum, e) => sum + (e.total_commission || 0), 0) || 0).toLocaleString()}
               </div>
@@ -249,19 +249,19 @@ export default function EmployeesPage() {
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="glass-card p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <input
                 type="text"
                 placeholder="Search by name, email, or employee code..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="flex-1 px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15 placeholder:text-white/30"
               />
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-                className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
               >
                 <option value="all">All Roles</option>
                 <option value="admin">Admin</option>
@@ -270,25 +270,25 @@ export default function EmployeesPage() {
               </select>
             </div>
             {filteredEmployees.length !== employees.length && (
-              <div className="mt-4 text-sm text-gray-600">
+              <div className="mt-4 text-sm text-white/60">
                 Showing {filteredEmployees.length} of {employees.length} employees
               </div>
             )}
           </div>
 
           {/* Employees Table */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="glass-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-black/20 border-b border-white/10">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Employee Code</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Email</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Role</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Sales</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Revenue</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Employee Code</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Name</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Email</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Role</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Sales</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Revenue</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
                       <div className="flex items-center justify-center gap-2">
                         <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -296,17 +296,17 @@ export default function EmployeesPage() {
                         Commission Earned
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Joined</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Last Payment</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Actions</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Joined</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Last Payment</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-white/10">
                   {filteredEmployees.length === 0 ? (
                     <tr>
                       <td colSpan={10} className="px-6 py-12 text-center">
-                        <div className="text-gray-500">
-                          <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-white/50">
+                          <svg className="w-12 h-12 mx-auto mb-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
                           <p className="font-medium">No employees found</p>
@@ -316,32 +316,32 @@ export default function EmployeesPage() {
                     </tr>
                   ) : (
                     filteredEmployees.map((employee) => (
-                      <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={employee.id} className="hover:bg-white/5 transition-colors">
                         <td className="px-6 py-4">
-                          <div className="font-mono text-sm font-semibold text-gray-900">
+                          <div className="font-mono text-sm font-semibold text-white">
                             {employee.employee_code}
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900">{employee.name}</div>
+                          <div className="font-medium text-white">{employee.name}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-600">{employee.email}</div>
+                          <div className="text-sm text-white/60">{employee.email}</div>
                         </td>
                         <td className="px-6 py-4">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-semibold ${employee.role === 'admin'
-                              ? 'bg-purple-100 text-purple-700'
+                              ? 'bg-purple-500/20 text-purple-300'
                               : employee.role === 'manager'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-green-100 text-green-700'
+                                ? 'bg-blue-500/20 text-blue-300'
+                                : 'bg-green-500/20 text-green-300'
                               }`}
                           >
                             {employee.role}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className="font-semibold text-gray-900">{employee.sales_count}</span>
+                          <span className="font-semibold text-white">{employee.sales_count}</span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="font-semibold text-primary">
@@ -350,14 +350,14 @@ export default function EmployeesPage() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           {employee.role === 'admin' ? (
-                            <span className="font-semibold text-base text-gray-400">N/A</span>
+                            <span className="font-semibold text-base text-white/40">N/A</span>
                           ) : (
                             <div className="flex flex-col items-center">
                               <span className="font-semibold text-base text-green-600">
                                 KES {(employee.total_commission || 0).toLocaleString()}
                               </span>
                               {employee.total_commission > 0 && employee.total_sales > 0 && (
-                                <span className="text-xs text-gray-500 mt-0.5">
+                                <span className="text-xs text-white/50 mt-0.5">
                                   {((employee.total_commission / employee.total_sales) * 100).toFixed(1)}% of sales
                                 </span>
                               )}
@@ -365,7 +365,7 @@ export default function EmployeesPage() {
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-white/60">
                             {typeof window !== 'undefined'
                               ? new Date(employee.created_at).toLocaleDateString()
                               : new Date(employee.created_at).toISOString().split('T')[0]
@@ -375,12 +375,12 @@ export default function EmployeesPage() {
                         <td className="px-6 py-4">
                           {employee.role === 'seller' ? (
                             employee.last_commission_payment_date ? (
-                              <div className="text-sm text-gray-600">
-                                {typeof window !== 'undefined' 
+                              <div className="text-sm text-white/60">
+                                {typeof window !== 'undefined'
                                   ? new Date(employee.last_commission_payment_date).toLocaleDateString()
                                   : new Date(employee.last_commission_payment_date).toISOString().split('T')[0]
                                 }
-                                <div className="text-xs text-gray-500 mt-0.5">
+                                <div className="text-xs text-white/50 mt-0.5">
                                   {typeof window !== 'undefined'
                                     ? new Date(employee.last_commission_payment_date).toLocaleTimeString()
                                     : new Date(employee.last_commission_payment_date).toISOString().split('T')[1]?.split('.')[0]
@@ -388,15 +388,15 @@ export default function EmployeesPage() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="text-sm text-gray-400 italic">Never</div>
+                              <div className="text-sm text-white/40 italic">Never</div>
                             )
                           ) : (
-                            <div className="text-sm text-gray-400">N/A</div>
+                            <div className="text-sm text-white/40">N/A</div>
                           )}
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-3">
-                            <button 
+                            <button
                               onClick={() => setDeleteModal({ show: true, employee })}
                               className="text-red-600 hover:text-red-700 font-medium text-sm transition-colors"
                             >
@@ -415,12 +415,12 @@ export default function EmployeesPage() {
           {/* Add Employee Modal */}
           {showAddModal && (
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+              <div className="glass-strong max-w-md w-full p-6 animate-scale-in">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Add New Employee</h3>
+                  <h3 className="text-2xl font-bold text-white">Add New Employee</h3>
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-white/40 hover:text-white/60"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -430,7 +430,7 @@ export default function EmployeesPage() {
 
                 <form onSubmit={handleAddEmployee} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-white/70 mb-2">
                       User Email *
                     </label>
                     <input
@@ -439,22 +439,22 @@ export default function EmployeesPage() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="user@example.com"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15 placeholder:text-white/30"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-white/50 mt-1">
                       The user must already have an account
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-white/70 mb-2">
                       Role *
                     </label>
                     <select
                       required
                       value={formData.role}
                       onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
                     >
                       <option value="salesperson">Salesperson</option>
                       <option value="manager">Manager</option>
@@ -467,7 +467,7 @@ export default function EmployeesPage() {
                       type="button"
                       onClick={() => setShowAddModal(false)}
                       disabled={submitting}
-                      className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      className="flex-1 px-4 py-3 border border-white/20 text-white/70 rounded-xl font-semibold hover:bg-white/10 transition-colors disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -497,16 +497,16 @@ export default function EmployeesPage() {
           {/* Success Modal */}
           {successModal && (
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-scale-in">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="glass-strong max-w-md w-full p-8 text-center animate-scale-in">
+                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                <h3 className="text-2xl font-bold text-white mb-2">
                   Employee Added!
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-white/60">
                   The employee has been successfully added to your team.
                 </p>
               </div>
@@ -516,12 +516,12 @@ export default function EmployeesPage() {
           {/* Mark All Paid Confirmation Modal */}
           {markAllPaidModal && (
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+              <div className="glass-strong max-w-md w-full p-6 animate-scale-in">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Mark All Commissions Paid</h3>
+                  <h3 className="text-2xl font-bold text-white">Mark All Commissions Paid</h3>
                   <button
                     onClick={() => setMarkAllPaidModal(false)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-white/40 hover:text-white/60"
                     disabled={markingAllPaid}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -531,19 +531,19 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="mb-6">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <p className="text-gray-700 mb-2 text-center">
+                  <p className="text-white/70 mb-2 text-center">
                     Mark commissions as paid for <strong>all sellers</strong>?
                   </p>
-                  <p className="text-sm text-gray-600 text-center mb-3">
+                  <p className="text-sm text-white/60 text-center mb-3">
                     This will update the last payment date for all sales persons and reset their dashboards to show only current week orders.
                   </p>
-                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800 text-center">
+                  <div className="mt-3 p-3 bg-black/20 border border-white/10 rounded-lg">
+                    <p className="text-sm text-blue-300 text-center">
                       This action will affect {employees.filter(e => e.role === 'seller').length} seller(s)
                     </p>
                   </div>
@@ -554,7 +554,7 @@ export default function EmployeesPage() {
                     type="button"
                     onClick={() => setMarkAllPaidModal(false)}
                     disabled={markingAllPaid}
-                    className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-3 border border-white/20 text-white/70 rounded-xl font-semibold hover:bg-white/10 transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -584,12 +584,12 @@ export default function EmployeesPage() {
           {/* Delete Confirmation Modal */}
           {deleteModal.show && deleteModal.employee && (
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+              <div className="glass-strong max-w-md w-full p-6 animate-scale-in">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Delete Employee</h3>
+                  <h3 className="text-2xl font-bold text-white">Delete Employee</h3>
                   <button
                     onClick={() => setDeleteModal({ show: false, employee: null })}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-white/40 hover:text-white/60"
                     disabled={deleting}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -599,20 +599,20 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="mb-6">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </div>
-                  <p className="text-gray-700 mb-2">
+                  <p className="text-white/70 mb-2">
                     Are you sure you want to delete <strong>{deleteModal.employee.name}</strong>?
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-white/60">
                     This will permanently delete the employee record and their user account. This action cannot be undone.
                   </p>
                   {deleteModal.employee.sales_count > 0 && (
-                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-sm text-yellow-800">
+                    <div className="mt-3 p-3 bg-yellow-500/20 border border-yellow-300/20 rounded-lg">
+                      <p className="text-sm text-yellow-300">
                         ⚠️ This employee has {deleteModal.employee.sales_count} sale(s). The employee will be deleted but sales records will remain.
                       </p>
                     </div>
@@ -624,7 +624,7 @@ export default function EmployeesPage() {
                     type="button"
                     onClick={() => setDeleteModal({ show: false, employee: null })}
                     disabled={deleting}
-                    className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-3 border border-white/20 text-white/70 rounded-xl font-semibold hover:bg-white/10 transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
