@@ -145,10 +145,10 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
         {/* Product Selection */}
         <div className="lg:col-span-2 space-y-4">
           {/* Search and Filters */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="glass-card rounded-2xl shadow-lg p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -158,14 +158,14 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
                   placeholder="Search products by name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  className="w-full pl-12 pr-4 py-4 text-lg bg-white/10 border-2 border-white/20 text-white placeholder:text-white/30 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all"
                   autoFocus
                 />
               </div>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+                className="px-4 py-4 bg-white/10 border-2 border-white/20 text-white rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all font-medium"
               >
                 <option value="all">All Categories</option>
                 {categories.map((cat) => (
@@ -190,17 +190,17 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
 
           {/* Products Grid */}
           {loading ? (
-            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+            <div className="glass-card rounded-2xl shadow-lg p-12 text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading products from inventory...</p>
+              <p className="text-white/60">Loading products from inventory...</p>
             </div>
           ) : error ? (
-            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+            <div className="glass-card rounded-2xl shadow-lg p-12 text-center">
               <svg className="w-16 h-16 text-red-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-red-600 text-lg font-semibold mb-2">Error loading products</p>
-              <p className="text-gray-600 text-sm mb-4">{error}</p>
+              <p className="text-red-400 text-lg font-semibold mb-2">Error loading products</p>
+              <p className="text-white/60 text-sm mb-4">{error}</p>
               <button
                 onClick={fetchProducts}
                 className="px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors"
@@ -209,14 +209,14 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
               </button>
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="glass-card rounded-2xl shadow-lg p-12 text-center">
+              <svg className="w-16 h-16 text-white/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <p className="text-gray-600 text-lg">No products found</p>
-              <p className="text-gray-400 text-sm mt-2">
-                {searchQuery || selectedCategory !== 'all' 
-                  ? 'Try a different search term or category' 
+              <p className="text-white/60 text-lg">No products found</p>
+              <p className="text-white/40 text-sm mt-2">
+                {searchQuery || selectedCategory !== 'all'
+                  ? 'Try a different search term or category'
                   : 'No products available in inventory'}
               </p>
             </div>

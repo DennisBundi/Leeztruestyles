@@ -70,14 +70,14 @@ export default function ProductSizeColorModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-300">
+      <div className="glass-strong rounded-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-300">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Select Options</h2>
+          <h2 className="text-xl font-bold text-white">Select Options</h2>
           <div className="flex items-center gap-2">
             {isAdmin && onEditProduct && (
               <button
                 onClick={onEditProduct}
-                className="text-gray-400 hover:text-primary transition-colors"
+                className="text-white/40 hover:text-primary transition-colors"
                 title="Edit product"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,7 +92,7 @@ export default function ProductSizeColorModal({
             )}
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-white/40 hover:text-white/70 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -103,7 +103,7 @@ export default function ProductSizeColorModal({
 
         {/* Product Preview */}
         <div className="flex gap-4 mb-6">
-          <div className="relative w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+          <div className="relative w-20 h-20 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
             {product.images && product.images.length > 0 ? (
               <Image
                 src={product.images[0]}
@@ -113,7 +113,7 @@ export default function ProductSizeColorModal({
                 sizes="80px"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
+              <div className="w-full h-full flex items-center justify-center text-white/40">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
@@ -121,7 +121,7 @@ export default function ProductSizeColorModal({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 mb-1">{product.name}</h3>
+            <h3 className="font-semibold text-white mb-1">{product.name}</h3>
             <p className="text-lg font-bold text-primary">
               KES {(product.price || 0).toLocaleString()}
             </p>
@@ -131,7 +131,7 @@ export default function ProductSizeColorModal({
         {/* Size Selection */}
         {availableSizes.length > 0 ? (
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
+            <label className="block text-sm font-semibold text-white/70 mb-3">
               Size <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -148,13 +148,13 @@ export default function ProductSizeColorModal({
                       isSelected
                         ? "border-primary bg-primary/10 text-primary"
                         : isAvailable
-                        ? "border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                        : "border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed opacity-50"
+                        ? "border-white/20 text-white/70 hover:border-white/40 hover:bg-white/10"
+                        : "border-white/10 text-white/20 bg-white/5 cursor-not-allowed opacity-50"
                     }`}
                   >
                     {sizeOption.size}
                     <div className={`text-xs mt-0.5 ${
-                      isAvailable ? "text-gray-500" : "text-gray-400"
+                      isAvailable ? "text-white/50" : "text-white/30"
                     }`}>
                       ({sizeOption.available})
                     </div>
@@ -168,7 +168,7 @@ export default function ProductSizeColorModal({
         {/* Color Selection */}
         {productColors && productColors.length > 0 && (
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
+            <label className="block text-sm font-semibold text-white/70 mb-3">
               Color
             </label>
             <div className="flex flex-wrap gap-2">
@@ -188,11 +188,11 @@ export default function ProductSizeColorModal({
                     className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm transition-all flex items-center gap-2 ${
                       isSelected
                         ? "border-primary bg-primary/10 text-primary"
-                        : "border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                        : "border-white/20 text-white/70 hover:border-white/40 hover:bg-white/10"
                     }`}
                   >
                     <div
-                      className="w-5 h-5 rounded-full border border-gray-300"
+                      className="w-5 h-5 rounded-full border border-white/20"
                       style={{ backgroundColor: colorHex }}
                     />
                     {color}
@@ -208,7 +208,7 @@ export default function ProductSizeColorModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-3 border-2 border-white/20 text-white/70 hover:bg-white/10 rounded-xl font-semibold transition-colors"
           >
             Cancel
           </button>
