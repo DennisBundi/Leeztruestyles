@@ -325,13 +325,13 @@ export default function InventoryPage() {
           {(lowStockItems.length > 0 || outOfStockItems.length > 0) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {lowStockItems.length > 0 && (
-                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6">
+                <div className="bg-yellow-400/10 border-2 border-yellow-400/30 rounded-2xl p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    <h2 className="text-xl font-bold text-yellow-800">Low Stock Alert</h2>
-                    <span className="ml-auto bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">
+                    <h2 className="text-xl font-bold text-yellow-300">Low Stock Alert</h2>
+                    <span className="ml-auto bg-yellow-400/20 text-yellow-300 px-3 py-1 rounded-full text-sm font-bold">
                       {lowStockItems.length}
                     </span>
                   </div>
@@ -340,13 +340,13 @@ export default function InventoryPage() {
               )}
 
               {outOfStockItems.length > 0 && (
-                <div className="bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl p-6">
+                <div className="bg-red-500/10 border-2 border-red-400/30 rounded-2xl p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <h2 className="text-xl font-bold text-red-800">Out of Stock</h2>
-                    <span className="ml-auto bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-bold">
+                    <h2 className="text-xl font-bold text-red-300">Out of Stock</h2>
+                    <span className="ml-auto bg-red-400/20 text-red-300 px-3 py-1 rounded-full text-sm font-bold">
                       {outOfStockItems.length}
                     </span>
                   </div>
@@ -395,7 +395,7 @@ export default function InventoryPage() {
           </div>
 
           {/* Inventory Table */}
-          <div className="glass-card overflow-hidden">
+          <div className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-white/10 bg-black/20">
               <h2 className="text-xl font-bold text-white">All Products</h2>
             </div>

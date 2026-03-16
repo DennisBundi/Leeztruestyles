@@ -165,7 +165,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Transactions Table */}
-      <div className="glass-card overflow-hidden">
+      <div className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-black/20 border-b border-white/10">

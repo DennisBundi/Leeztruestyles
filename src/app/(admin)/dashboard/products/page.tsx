@@ -558,7 +558,7 @@ export default function ProductsPage() {
       </div>
 
       {/* Products Table - Desktop Only */}
-      <div className="glass-card overflow-hidden hidden md:block">
+      <div className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-black/20 border-b border-white/10">
@@ -647,7 +647,7 @@ export default function ProductsPage() {
                       key={product.id}
                       className={`transition-colors ${
                         userRole === "admin" && !hasBuyingPrice
-                          ? "bg-yellow-50 hover:bg-yellow-100 border-l-4 border-yellow-400"
+                          ? "bg-yellow-400/10 hover:bg-yellow-400/15 border-l-4 border-yellow-400"
                           : "hover:bg-white/5"
                       }`}
                     >
@@ -859,7 +859,7 @@ export default function ProductsPage() {
                 key={product.id}
                 className={`glass-card overflow-hidden ${
                   userRole === "admin" && !hasBuyingPrice
-                    ? "border-l-4 border-l-yellow-400 bg-yellow-50"
+                    ? "border-l-4 border-l-yellow-400 bg-yellow-400/10"
                     : ""
                 }`}
               >
