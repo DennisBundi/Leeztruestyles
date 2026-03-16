@@ -118,8 +118,8 @@ export default function InventoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Inventory Management</h1>
-          <p className="text-gray-600">Monitor and manage product stock levels</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Inventory Management</h1>
+          <p className="text-white/60">Monitor and manage product stock levels</p>
         </div>
         <Link
           href="/dashboard/products"
@@ -132,15 +132,15 @@ export default function InventoryPage() {
       {/* Update Inventory Modal */}
       {updateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 relative">
+          <div className="glass-strong w-full max-w-4xl p-6 relative">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Update Inventory</h2>
-                <p className="text-sm text-gray-600">Product: {selectedProductName}</p>
+                <h2 className="text-xl font-bold text-white">Update Inventory</h2>
+                <p className="text-sm text-white/60">Product: {selectedProductName}</p>
               </div>
               <button
                 onClick={() => setUpdateOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-white/40 hover:text-white/60"
               >
                 ✕
               </button>
@@ -154,7 +154,7 @@ export default function InventoryPage() {
 
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               <div className="grid grid-cols-1 gap-3">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-white/70 mb-2">
                   General Stock (inventory)
                 </label>
                 <input
@@ -163,19 +163,19 @@ export default function InventoryPage() {
                   inputMode="numeric"
                   value={displayValue(Number(generalStock))}
                   onChange={(e) => setGeneralStock(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
                 />
               </div>
 
               {Object.keys(sizeStocks).length > 0 && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-white/70 mb-2">
                     Size Stocks
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {Object.entries(sizeStocks).map(([size, qty]) => (
                       <div key={size} className="flex items-center gap-2">
-                        <span className="w-10 text-sm font-semibold text-gray-700">{size}</span>
+                        <span className="w-10 text-sm font-semibold text-white/70">{size}</span>
                         <input
                           type="number"
                           min={0}
@@ -187,7 +187,7 @@ export default function InventoryPage() {
                               [size]: toInt(e.target.value),
                             }))
                           }
-                          className="w-20 px-2 py-1 text-sm border-2 border-gray-200 rounded-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="w-20 px-2 py-1 text-sm bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
                         />
                       </div>
                     ))}
@@ -197,15 +197,15 @@ export default function InventoryPage() {
 
               {Object.keys(colorStocks).length > 0 && (
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-white/70 mb-2">
                     Color Stocks
                   </label>
                   <div className="space-y-3">
                     {Object.entries(colorStocks).map(([color, value]) => {
                       const isNumber = typeof value === 'number';
                       return (
-                        <div key={color} className="rounded-xl border border-gray-200 p-3">
-                          <div className="font-semibold text-gray-800 mb-2">{color}</div>
+                        <div key={color} className="rounded-xl border border-white/20 p-3">
+                          <div className="font-semibold text-white mb-2">{color}</div>
                           {isNumber ? (
                             <input
                               type="number"
@@ -218,13 +218,13 @@ export default function InventoryPage() {
                                   [color]: toInt(e.target.value),
                                 }))
                               }
-                              className="w-24 px-2 py-1 text-sm border-2 border-gray-200 rounded-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              className="w-24 px-2 py-1 text-sm bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
                             />
                           ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                               {Object.entries(value as Record<string, number>).map(([sz, qty]) => (
                                 <div key={`${color}-${sz}`} className="flex items-center gap-2">
-                                  <span className="w-10 text-sm text-gray-700">{sz}</span>
+                                  <span className="w-10 text-sm text-white/70">{sz}</span>
                                   <input
                                     type="number"
                                     min={0}
@@ -239,7 +239,7 @@ export default function InventoryPage() {
                                         },
                                       }))
                                     }
-                                    className="w-20 px-2 py-1 text-sm border-2 border-gray-200 rounded-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    className="w-20 px-2 py-1 text-sm bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
                                   />
                                 </div>
                               ))}
@@ -256,7 +256,7 @@ export default function InventoryPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setUpdateOpen(false)}
-                className="px-4 py-2 rounded-lg border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
+                className="px-4 py-2 border border-white/20 text-white/70 rounded-xl hover:bg-white/10 font-semibold"
                 disabled={updateLoading}
               >
                 Cancel
@@ -316,7 +316,7 @@ export default function InventoryPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-            <p className="text-gray-600">Loading inventory...</p>
+            <p className="text-white/60">Loading inventory...</p>
           </div>
         </div>
       ) : (
@@ -335,7 +335,7 @@ export default function InventoryPage() {
                       {lowStockItems.length}
                     </span>
                   </div>
-                  <p className="text-gray-700">Products with less than 10 units in stock</p>
+                  <p className="text-white/70">Products with less than 10 units in stock</p>
                 </div>
               )}
 
@@ -350,26 +350,26 @@ export default function InventoryPage() {
                       {outOfStockItems.length}
                     </span>
                   </div>
-                  <p className="text-gray-700">Products that need immediate restocking</p>
+                  <p className="text-white/70">Products that need immediate restocking</p>
                 </div>
               )}
             </div>
           )}
 
           {/* Filters */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="glass-card p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <input
                 type="text"
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="flex-1 px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
               />
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
               >
                 <option value="all">All Categories</option>
                 {categories.map((category) => (
@@ -379,7 +379,7 @@ export default function InventoryPage() {
               <select
                 value={selectedStockStatus}
                 onChange={(e) => setSelectedStockStatus(e.target.value)}
-                className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
               >
                 <option value="all">All Stock Status</option>
                 <option value="in_stock">In Stock</option>
@@ -388,37 +388,37 @@ export default function InventoryPage() {
               </select>
             </div>
             {filteredInventory.length !== inventory.length && (
-              <div className="mt-4 text-sm text-gray-600">
+              <div className="mt-4 text-sm text-white/60">
                 Showing {filteredInventory.length} of {inventory.length} products
               </div>
             )}
           </div>
 
           {/* Inventory Table */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-xl font-bold text-gray-900">All Products</h2>
+          <div className="glass-card overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/10 bg-black/20">
+              <h2 className="text-xl font-bold text-white">All Products</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-black/20 border-b border-white/10">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Product</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Category</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Total Stock</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Reserved</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Available</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Last Updated</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Status</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Actions</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Product</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Category</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Total Stock</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Reserved</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Available</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Last Updated</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Status</th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-white/10">
                   {filteredInventory.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-6 py-12 text-center">
-                        <div className="text-gray-500">
-                          <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-white/50">
+                          <svg className="w-12 h-12 mx-auto mb-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
                           <p className="font-medium">No products found</p>
@@ -432,18 +432,18 @@ export default function InventoryPage() {
                       const isOutOfStock = item.available === 0;
 
                       return (
-                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={item.id} className="hover:bg-white/5 transition-colors">
                           <td className="px-6 py-4">
-                            <div className="font-semibold text-gray-900">{item.product_name}</div>
+                            <div className="font-semibold text-white">{item.product_name}</div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-sm text-gray-600">{item.category}</span>
+                            <span className="text-sm text-white/60">{item.category}</span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className="font-semibold text-gray-900">{item.stock_quantity}</span>
+                            <span className="font-semibold text-white">{item.stock_quantity}</span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className="text-sm text-gray-600">{item.reserved_quantity}</span>
+                            <span className="text-sm text-white/60">{item.reserved_quantity}</span>
                           </td>
                           <td className="px-6 py-4 text-center">
                             <span className={`font-bold ${isOutOfStock ? 'text-red-600' : isLowStock ? 'text-yellow-600' : 'text-green-600'
@@ -452,16 +452,16 @@ export default function InventoryPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-white/60">
                               {new Date(item.last_updated).toLocaleDateString()}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isOutOfStock
-                              ? 'bg-red-100 text-red-700'
+                              ? 'bg-red-500/20 text-red-300'
                               : isLowStock
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-green-100 text-green-700'
+                                ? 'bg-yellow-500/20 text-yellow-300'
+                                : 'bg-green-500/20 text-green-300'
                               }`}>
                               {isOutOfStock ? 'Out of Stock' : isLowStock ? 'Low Stock' : 'In Stock'}
                             </span>
@@ -533,4 +533,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-
