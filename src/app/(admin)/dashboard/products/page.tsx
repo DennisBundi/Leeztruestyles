@@ -452,8 +452,8 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Products</h1>
-          <p className="text-gray-600">Manage your product catalog</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Products</h1>
+          <p className="text-white/60">Manage your product catalog</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
@@ -497,13 +497,13 @@ export default function ProductsPage() {
 
       {/* Search and Filters */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-wrap gap-4">
           <input
             type="text"
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="flex-1 min-w-[200px] px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           <select
             value={selectedCategoryFilter}

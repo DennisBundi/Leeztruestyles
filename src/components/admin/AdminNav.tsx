@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState, useRef } from 'react';
 import type { Employee } from '@/types';
-import ThemeToggle from '@/components/ui/ThemeToggle';
 
 type UserRole = 'admin' | 'manager' | 'seller';
 type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings' | 'reviews' | 'loyalty' | 'importation';
@@ -150,15 +149,15 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
   return (
     <>
       {/* Top Bar */}
-      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 transition-colors duration-200">
+      <nav className="bg-[#4a0026]/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors lg:hidden"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
@@ -170,29 +169,27 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
                   height={40}
                   className="h-8 w-8 object-cover rounded-full"
                 />
-                <span className="text-sm font-semibold text-gray-600 dark:text-gray-300 hidden sm:inline">Admin</span>
+                <span className="text-sm font-semibold text-white/70 hidden sm:inline">Admin</span>
               </Link>
             </div>
             <div className="flex items-center gap-4">
               <Link
                 href="/"
                 target="_blank"
-                className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary transition-colors hidden sm:flex items-center gap-1"
+                className="text-sm text-white/60 hover:text-white transition-colors hidden sm:flex items-center gap-1"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
                 View Store
               </Link>
-              <ThemeToggle />
             </div>
           </div>
         </div>
       </nav>
 
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-30 ${sidebarOpen ? 'w-20 lg:w-64' : 'w-20 lg:w-20'
-        } translate-x-0`}>
+      <aside className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-[#3d001e]/95 backdrop-blur-md border-r border-white/10 transition-all duration-300 z-30 ${sidebarOpen ? 'w-20 lg:w-64' : 'w-20 lg:w-20'} translate-x-0`}>
         <nav className="h-full py-6 px-4 overflow-y-auto flex flex-col">
           {/* Navigation Items */}
           <ul className="space-y-2 flex-1">
@@ -206,7 +203,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
                     href={item.href}
                     className={`flex items-center justify-center lg:justify-start gap-3 px-2 lg:px-4 py-3 rounded-xl transition-all ${isActive
                         ? 'bg-gradient-to-r from-primary/10 to-primary-light/10 text-primary font-semibold border-l-4 border-primary'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        : 'text-white/70 hover:bg-white/10'
                       }`}
                   >
                     <span className="text-xl">{item.icon}</span>
@@ -219,10 +216,10 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
 
           {/* User Info & Sign Out - Bottom of Sidebar */}
           {user && (
-            <div className={`border-t border-gray-200 dark:border-gray-700 pt-4 mt-4 hidden ${sidebarOpen ? 'lg:block' : ''}`}>
+            <div className={`border-t border-white/10 pt-4 mt-4 hidden ${sidebarOpen ? 'lg:block' : ''}`}>
               <div className="px-3 mb-3">
-                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.email}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <div className="text-sm font-medium text-white truncate">{user.email}</div>
+                <div className="text-xs text-white/50 mt-0.5">
                   {userRole === 'admin' ? 'Administrator' :
                    userRole === 'manager' ? 'Manager' :
                    userRole === 'seller' ? 'Sales Person' :
@@ -232,7 +229,7 @@ export default function AdminNav({ userRole: propUserRole, employee: propEmploye
               </div>
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-center lg:justify-start gap-2 px-2 lg:px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium text-sm"
+                className="w-full flex items-center justify-center lg:justify-start gap-2 px-2 lg:px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white/70 rounded-lg transition-colors font-medium text-sm"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

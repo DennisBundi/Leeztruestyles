@@ -118,8 +118,8 @@ export default function InventoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Inventory Management</h1>
-          <p className="text-gray-600">Monitor and manage product stock levels</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Inventory Management</h1>
+          <p className="text-white/60">Monitor and manage product stock levels</p>
         </div>
         <Link
           href="/dashboard/products"
