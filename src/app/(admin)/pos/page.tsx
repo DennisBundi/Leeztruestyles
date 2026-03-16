@@ -33,7 +33,7 @@ export default async function POSPage() {
 
   return (
     <div className="min-h-screen relative">
-      <div className="fixed inset-0 bg-gradient-to-br from-[#3d0020] via-[#220025] to-[#130030] -z-10" />
+      <div className="fixed inset-0 bg-gradient-to-br from-[#7a1040] via-[#4a0030] to-[#1a0020] -z-10" />
       {/* Header */}
       <div className="glass border-b border-white/10 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
