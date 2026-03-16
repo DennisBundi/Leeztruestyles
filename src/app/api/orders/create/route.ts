@@ -320,7 +320,6 @@ export async function POST(request: NextRequest) {
 
     // Validate prices against database for existing products (online orders only)
     // POS orders are placed by authenticated staff who may apply manual discounts
-    // or whose loaded prices may differ from the current DB price — both are intentional
     if (existingProductItems.length > 0 && validated.sale_type !== "pos") {
       const productIds = existingProductItems.map((item) => item.product_id);
       const { data: dbProducts, error: priceError } = await supabase
