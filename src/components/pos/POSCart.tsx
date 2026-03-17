@@ -352,7 +352,7 @@ export default function POSCart({
       {/* Success Modal */}
       {showSuccessModal && orderId && saleDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center animate-in zoom-in-95 duration-300 border border-white/20">
+          <div className="glass-strong rounded-3xl max-w-md w-full p-8 text-center animate-in zoom-in-95 duration-300">
             {/* Success Icon */}
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg
@@ -371,35 +371,35 @@ export default function POSCart({
             </div>
 
             {/* Success Message */}
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            <h3 className="text-2xl font-bold text-white mb-2">
               Sale Completed Successfully!
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-white/60 mb-6">
               Your sale has been recorded and inventory has been updated.
             </p>
 
             {/* Sale Details */}
-            <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-2">
+            <div className="bg-black/20 rounded-xl p-4 mb-6 text-left space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Order Number:</span>
-                <span className="font-semibold text-gray-900 font-mono">
+                <span className="text-white/60">Order Number:</span>
+                <span className="font-semibold text-white font-mono">
                   {formatOrderId(orderId)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Items Sold:</span>
-                <span className="font-semibold text-gray-900">
+                <span className="text-white/60">Items Sold:</span>
+                <span className="font-semibold text-white">
                   {saleDetails.itemsCount}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Payment Method:</span>
-                <span className="font-semibold text-gray-900">
+                <span className="text-white/60">Payment Method:</span>
+                <span className="font-semibold text-white">
                   {saleDetails.paymentMethod}
                 </span>
               </div>
-              <div className="flex justify-between pt-2 border-t border-gray-200">
-                <span className="text-lg font-semibold text-gray-900">
+              <div className="flex justify-between pt-2 border-t border-white/10">
+                <span className="text-lg font-semibold text-white">
                   Total Amount:
                 </span>
                 <span className="text-lg font-bold text-primary">
@@ -424,15 +424,15 @@ export default function POSCart({
       )}
 
       <div
-        className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-4"
+        className="glass-card rounded-2xl shadow-lg p-6 sticky top-4"
         data-pos-cart
       >
-        <h2 className="text-2xl font-bold mb-6 text-gray-900">Cart</h2>
+        <h2 className="text-2xl font-bold mb-6 text-white">Cart</h2>
 
         {/* Customer Name (Optional) */}
         {items.length > 0 && (
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Customer Name (Optional)
             </label>
             <input
@@ -440,7 +440,7 @@ export default function POSCart({
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Enter customer name..."
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 text-white placeholder:text-white/30 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all"
             />
           </div>
         )}
@@ -448,16 +448,16 @@ export default function POSCart({
         {/* Sale Date/Time (Optional) */}
         {items.length > 0 && (
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Sale Date/Time (Optional)
             </label>
             <input
               type="datetime-local"
               value={saleDateTime}
               onChange={(e) => setSaleDateTime(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 text-white rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-white/50 mt-1">
               Timezone: Africa/Nairobi. Leave blank to use current time.
             </p>
           </div>
@@ -468,7 +468,7 @@ export default function POSCart({
           {items.length === 0 ? (
             <div className="text-center py-12">
               <svg
-                className="w-16 h-16 text-gray-300 mx-auto mb-4"
+                className="w-16 h-16 text-white/20 mx-auto mb-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -480,8 +480,8 @@ export default function POSCart({
                   d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
                 />
               </svg>
-              <p className="text-gray-500 font-medium">Cart is empty</p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-white/50 font-medium">Cart is empty</p>
+              <p className="text-sm text-white/40 mt-1">
                 Add products to start a sale
               </p>
             </div>
@@ -489,9 +489,9 @@ export default function POSCart({
             items.map((item) => (
               <div
                 key={item.product.id}
-                className="flex gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                className="flex gap-3 p-3 bg-black/20 rounded-xl hover:bg-black/30 transition-colors"
               >
-                <div className="relative w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                <div className="relative w-16 h-16 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
                   {item.product.images && item.product.images.length > 0 ? (
                     <Image
                       src={item.product.images[0]}
@@ -501,7 +501,7 @@ export default function POSCart({
                       sizes="64px"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                    <div className="w-full h-full flex items-center justify-center text-white/40 text-xs">
                       <svg
                         className="w-6 h-6"
                         fill="none"
@@ -520,7 +520,7 @@ export default function POSCart({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="font-semibold text-sm text-gray-900 truncate">
+                    <div className="font-semibold text-sm text-white truncate">
                       {item.product.name}
                     </div>
                     {(item.product as ExtendedProduct).isCustom && (
@@ -545,12 +545,12 @@ export default function POSCart({
                     </div>
                   )}
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center gap-1 bg-white rounded-lg p-1">
+                    <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
                       <button
                         onClick={() =>
                           updateQuantity(item.product.id, item.quantity - 1)
                         }
-                        className="w-6 h-6 rounded border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-xs font-semibold"
+                        className="w-6 h-6 rounded border border-white/20 hover:bg-white/20 text-white/60 flex items-center justify-center text-xs font-semibold"
                       >
                         −
                       </button>
@@ -561,7 +561,7 @@ export default function POSCart({
                         onClick={() =>
                           updateQuantity(item.product.id, item.quantity + 1)
                         }
-                        className="w-6 h-6 rounded border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-xs font-semibold"
+                        className="w-6 h-6 rounded border border-white/20 hover:bg-white/20 text-white/60 flex items-center justify-center text-xs font-semibold"
                       >
                         +
                       </button>
@@ -591,8 +591,8 @@ export default function POSCart({
                     <div
                       className={`text-xs ${
                         item.salePrice
-                          ? "line-through text-gray-400"
-                          : "text-gray-600"
+                          ? "line-through text-white/40"
+                          : "text-white/60"
                       }`}
                     >
                       KES {(item.product.price || 0).toLocaleString()} each
@@ -649,7 +649,7 @@ export default function POSCart({
                             e.currentTarget.blur();
                           }
                         }}
-                        className="w-24 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                        className="w-24 px-2 py-1 text-xs bg-white/10 border border-white/20 text-white placeholder:text-white/30 rounded focus:outline-none focus:border-primary focus:ring-1 focus:ring-rose-400/50"
                       />
                     </div>
                     {/* Show discounted price if set */}
@@ -677,17 +677,17 @@ export default function POSCart({
         {items.length > 0 && (
           <>
             {/* Total */}
-            <div className="border-t-2 border-gray-200 pt-4 mb-6">
+            <div className="border-t-2 border-white/10 pt-4 mb-6">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-lg font-semibold text-gray-700">
+                <span className="text-lg font-semibold text-white/70">
                   Subtotal
                 </span>
-                <span className="text-lg font-semibold text-gray-900">
+                <span className="text-lg font-semibold text-white">
                   KES {(total || 0).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-2xl font-bold text-gray-900">Total</span>
+                <span className="text-2xl font-bold text-white">Total</span>
                 <span className="text-3xl font-bold text-primary">
                   KES {(total || 0).toLocaleString()}
                 </span>
@@ -696,7 +696,7 @@ export default function POSCart({
 
             {/* Social Platform */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-white/70 mb-2">
                 Social Platform <span className="text-red-500">*</span>
               </label>
               <select
@@ -711,7 +711,7 @@ export default function POSCart({
                       | ""
                   )
                 }
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 text-white rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all"
                 required
               >
                 <option value="">Select platform...</option>
@@ -724,7 +724,7 @@ export default function POSCart({
 
             {/* Payment Method */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <label className="block text-sm font-semibold text-white/70 mb-3">
                 Payment Method <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -733,7 +733,7 @@ export default function POSCart({
                   className={`p-3 rounded-none border-2 font-semibold transition-all ${
                     paymentMethod === "cash"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      : "border-white/20 text-white/70 hover:border-white/40"
                   }`}
                 >
                   💵 Cash
@@ -743,7 +743,7 @@ export default function POSCart({
                   className={`p-3 rounded-none border-2 font-semibold transition-all ${
                     paymentMethod === "mpesa"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      : "border-white/20 text-white/70 hover:border-white/40"
                   }`}
                 >
                   📱 M-Pesa
@@ -753,7 +753,7 @@ export default function POSCart({
                   className={`p-3 rounded-none border-2 font-semibold transition-all ${
                     paymentMethod === "card"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      : "border-white/20 text-white/70 hover:border-white/40"
                   }`}
                 >
                   💳 Card
@@ -797,10 +797,10 @@ export default function POSCart({
 
             {/* Employee Info */}
             {employeeCode && (
-              <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                <p className="text-xs text-gray-500">
+              <div className="mt-4 pt-4 border-t border-white/10 text-center">
+                <p className="text-xs text-white/50">
                   Sale by:{" "}
-                  <span className="font-semibold text-gray-700">
+                  <span className="font-semibold text-white/70">
                     {employeeCode}
                   </span>
                 </p>

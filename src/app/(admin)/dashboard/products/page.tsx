@@ -452,13 +452,13 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Products</h1>
-          <p className="text-gray-600">Manage your product catalog</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Products</h1>
+          <p className="text-white/60">Manage your product catalog</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => setShowCategoriesPanel(!showCategoriesPanel)}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-xl font-medium transition-colors flex items-center gap-2"
           >
             <svg
               className="w-5 h-5"
@@ -496,19 +496,19 @@ export default function ProductsPage() {
       )}
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+      <div className="glass-card p-6">
         <div className="flex flex-col md:flex-row gap-4">
           <input
             type="text"
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="flex-1 px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           <select
             value={selectedCategoryFilter}
             onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">All Categories</option>
             {categories.map((cat) => (
@@ -520,7 +520,7 @@ export default function ProductsPage() {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -530,7 +530,7 @@ export default function ProductsPage() {
             <select
               value={selectedColorFilter}
               onChange={(e) => setSelectedColorFilter(e.target.value)}
-              className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             >
               <option value="all">All Colors</option>
               {availableColors.map((color) => (
@@ -543,7 +543,7 @@ export default function ProductsPage() {
           <select
             value={selectedSource}
             onChange={(e) => setSelectedSource(e.target.value)}
-            className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">All Sources</option>
             <option value="admin">Admin Created</option>
@@ -551,48 +551,48 @@ export default function ProductsPage() {
           </select>
         </div>
         {filteredProducts.length !== products.length && (
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-4 text-sm text-white/60">
             Showing {filteredProducts.length} of {products.length} products
           </div>
         )}
       </div>
 
       {/* Products Table - Desktop Only */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hidden md:block">
+      <div className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-black/20 border-b border-white/10">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">
                   Product
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">
                   Category
                 </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">
                   Price
                 </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
                   Stock
                 </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
                   Flash Sale
                 </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
                   Status
                 </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-white/10">
               {loadingProducts ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      <span className="ml-3 text-gray-600">
+                      <span className="ml-3 text-white/60">
                         Loading products...
                       </span>
                     </div>
@@ -601,9 +601,9 @@ export default function ProductsPage() {
               ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="text-gray-500">
+                    <div className="text-white/50">
                       <svg
-                        className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                        className="w-16 h-16 mx-auto mb-4 text-white/20"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -615,16 +615,16 @@ export default function ProductsPage() {
                           d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                         />
                       </svg>
-                      <p className="font-medium text-lg text-gray-700 mb-2">
+                      <p className="font-medium text-lg text-white/70 mb-2">
                         No products found
                       </p>
                       {products.length === 0 ? (
-                        <p className="text-sm text-gray-500 mb-4">
+                        <p className="text-sm text-white/50 mb-4">
                           Your product catalog is empty. Start by adding your
                           first product.
                         </p>
                       ) : (
-                        <p className="text-sm text-gray-500 mb-4">
+                        <p className="text-sm text-white/50 mb-4">
                           No products match your current search or filters. Try
                           adjusting your search criteria.
                         </p>
@@ -647,13 +647,13 @@ export default function ProductsPage() {
                       key={product.id}
                       className={`transition-colors ${
                         userRole === "admin" && !hasBuyingPrice
-                          ? "bg-yellow-50 hover:bg-yellow-100 border-l-4 border-yellow-400"
-                          : "hover:bg-gray-50"
+                          ? "bg-yellow-400/10 hover:bg-yellow-400/15 border-l-4 border-yellow-400"
+                          : "hover:bg-white/5"
                       }`}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
-                          <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                          <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white/10">
                             {product.image ? (
                               <Image
                                 src={product.image}
@@ -663,7 +663,7 @@ export default function ProductsPage() {
                                 sizes="64px"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                              <div className="w-full h-full flex items-center justify-center text-white/40">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
@@ -671,17 +671,17 @@ export default function ProductsPage() {
                             )}
                           </div>
                           <div>
-                            <div className="font-semibold text-gray-900">
+                            <div className="font-semibold text-white">
                               {product.name}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-white/50">
                               ID: {product.id}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-700">
+                        <span className="text-sm text-white/70">
                           {product.category}
                         </span>
                       </td>
@@ -689,15 +689,15 @@ export default function ProductsPage() {
                         <div className="flex flex-col">
                           {product.sale_price ? (
                             <>
-                              <span className="font-semibold text-gray-900">
+                              <span className="font-semibold text-white">
                                 KES {(product.sale_price || 0).toLocaleString()}
                               </span>
-                              <span className="text-sm text-gray-500 line-through">
+                              <span className="text-sm text-white/50 line-through">
                                 KES {(product.price || 0).toLocaleString()}
                               </span>
                             </>
                           ) : (
-                            <span className="font-semibold text-gray-900">
+                            <span className="font-semibold text-white">
                               KES {(product.price || 0).toLocaleString()}
                             </span>
                           )}
@@ -717,24 +717,24 @@ export default function ProductsPage() {
                             {product.stock}
                           </span>
                         ) : (
-                          <span className="text-gray-400 text-sm">N/A</span>
+                          <span className="text-white/40 text-sm">N/A</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         {product.is_flash_sale ? (
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300">
                             🔥 Flash Sale
                           </span>
                         ) : (
-                          <span className="text-gray-400 text-sm">-</span>
+                          <span className="text-white/40 text-sm">-</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
                             product.status === "active"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-700"
+                              ? "bg-green-500/20 text-green-300"
+                              : "bg-white/10 text-white/70"
                           }`}
                         >
                           {product.status}
@@ -744,7 +744,7 @@ export default function ProductsPage() {
                         <div className="flex items-center justify-center gap-3">
                           <button
                             onClick={() => copyProductLink(product.id)}
-                            className="p-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                            className="p-2 text-white/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                             title="Copy product link"
                           >
                             {copiedProductId === product.id ? (
@@ -809,17 +809,17 @@ export default function ProductsPage() {
       {/* Products Cards - Mobile Only */}
       <div className="block md:hidden space-y-4">
         {loadingProducts ? (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
+          <div className="glass-card p-12 text-center">
             <div className="flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <span className="ml-3 text-gray-600">Loading products...</span>
+              <span className="ml-3 text-white/60">Loading products...</span>
             </div>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12 text-center">
-            <div className="text-gray-500">
+          <div className="glass-card p-12 text-center">
+            <div className="text-white/50">
               <svg
-                className="w-16 h-16 mx-auto mb-4 text-gray-300"
+                className="w-16 h-16 mx-auto mb-4 text-white/20"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -831,15 +831,15 @@ export default function ProductsPage() {
                   d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                 />
               </svg>
-              <p className="font-medium text-lg text-gray-700 mb-2">
+              <p className="font-medium text-lg text-white/70 mb-2">
                 No products found
               </p>
               {products.length === 0 ? (
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-white/50 mb-4">
                   Your product catalog is empty. Start by adding your first product.
                 </p>
               ) : (
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-white/50 mb-4">
                   No products match your current search or filters. Try adjusting your search criteria.
                 </p>
               )}
@@ -857,14 +857,14 @@ export default function ProductsPage() {
             return (
               <div
                 key={product.id}
-                className={`bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden ${
+                className={`glass-card overflow-hidden ${
                   userRole === "admin" && !hasBuyingPrice
-                    ? "border-l-4 border-l-yellow-400 bg-yellow-50"
+                    ? "border-l-4 border-l-yellow-400 bg-yellow-400/10"
                     : ""
                 }`}
               >
                 {/* Product Image */}
-                <div className="relative w-full h-48 bg-gray-100">
+                <div className="relative w-full h-48 bg-white/10">
                   {product.image ? (
                     <Image
                       src={product.image}
@@ -874,7 +874,7 @@ export default function ProductsPage() {
                       sizes="(max-width: 768px) 100vw, 33vw"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <div className="w-full h-full flex items-center justify-center text-white/40">
                       <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
@@ -886,18 +886,18 @@ export default function ProductsPage() {
                 <div className="p-4 space-y-3">
                   {/* Name and ID */}
                   <div>
-                    <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                    <h3 className="font-semibold text-lg text-white mb-1">
                       {product.name}
                     </h3>
-                    <p className="text-xs text-gray-500">ID: {product.id}</p>
+                    <p className="text-xs text-white/50">ID: {product.id}</p>
                   </div>
 
                   {/* Category */}
                   <div>
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-medium text-white/70">
                       Category:{" "}
                     </span>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-white/60">
                       {product.category}
                     </span>
                   </div>
@@ -906,25 +906,25 @@ export default function ProductsPage() {
                   <div>
                     {product.sale_price ? (
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-lg text-gray-900">
+                        <span className="font-semibold text-lg text-white">
                           KES {(product.sale_price || 0).toLocaleString()}
                         </span>
-                        <span className="text-sm text-gray-500 line-through">
+                        <span className="text-sm text-white/50 line-through">
                           KES {(product.price || 0).toLocaleString()}
                         </span>
                       </div>
                     ) : (
-                      <span className="font-semibold text-lg text-gray-900">
+                      <span className="font-semibold text-lg text-white">
                         KES {(product.price || 0).toLocaleString()}
                       </span>
                     )}
                   </div>
 
                   {/* Stock, Flash Sale, Status Row */}
-                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/10">
                     {/* Stock */}
                     <div className="flex-1 min-w-[100px]">
-                      <span className="text-xs text-gray-500 block mb-1">
+                      <span className="text-xs text-white/50 block mb-1">
                         Stock
                       </span>
                       {product.stock !== undefined ? (
@@ -940,34 +940,34 @@ export default function ProductsPage() {
                           {product.stock}
                         </span>
                       ) : (
-                        <span className="text-gray-400 text-sm">N/A</span>
+                        <span className="text-white/40 text-sm">N/A</span>
                       )}
                     </div>
 
                     {/* Flash Sale */}
                     <div className="flex-1 min-w-[100px]">
-                      <span className="text-xs text-gray-500 block mb-1">
+                      <span className="text-xs text-white/50 block mb-1">
                         Flash Sale
                       </span>
                       {product.is_flash_sale ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300">
                           🔥 Active
                         </span>
                       ) : (
-                        <span className="text-gray-400 text-sm">-</span>
+                        <span className="text-white/40 text-sm">-</span>
                       )}
                     </div>
 
                     {/* Status */}
                     <div className="flex-1 min-w-[100px]">
-                      <span className="text-xs text-gray-500 block mb-1">
+                      <span className="text-xs text-white/50 block mb-1">
                         Status
                       </span>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${
                           product.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-700"
+                            ? "bg-green-500/20 text-green-300"
+                            : "bg-white/10 text-white/70"
                         }`}
                       >
                         {product.status}
@@ -976,10 +976,10 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
+                  <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/10">
                     <button
                       onClick={() => copyProductLink(product.id)}
-                      className="flex-1 px-3 py-2 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium border border-gray-200"
+                      className="flex-1 px-3 py-2 text-white/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium border border-white/10"
                       title="Copy product link"
                     >
                       {copiedProductId === product.id ? (
@@ -1045,7 +1045,7 @@ export default function ProductsPage() {
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+          <div className="glass-strong max-w-md w-full p-6 animate-scale-in">
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
               <svg
                 className="w-6 h-6 text-red-600"
@@ -1061,10 +1061,10 @@ export default function ProductsPage() {
                 />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
+            <h3 className="text-xl font-bold text-white text-center mb-2">
               Delete Product?
             </h3>
-            <p className="text-gray-600 text-center mb-6">
+            <p className="text-white/60 text-center mb-6">
               Are you sure you want to delete{" "}
               <strong>"{deleteModal.product?.name}"</strong>? This action cannot
               be undone.
@@ -1073,7 +1073,7 @@ export default function ProductsPage() {
               <button
                 onClick={() => setDeleteModal({ isOpen: false, product: null })}
                 disabled={deleting}
-                className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 border border-white/20 text-white/70 rounded-xl font-semibold hover:bg-white/10 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1117,7 +1117,7 @@ export default function ProductsPage() {
       {/* Success Modal */}
       {successModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-scale-in">
+          <div className="glass-strong max-w-md w-full p-8 text-center animate-scale-in">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
                 className="w-8 h-8 text-green-600"
@@ -1133,10 +1133,10 @@ export default function ProductsPage() {
                 />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            <h3 className="text-2xl font-bold text-white mb-2">
               Product Deleted!
             </h3>
-            <p className="text-gray-600">
+            <p className="text-white/60">
               The product has been successfully removed from your inventory.
             </p>
           </div>

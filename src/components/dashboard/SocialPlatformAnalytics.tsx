@@ -122,11 +122,11 @@ export default function SocialPlatformAnalytics() {
   }));
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+    <div className="glass-card p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Social Platform Performance</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-xl font-bold text-white">Social Platform Performance</h2>
+          <p className="text-sm text-white/50 mt-1">
             Customer acquisition by platform source
           </p>
         </div>
@@ -134,27 +134,21 @@ export default function SocialPlatformAnalytics() {
 
       {/* Custom Date Filter */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <label className="text-sm font-medium text-gray-700">Custom Date:</label>
+        <label className="text-sm font-medium text-white/60">Custom Date:</label>
         <input
           type="date"
           value={customDate}
           onChange={(e) => {
             const newDate = e.target.value;
             setCustomDate(newDate);
-            // Clear day filter when custom date is selected (day filter only works for current week)
-            if (newDate) {
-              setDayOfWeek('all');
-            }
+            if (newDate) setDayOfWeek('all');
           }}
-          className="px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          className="px-3 py-2 glass rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#f9a8d4]/40"
         />
         {customDate && (
           <button
-            onClick={() => {
-              setCustomDate('');
-              setPeriod('month');
-            }}
-            className="px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
+            onClick={() => { setCustomDate(''); setPeriod('month'); }}
+            className="px-3 py-2 text-xs font-medium text-white/50 hover:text-white transition-colors"
           >
             Clear
           </button>
@@ -169,17 +163,12 @@ export default function SocialPlatformAnalytics() {
               key={p}
               onClick={() => {
                 setPeriod(p);
-                // When selecting a period, clear day filter if it's not 'week'
-                if (p !== 'week' && dayOfWeek !== 'all') {
-                  setDayOfWeek('all');
-                }
-                // If selecting week and a day is already selected, keep it
-                // If selecting a day of week, automatically set period to 'week'
+                if (p !== 'week' && dayOfWeek !== 'all') setDayOfWeek('all');
               }}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 period === p
-                  ? 'bg-primary text-white shadow-md hover:bg-primary-dark'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-[#f9a8d4]/30 text-white border border-[#f9a8d4]/40'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/15'
               }`}
             >
               {getPeriodLabel(p)}
@@ -188,28 +177,23 @@ export default function SocialPlatformAnalytics() {
         </div>
       )}
 
-      {/* Day of Week Filter Buttons - Only shows current week when a day is selected */}
+      {/* Day of Week Filter Buttons */}
       <div className="flex flex-wrap gap-2 mb-6">
-        <span className="text-sm font-medium text-gray-700 self-center mr-2">Day (Current Week):</span>
+        <span className="text-sm font-medium text-white/60 self-center mr-2">Day (Current Week):</span>
         {(['all', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as DayOfWeek[]).map((d) => (
           <button
             key={d}
             onClick={() => {
               setDayOfWeek(d);
-              // When selecting a day of week, automatically set period to 'week' (current week only)
-              // Clear custom date as day filter only works for current week
-              if (d !== 'all') {
-                setPeriod('week');
-                setCustomDate('');
-              }
+              if (d !== 'all') { setPeriod('week'); setCustomDate(''); }
             }}
             disabled={customDate !== '' && d !== 'all'}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
               dayOfWeek === d
-                ? 'bg-primary text-white shadow-md hover:bg-primary-dark'
+                ? 'bg-[#f9a8d4]/30 text-white border border-[#f9a8d4]/40'
                 : customDate !== '' && d !== 'all'
-                ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'glass text-white/20 cursor-not-allowed'
+                : 'glass text-white/60 hover:text-white hover:bg-white/15'
             }`}
           >
             {getDayLabel(d)}
@@ -219,16 +203,16 @@ export default function SocialPlatformAnalytics() {
 
       {/* Error State */}
       {error && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+        <div className="glass border-l-4 border-[#f9a8d4] rounded-lg p-4 mb-4">
           <div className="flex items-start">
-            <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[#f9a8d4] mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div>
-              <p className="text-sm font-semibold text-yellow-800">{error}</p>
+              <p className="text-sm font-semibold text-white/80">{error}</p>
               {error.includes('Migration required') && (
-                <p className="text-xs text-yellow-700 mt-1">
-                  Run the migration file in your Supabase SQL editor: <code className="bg-yellow-100 px-1 rounded">add_social_platform_to_orders.sql</code>
+                <p className="text-xs text-white/50 mt-1">
+                  Run the migration file in your Supabase SQL editor: <code className="bg-white/10 px-1 rounded">add_social_platform_to_orders.sql</code>
                 </p>
               )}
             </div>
@@ -239,21 +223,21 @@ export default function SocialPlatformAnalytics() {
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-3 text-gray-600">Loading statistics...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f9a8d4]"></div>
+          <span className="ml-3 text-white/50">Loading statistics...</span>
         </div>
       )}
 
       {/* Empty State */}
       {!loading && !error && data.length === 0 && (
         <div className="text-center py-12">
-          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-16 h-16 text-white/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <p className="text-gray-500 text-lg mb-2">No data available</p>
-          <p className="text-gray-400 text-sm">
+          <p className="text-white/40 text-lg mb-2">No data available</p>
+          <p className="text-white/30 text-sm">
             No POS orders with social platform data found for{' '}
-            {customDate 
+            {customDate
               ? `date ${new Date(customDate).toLocaleDateString()}`
               : getPeriodLabel(period).toLowerCase()}
             {dayOfWeek !== 'all' && ` on ${getDayLabel(dayOfWeek)}`}
@@ -264,83 +248,56 @@ export default function SocialPlatformAnalytics() {
       {/* Chart and Stats */}
       {!loading && !error && data.length > 0 && (
         <>
-          {/* Platform Cards Section */}
+          {/* Platform Cards */}
           <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {data.slice(0, 4).map((platform) => (
-              <div
-                key={platform.platform}
-                className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition-all"
-              >
+              <div key={platform.platform} className="glass rounded-xl p-5 hover:bg-white/15 transition-all">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-lg font-bold text-gray-700">
-                    {getRankBadge(platform.rank)}
-                  </span>
-                  <span className="text-xs font-semibold text-gray-500 bg-white px-2 py-1 rounded-full">
+                  <span className="text-lg font-bold text-white/70">{getRankBadge(platform.rank)}</span>
+                  <span className="text-xs font-semibold text-white/50 bg-white/10 px-2 py-1 rounded-full">
                     {platform.percentage}%
                   </span>
                 </div>
                 <div className="mb-2">
-                  <p className="text-xl font-bold text-gray-900">{platform.displayName}</p>
-                  <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Social Platform</p>
+                  <p className="text-xl font-bold text-white">{platform.displayName}</p>
+                  <p className="text-xs text-white/40 mt-1 uppercase tracking-wide">Social Platform</p>
                 </div>
-                <div className="pt-3 border-t border-gray-200">
-                  <p className="text-2xl font-bold text-primary">{platform.count}</p>
-                  <p className="text-xs text-gray-600 mt-1">Customers</p>
+                <div className="pt-3 border-t border-white/10">
+                  <p className="text-2xl font-bold text-[#f9a8d4]">{platform.count}</p>
+                  <p className="text-xs text-white/40 mt-1">Customers</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Customer Count by Platform - Bar Chart Section */}
-          <div className="mt-6 bg-gradient-to-br from-gray-50 to-white rounded-xl p-6 border border-gray-200">
+          {/* Bar Chart */}
+          <div className="mt-6 glass rounded-xl p-6">
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Number of Customers by Platform</h3>
-              <p className="text-xs text-gray-500 mt-1">Total customers acquired from each social platform</p>
+              <h3 className="text-base font-semibold text-white">Customers by Platform</h3>
+              <p className="text-xs text-white/40 mt-1">Total customers acquired from each social platform</p>
             </div>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={chartData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="name" 
-                  stroke="#6b7280"
-                  fontSize={12}
-                  tickLine={false}
-                />
-                <YAxis 
-                  stroke="#6b7280"
-                  fontSize={12}
-                  tickLine={false}
-                  tickFormatter={(value) => value.toString()}
-                />
+              <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} />
+                <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} tickFormatter={(v) => v.toString()} />
                 <Tooltip
                   formatter={(value: number, name: string, props: any) => [
                     `${value} ${value === 1 ? 'customer' : 'customers'} (${props.payload.percentage}%)`,
                     'Count',
                   ]}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'rgba(0,0,0,0.75)',
+                    border: '1px solid rgba(255,255,255,0.15)',
                     borderRadius: '8px',
-                    padding: '10px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    color: '#fff',
                   }}
-                  labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '4px' }}
+                  labelStyle={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600, marginBottom: '4px' }}
                 />
-                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={72}>
                   {chartData.map((entry, index) => {
-                    // Use theme colors with varying shades based on rank
-                    // Top rank gets the darkest pink, others get progressively lighter
-                    const colors = ['#f472b6', '#f9a8d4', '#fbcfe8', '#fce7f3']; // Primary dark to light
-                    const color = colors[index] || '#f9a8d4'; // Default to primary if more than 4 platforms
-                    return (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={color}
-                      />
-                    );
+                    const colors = ['#f9a8d4', '#db2777', '#9d174d', '#831843'];
+                    return <Cell key={`cell-${index}`} fill={colors[index] || '#f9a8d4'} />;
                   })}
                 </Bar>
               </BarChart>
@@ -348,21 +305,21 @@ export default function SocialPlatformAnalytics() {
           </div>
 
           {/* Total Summary */}
-          <div className="mt-6 bg-gradient-to-br from-primary/10 to-primary-light/10 rounded-xl p-5 border border-primary/20">
+          <div className="mt-6 glass rounded-xl p-5 border-l-4 border-[#f9a8d4]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Total Customers</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-sm font-medium text-white/50 uppercase tracking-wide">Total Customers</p>
+                <p className="text-xs text-white/30 mt-1">
                   Across all platforms for{' '}
-                  {customDate 
+                  {customDate
                     ? `date ${new Date(customDate).toLocaleDateString()}`
                     : getPeriodLabel(period).toLowerCase()}
                   {dayOfWeek !== 'all' && ` on ${getDayLabel(dayOfWeek)}`}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-primary">{totalOrders}</p>
-                <p className="text-xs text-gray-600 mt-1">Total Orders</p>
+                <p className="text-3xl font-bold text-[#f9a8d4]">{totalOrders}</p>
+                <p className="text-xs text-white/40 mt-1">Total Orders</p>
               </div>
             </div>
           </div>

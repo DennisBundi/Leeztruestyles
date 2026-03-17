@@ -208,15 +208,15 @@ export default function CustomProductModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full h-[90vh] max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
+      <div className="glass-strong rounded-2xl max-w-md w-full h-[90vh] max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
         {/* Header - Fixed */}
-        <div className="flex justify-between items-center p-6 pb-4 flex-shrink-0 border-b border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900">
+        <div className="flex justify-between items-center p-6 pb-4 flex-shrink-0 border-b border-white/10">
+          <h2 className="text-2xl font-bold text-white">
             Add Custom Product
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+            className="text-white/40 hover:text-white/70 transition-colors flex-shrink-0"
           >
             <svg
               className="w-6 h-6"
@@ -239,7 +239,7 @@ export default function CustomProductModal({
           <form onSubmit={handleSubmit} className="space-y-4" id="custom-product-form">
           {/* Product Name */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Product Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -248,10 +248,10 @@ export default function CustomProductModal({
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${
+              className={`w-full px-4 py-3 bg-white/10 border-2 text-white placeholder:text-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400/50 transition-all ${
                 errors.name
                   ? "border-red-300 focus:border-red-500"
-                  : "border-gray-200 focus:border-primary"
+                  : "border-white/20 focus:border-primary"
               }`}
               placeholder="Enter product name"
               required
@@ -263,7 +263,7 @@ export default function CustomProductModal({
 
           {/* Price */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Price (KES) <span className="text-red-500">*</span>
             </label>
             <input
@@ -274,10 +274,10 @@ export default function CustomProductModal({
               onChange={(e) =>
                 setFormData({ ...formData, price: e.target.value })
               }
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${
+              className={`w-full px-4 py-3 bg-white/10 border-2 text-white placeholder:text-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400/50 transition-all ${
                 errors.price
                   ? "border-red-300 focus:border-red-500"
-                  : "border-gray-200 focus:border-primary"
+                  : "border-white/20 focus:border-primary"
               }`}
               placeholder="0.00"
               required
@@ -289,7 +289,7 @@ export default function CustomProductModal({
 
           {/* Size */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Size (Optional)
             </label>
             <select
@@ -297,7 +297,7 @@ export default function CustomProductModal({
               onChange={(e) =>
                 setFormData({ ...formData, size: e.target.value })
               }
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 text-white rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all"
             >
               <option value="">Select size</option>
               <option value="S">S</option>
@@ -314,7 +314,7 @@ export default function CustomProductModal({
           {/* Category */}
           {categories.length > 0 && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-white/70 mb-2">
                 Category (Optional)
               </label>
               <select
@@ -322,7 +322,7 @@ export default function CustomProductModal({
                 onChange={(e) =>
                   setFormData({ ...formData, category_id: e.target.value })
                 }
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 text-white rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all"
               >
                 <option value="">Select category</option>
                 {categories.map((cat) => (
@@ -336,7 +336,7 @@ export default function CustomProductModal({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Description (Optional)
             </label>
             <textarea
@@ -345,14 +345,14 @@ export default function CustomProductModal({
                 setFormData({ ...formData, description: e.target.value })
               }
               rows={3}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+              className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 text-white placeholder:text-white/30 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all resize-none"
               placeholder="Enter product description"
             />
           </div>
 
           {/* Image Upload */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Product Image <span className="text-red-500">*</span>
             </label>
             <input
@@ -368,7 +368,7 @@ export default function CustomProductModal({
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingImages}
               className={`w-full px-4 py-3 border-2 border-dashed rounded-xl hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                errors.images ? "border-red-300" : "border-gray-300"
+                errors.images ? "border-red-300" : "border-white/20"
               }`}
             >
               {uploadingImages ? (
@@ -392,12 +392,12 @@ export default function CustomProductModal({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  <span className="text-sm text-gray-600">Uploading images...</span>
+                  <span className="text-sm text-white/60">Uploading images...</span>
                 </>
               ) : (
                 <>
                   <svg
-                    className="w-6 h-6 text-gray-400"
+                    className="w-6 h-6 text-white/40"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -409,10 +409,10 @@ export default function CustomProductModal({
                       d="M12 4v16m8-8H4"
                     />
                   </svg>
-                  <span className="text-sm text-gray-700 font-medium">
+                  <span className="text-sm text-white/70 font-medium">
                     Click to upload images
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-white/50">
                     PNG, JPG, WEBP up to 10MB each
                   </span>
                 </>
@@ -461,7 +461,7 @@ export default function CustomProductModal({
 
           {/* Social Platform */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Social Platform <span className="text-red-500">*</span>
             </label>
             <select
@@ -469,10 +469,10 @@ export default function CustomProductModal({
               onChange={(e) =>
                 setFormData({ ...formData, social_platform: e.target.value })
               }
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${
+              className={`w-full px-4 py-3 bg-white/10 border-2 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400/50 transition-all ${
                 errors.social_platform
                   ? "border-red-300 focus:border-red-500"
-                  : "border-gray-200 focus:border-primary"
+                  : "border-white/20 focus:border-primary"
               }`}
               required
             >
@@ -491,11 +491,11 @@ export default function CustomProductModal({
         </div>
 
         {/* Buttons - Sticky at bottom for better mobile UX */}
-        <div className="flex gap-3 p-6 pt-4 border-t border-gray-100 bg-white rounded-b-2xl flex-shrink-0">
+        <div className="flex gap-3 p-6 pt-4 border-t border-white/10 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-3 border-2 border-white/20 text-white/70 hover:bg-white/10 rounded-xl font-semibold transition-colors"
           >
             Cancel
           </button>

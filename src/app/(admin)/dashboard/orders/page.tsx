@@ -295,8 +295,8 @@ export default function OrdersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Orders</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white mb-1">Orders</h1>
+          <p className="text-sm text-white/50">
             {userRole === 'seller' 
               ? "Today's orders only • Manage and track customer orders"
               : "All orders • Filter by date to view specific periods"}
@@ -306,54 +306,54 @@ export default function OrdersPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">
+        <div className="glass-card p-5">
+          <div className="text-xs text-white/60 mb-2">
             Total Orders {userRole !== 'seller' && getDateRange ? `(${getDateRange.label})` : '(Today)'}
           </div>
           {loading ? (
-            <div className="text-2xl font-bold text-gray-400">...</div>
+            <div className="text-2xl font-bold text-white/40">...</div>
           ) : (
             <>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-white">
                 {filteredOrdersForStats.length}
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-white/50 mt-1">
                 {userRole === 'seller' ? 'Today only' : getDateRange ? getDateRange.label : 'All time'}
               </div>
             </>
           )}
         </div>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">
+        <div className="glass-card p-5">
+          <div className="text-xs text-white/60 mb-2">
             Completed {userRole !== 'seller' && getDateRange ? `(${getDateRange.label})` : '(Today)'}
           </div>
           {loading ? (
-            <div className="text-2xl font-bold text-gray-400">...</div>
+            <div className="text-2xl font-bold text-white/40">...</div>
           ) : (
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-green-300">
               {filteredOrdersForStats.filter(o => o.status === 'completed').length}
             </div>
           )}
         </div>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">
+        <div className="glass-card p-5">
+          <div className="text-xs text-white/60 mb-2">
             Pending {userRole !== 'seller' && getDateRange ? `(${getDateRange.label})` : '(Today)'}
           </div>
           {loading ? (
-            <div className="text-2xl font-bold text-gray-400">...</div>
+            <div className="text-2xl font-bold text-white/40">...</div>
           ) : (
-            <div className="text-2xl font-bold text-yellow-600">
+            <div className="text-2xl font-bold text-yellow-300">
               {filteredOrdersForStats.filter(o => o.status === 'pending').length}
             </div>
           )}
         </div>
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-          <div className="text-xs text-gray-600 mb-2">
+        <div className="glass-card p-5">
+          <div className="text-xs text-white/60 mb-2">
             {userRole === 'seller' ? 'Total Commission' : 'Total Revenue'}
             {userRole !== 'seller' && getDateRange ? ` (${getDateRange.label})` : ''}
           </div>
           {loading ? (
-            <div className="text-2xl font-bold text-gray-400">...</div>
+            <div className="text-2xl font-bold text-white/40">...</div>
           ) : (
             <div className="text-2xl font-bold text-primary">
               KES {userRole === 'seller'
@@ -364,9 +364,9 @@ export default function OrdersPage() {
             </div>
           )}
           {userRole === 'seller' ? (
-            <div className="text-xs text-gray-500 mt-1">3% commission • Compounded from last payment</div>
+            <div className="text-xs text-white/50 mt-1">3% commission • Compounded from last payment</div>
           ) : (
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-white/50 mt-1">
               {getDateRange ? getDateRange.label : 'All time'}
             </div>
           )}
@@ -374,16 +374,16 @@ export default function OrdersPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+      <div className="glass-card p-5">
         <div className="flex flex-col md:flex-row gap-3">
           <input
             type="text"
             placeholder="Search orders by ID, customer, or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="flex-1 px-3 py-2 text-sm bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
           />
-          
+
           {/* Date Filter - Only show for admins/managers */}
           {userRole !== 'seller' && (
             <>
@@ -396,7 +396,7 @@ export default function OrdersPage() {
                     setCustomEndDate('');
                   }
                 }}
-                className="px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="px-3 py-2 text-sm bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -404,32 +404,32 @@ export default function OrdersPage() {
                 <option value="month">This Month</option>
                 <option value="custom">Custom Range</option>
               </select>
-              
+
               {dateFilter === 'custom' && (
                 <>
                   <input
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="px-3 py-2 text-sm bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
                     placeholder="Start Date"
                   />
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="px-3 py-2 text-sm bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
                     placeholder="End Date"
                   />
                 </>
               )}
             </>
           )}
-          
+
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="px-3 py-2 text-sm bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
           >
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
@@ -439,14 +439,14 @@ export default function OrdersPage() {
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="px-3 py-2 text-sm bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/20 focus:bg-white/15"
           >
             <option value="all">All Types</option>
             <option value="online">Online</option>
             <option value="pos">POS</option>
           </select>
         </div>
-        <div className="mt-3 text-xs text-gray-500">
+        <div className="mt-3 text-xs text-white/50">
           {filteredOrders.length !== orders.length 
             ? `Showing ${filteredOrders.length} of ${orders.length} orders${userRole !== 'seller' && getDateRange ? ` (${getDateRange.label})` : ' (today)'}`
             : `Showing all ${orders.length} orders${userRole !== 'seller' && getDateRange ? ` (${getDateRange.label})` : ' from today'}`}
@@ -455,14 +455,14 @@ export default function OrdersPage() {
 
       {/* Bulk Action Bar — admin only, visible when orders are selected */}
       {userRole === 'admin' && selectedOrderIds.size > 0 && (
-        <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <span className="text-sm font-medium text-red-800">
+        <div className="flex items-center justify-between bg-red-500/10 border border-red-400/20 rounded-xl px-4 py-3">
+          <span className="text-sm font-medium text-red-300">
             {selectedOrderIds.size} order{selectedOrderIds.size !== 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSelectedOrderIds(new Set())}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm text-white/50 hover:text-white transition-colors"
             >
               Clear selection
             </button>
@@ -481,10 +481,10 @@ export default function OrdersPage() {
       )}
 
       {/* Orders Table */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+      <div className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-black/20 border-b border-white/10">
               <tr>
                     {userRole === 'admin' && (
                       <th className="px-4 py-3 w-10">
@@ -500,26 +500,26 @@ export default function OrdersPage() {
                         />
                       </th>
                     )}
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Order ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Seller</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/60">Order ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/60">Customer</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/60">Seller</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/60">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/60">
                   {userRole === 'seller' ? 'Commission' : 'Amount'}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Payment</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">Date</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-600">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/60">Payment</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/60">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-white/60">Date</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-white/60">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-white/10">
               {loading ? (
                 <tr>
                   <td colSpan={userRole === 'admin' ? 10 : userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                      <span className="ml-2 text-xs text-gray-600">Loading orders...</span>
+                      <span className="ml-2 text-xs text-white/60">Loading orders...</span>
                     </div>
                   </td>
                 </tr>
@@ -544,14 +544,14 @@ export default function OrdersPage() {
               ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={userRole === 'admin' ? 10 : userRole === 'seller' ? 8 : 9} className="px-4 py-8 text-center">
-                    <div className="text-gray-500">
-                      <svg className="w-10 h-10 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="text-white/50">
+                      <svg className="w-10 h-10 mx-auto mb-3 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                       <p className="text-sm font-medium">No orders found</p>
                       <p className="text-xs mt-1">
-                        {orders.length === 0 
-                          ? 'No orders for today yet' 
+                        {orders.length === 0
+                          ? 'No orders for today yet'
                           : 'Try adjusting your filters'}
                       </p>
                     </div>
@@ -561,7 +561,7 @@ export default function OrdersPage() {
                 filteredOrders.map((order) => (
                 <tr
                   key={order.id}
-                  className={`hover:bg-gray-50 transition-colors ${selectedOrderIds.has(order.id) ? 'bg-red-50' : ''}`}
+                  className={`hover:bg-white/5 transition-colors ${selectedOrderIds.has(order.id) ? 'bg-red-500/10' : ''}`}
                 >
                   {userRole === 'admin' && (
                     <td className="px-4 py-3">
@@ -575,22 +575,22 @@ export default function OrdersPage() {
                     </td>
                   )}
                   <td className="px-4 py-3">
-                    <div className="font-mono text-xs font-semibold text-gray-900">
+                    <div className="font-mono text-xs font-semibold text-white">
                       {order.order_number || order.id}
                     </div>
-                    <div className="text-xs text-gray-400 mt-0.5">ID: {order.id.slice(0, 8)}...</div>
+                    <div className="text-xs text-white/40 mt-0.5">ID: {order.id.slice(0, 8)}...</div>
                   </td>
                   <td className="px-4 py-3">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{order.customer}</div>
-                      <div className="text-xs text-gray-500">{order.email}</div>
+                      <div className="text-sm font-medium text-white">{order.customer}</div>
+                      <div className="text-xs text-white/50">{order.email}</div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs text-gray-600">{order.seller}</span>
+                    <span className="text-xs text-white/60">{order.seller}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 uppercase">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 uppercase">
                       {order.type}
                     </span>
                   </td>
@@ -599,44 +599,44 @@ export default function OrdersPage() {
                       <span className="font-semibold text-primary">
                         KES {(order.commission || 0).toLocaleString()}
                       </span>
-                      <div className="text-xs text-gray-500 mt-0.5">
+                      <div className="text-xs text-white/50 mt-0.5">
                         from KES {(order.amount || 0).toLocaleString()}
                       </div>
                     </td>
                   ) : (
                     <td className="px-4 py-3">
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-white">
                         KES {(order.amount || 0).toLocaleString()}
                       </span>
                       {order.seller_role === 'admin' ? (
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          Commission: <span className="text-gray-400">N/A</span>
+                        <div className="text-xs text-white/50 mt-0.5">
+                          Commission: <span className="text-white/40">N/A</span>
                         </div>
                       ) : order.commission && order.commission > 0 ? (
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <div className="text-xs text-white/50 mt-0.5">
                           Commission: KES {(order.commission || 0).toLocaleString()}
                         </div>
                       ) : null}
                     </td>
                   )}
                   <td className="px-4 py-3">
-                    <span className="text-xs text-gray-600 capitalize">{order.payment_method}</span>
+                    <span className="text-xs text-white/60 capitalize">{order.payment_method}</span>
                   </td>
                   <td className="px-4 py-3">
                     <span
                       className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         order.status === 'completed'
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-green-500/20 text-green-300'
                           : order.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-blue-100 text-blue-700'
+                          ? 'bg-yellow-500/20 text-yellow-300'
+                          : 'bg-blue-500/20 text-blue-300'
                       }`}
                     >
                       {order.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-xs text-gray-600">
+                    <div className="text-xs text-white/60">
                       {order.date.toLocaleDateString()}
                     </div>
                   </td>
@@ -687,9 +687,9 @@ export default function OrdersPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && orderToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-300">
+          <div className="glass-strong max-w-md w-full p-6 animate-in zoom-in-95 duration-300">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg
                   className="w-6 h-6 text-red-600"
                   fill="none"
@@ -705,43 +705,43 @@ export default function OrdersPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Delete Order</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-lg font-bold text-white">Delete Order</h3>
+                <p className="text-sm text-white/60 mt-1">
                   This action cannot be undone
                 </p>
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="bg-black/20 rounded-lg p-4 mb-6">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Order ID:</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-white/60">Order ID:</span>
+                  <span className="font-semibold text-white">
                     {orderToDelete.order_number || orderToDelete.id.slice(0, 8)}...
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Customer:</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-white/60">Customer:</span>
+                  <span className="font-semibold text-white">
                     {orderToDelete.customer}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Amount:</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-white/60">Amount:</span>
+                  <span className="font-semibold text-white">
                     KES {(orderToDelete.amount || 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className="font-semibold text-gray-900 capitalize">
+                  <span className="text-white/60">Status:</span>
+                  <span className="font-semibold text-white capitalize">
                     {orderToDelete.status}
                   </span>
                 </div>
               </div>
             </div>
 
-            <p className="text-sm text-gray-700 mb-6">
+            <p className="text-sm text-white/70 mb-6">
               Are you sure you want to delete this order? All associated order items will also be deleted. This action cannot be undone.
             </p>
 
@@ -749,7 +749,7 @@ export default function OrdersPage() {
               <button
                 onClick={handleDeleteCancel}
                 disabled={deletingOrderId !== null}
-                className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 border border-white/20 text-white/70 rounded-xl font-semibold hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -768,20 +768,20 @@ export default function OrdersPage() {
       {/* Bulk Delete Confirmation Modal */}
       {showBulkDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+          <div className="glass-strong max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 flex-shrink-0">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500/20 flex-shrink-0">
                 <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Delete {selectedOrderIds.size} Order{selectedOrderIds.size !== 1 ? 's' : ''}</h3>
-                <p className="text-sm text-gray-500">This action cannot be undone</p>
+                <h3 className="text-lg font-bold text-white">Delete {selectedOrderIds.size} Order{selectedOrderIds.size !== 1 ? 's' : ''}</h3>
+                <p className="text-sm text-white/50">This action cannot be undone</p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-700 mb-6">
+            <p className="text-sm text-white/70 mb-6">
               You are about to permanently delete <strong>{selectedOrderIds.size} order{selectedOrderIds.size !== 1 ? 's' : ''}</strong>. All associated order items will also be deleted.
             </p>
 
@@ -789,7 +789,7 @@ export default function OrdersPage() {
               <button
                 onClick={() => setShowBulkDeleteModal(false)}
                 disabled={isBulkDeleting}
-                className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 border border-white/20 text-white/70 rounded-xl font-semibold hover:bg-white/10 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

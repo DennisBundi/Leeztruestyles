@@ -156,22 +156,22 @@ export default function ReviewModeration() {
 
       {/* Stats Bar */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+        <div className="glass-card p-4 text-center">
           <p className="text-2xl font-bold text-yellow-500">{stats.pending}</p>
-          <p className="text-sm text-gray-500">Pending</p>
+          <p className="text-sm text-white/50">Pending</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+        <div className="glass-card p-4 text-center">
           <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
-          <p className="text-sm text-gray-500">Approved</p>
+          <p className="text-sm text-white/50">Approved</p>
         </div>
-        <div className="bg-white rounded-lg shadow-sm p-4 text-center">
+        <div className="glass-card p-4 text-center">
           <p className="text-2xl font-bold text-red-500">{stats.rejected}</p>
-          <p className="text-sm text-gray-500">Rejected</p>
+          <p className="text-sm text-white/50">Rejected</p>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-white/10">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -180,12 +180,12 @@ export default function ReviewModeration() {
             className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
               activeTab === tab.key
                 ? "border-[#f472b6] text-[#f472b6]"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                : "border-transparent text-white/50 hover:text-white"
             }`}
           >
             {tab.label}
             {tab.count !== undefined && (
-              <span className="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-gray-100">
+              <span className="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-white/10">
                 {tab.count}
               </span>
             )}
@@ -197,31 +197,31 @@ export default function ReviewModeration() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow-sm p-6">
+            <div key={i} className="glass-card p-6">
               <div className="animate-pulse flex flex-col gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gray-200 rounded" />
+                  <div className="w-12 h-12 bg-white/20 rounded" />
                   <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
-                    <div className="h-3 bg-gray-200 rounded w-1/4" />
+                    <div className="h-4 bg-white/20 rounded w-1/3 mb-2" />
+                    <div className="h-3 bg-white/20 rounded w-1/4" />
                   </div>
                 </div>
-                <div className="h-3 bg-gray-200 rounded w-full" />
-                <div className="h-3 bg-gray-200 rounded w-2/3" />
+                <div className="h-3 bg-white/20 rounded w-full" />
+                <div className="h-3 bg-white/20 rounded w-2/3" />
               </div>
             </div>
           ))}
         </div>
       ) : !Array.isArray(reviews) || reviews.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-          <p className="text-gray-500">No reviews found for this filter.</p>
+        <div className="glass-card p-8 text-center">
+          <p className="text-white/50">No reviews found for this filter.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {reviews.map((review) => (
             <div
               key={review.id}
-              className="bg-white rounded-lg shadow-sm p-6"
+              className="glass-card p-6"
             >
               {/* Product Info */}
               <div className="flex items-start gap-3 mb-4">
@@ -233,10 +233,10 @@ export default function ReviewModeration() {
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm truncate">
+                  <p className="font-semibold text-white text-sm truncate">
                     {review.product_name}
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-white/40">
                     {formatDate(review.created_at)}
                   </p>
                 </div>
@@ -250,10 +250,10 @@ export default function ReviewModeration() {
 
               {/* Reviewer */}
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm text-gray-700 font-medium">
+                <span className="text-sm text-white/70 font-medium">
                   {review.reviewer_name}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-white/40">
                   {review.reviewer_email}
                 </span>
                 {review.reviewer_tier && (
@@ -264,7 +264,7 @@ export default function ReviewModeration() {
               {/* Rating + Text */}
               <div className="mb-3">
                 <StarRating rating={review.rating} size="sm" readonly />
-                <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+                <p className="text-sm text-white/70 mt-2 leading-relaxed">
                   {review.text}
                 </p>
               </div>
@@ -277,7 +277,7 @@ export default function ReviewModeration() {
                       key={i}
                       src={url}
                       alt={`Review photo ${i + 1}`}
-                      className="w-16 h-16 object-cover rounded border border-gray-200"
+                      className="w-16 h-16 object-cover rounded border border-white/10"
                     />
                   ))}
                 </div>
@@ -285,7 +285,7 @@ export default function ReviewModeration() {
 
               {/* Action Buttons (Pending only) */}
               {review.status === "pending" && (
-                <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-3 pt-3 border-t border-white/10">
                   <button
                     type="button"
                     disabled={actionLoading[review.id]}
@@ -300,7 +300,7 @@ export default function ReviewModeration() {
                       <select
                         value={selectedReason}
                         onChange={(e) => setSelectedReason(e.target.value)}
-                        className="flex-1 text-sm border border-gray-300 rounded px-2 py-2 text-gray-700 focus:ring-2 focus:ring-[#f9a8d4] focus:border-[#f9a8d4] outline-none"
+                        className="flex-1 text-sm border border-white/10 rounded px-2 py-2 text-white/70 bg-white/10 focus:ring-2 focus:ring-[#f9a8d4] focus:border-[#f9a8d4] outline-none"
                       >
                         <option value="">Select reason...</option>
                         {REJECTION_REASONS.map((reason) => (
@@ -323,7 +323,7 @@ export default function ReviewModeration() {
                           setRejectingId(null);
                           setSelectedReason("");
                         }}
-                        className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
+                        className="px-3 py-2 text-sm text-white/50 hover:text-white"
                       >
                         Cancel
                       </button>
