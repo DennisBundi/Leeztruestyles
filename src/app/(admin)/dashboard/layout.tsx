@@ -25,7 +25,7 @@ export default async function AdminLayout({
   }
   if (!hasSupabase) {
     return (
-      <div className="min-h-screen relative">
+      <div className="min-h-screen relative admin-layout">
         <div className="fixed inset-0 bg-gradient-to-br from-[#7a1040] via-[#4a0030] to-[#1a0020] -z-10" />
         <AdminNav />
         <div className="ml-0 lg:ml-64 transition-all duration-300 pt-16 lg:pt-0">
@@ -135,7 +135,7 @@ export default async function AdminLayout({
   const employee = await getEmployee(user.id);
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative admin-layout">
       {/* Fixed gradient background */}
       <div className="fixed inset-0 bg-gradient-to-br from-[#7a1040] via-[#4a0030] to-[#1a0020] -z-10" />
       <AdminNav userRole={userRole} employee={employee} />

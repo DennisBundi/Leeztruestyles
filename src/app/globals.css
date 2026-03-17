@@ -108,6 +108,17 @@ html {
   background: #f472b6;
 }
 
+/* Admin dashboard — dark select dropdowns to match glass UI */
+.admin-layout select {
+  background-color: #1a0020;
+  color: #ffffff;
+}
+
+.admin-layout select option {
+  background-color: #1a0020;
+  color: #ffffff;
+}
+
 /* Hide scrollbar for thumbnail strip */
 .scrollbar-hide {
   -ms-overflow-style: none;
