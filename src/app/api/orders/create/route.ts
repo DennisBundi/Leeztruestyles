@@ -319,7 +319,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Validate prices against database for existing products
-    if (existingProductItems.length > 0) {
+    // Skip for POS orders — discounts applied at POS are intentional and admin-controlled
+    if (existingProductItems.length > 0 && validated.sale_type !== "pos") {
       const productIds = existingProductItems.map((item) => item.product_id);
       const { data: dbProducts, error: priceError } = await supabase
         .from("products")
