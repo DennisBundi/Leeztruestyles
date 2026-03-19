@@ -62,7 +62,7 @@ export function canAccessSection(userRole: UserRole | null, section: DashboardSe
 
   // Sellers can only access: orders, products, pos, profile, settings (NOT payments)
   if (userRole === 'seller') {
-    return ['orders', 'products', 'pos', 'profile', 'settings'].includes(section);
+    return ['dashboard', 'orders', 'products', 'pos', 'profile', 'settings'].includes(section);
   }
 
   // Admin and manager can access these sections
