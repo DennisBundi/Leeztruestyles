@@ -71,7 +71,11 @@ export default function DashboardPage() {
           fetchRecentOrders();
         }
       })
-      .catch(() => setRoleLoading(false));
+      .catch(() => {
+        setRoleLoading(false);
+        fetchDashboardData();
+        fetchRecentOrders();
+      });
   }, []);
 
   const fetchDashboardData = async () => {
