@@ -29,6 +29,7 @@ export default function SellerDashboard() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStats();
@@ -47,6 +48,7 @@ export default function SellerDashboard() {
       }
     } catch {
       setStats(null);
+      setError('Failed to load stats. Please retry.');
     } finally {
       setStatsLoading(false);
     }
@@ -92,6 +94,21 @@ export default function SellerDashboard() {
           })}
         </p>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="glass-card border-l-4 border-[#f9a8d4] p-4">
+          <div className="flex items-center gap-3">
+            <p className="text-white/80 text-sm flex-1">{error}</p>
+            <button
+              onClick={() => { setError(null); fetchStats(); fetchOrders(); }}
+              className="text-[#f9a8d4] text-sm font-medium underline"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
