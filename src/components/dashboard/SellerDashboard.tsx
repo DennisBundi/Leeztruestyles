@@ -66,6 +66,7 @@ export default function SellerDashboard() {
       }
     } catch {
       setOrders([]);
+      setError('Failed to load orders. Please retry.');
     } finally {
       setOrdersLoading(false);
     }
