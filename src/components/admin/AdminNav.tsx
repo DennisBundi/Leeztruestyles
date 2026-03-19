@@ -14,7 +14,7 @@ type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'emp
 function canAccessSection(userRole: UserRole | null, section: DashboardSection): boolean {
   if (!userRole) return false;
   if (userRole === 'seller') {
-    return ['orders', 'pos', 'products', 'profile', 'settings'].includes(section);
+    return ['dashboard', 'orders', 'pos', 'products', 'profile', 'settings'].includes(section);
   }
   if (['orders', 'payments', 'pos', 'profile', 'settings', 'products'].includes(section)) return true;
   if (['dashboard', 'inventory'].includes(section)) return userRole === 'admin' || userRole === 'manager';

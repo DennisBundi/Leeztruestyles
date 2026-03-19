@@ -41,6 +41,10 @@ export default function SellerDashboard() {
       setStatsLoading(true);
       const response = await fetch('/api/dashboard/user-stats');
       const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Failed to load. Please retry.');
+        return;
+      }
       if (response.ok) {
         setStats(data);
       } else {
@@ -59,6 +63,10 @@ export default function SellerDashboard() {
       setOrdersLoading(true);
       const response = await fetch('/api/orders');
       const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Failed to load. Please retry.');
+        return;
+      }
       if (response.ok) {
         setOrders((data.orders || []).slice(0, 5));
       } else {
@@ -193,7 +201,7 @@ export default function SellerDashboard() {
       {/* Recent Orders */}
       <div className="glass-card p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold">Today&apos;s Orders</h2>
+          <h2 className="text-white font-semibold">Recent Orders</h2>
           <Link
             href="/dashboard/orders"
             className="text-[#f9a8d4] hover:text-[#f9a8d4] text-xs font-medium flex items-center gap-1 transition-colors"
