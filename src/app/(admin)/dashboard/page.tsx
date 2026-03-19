@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatOrderId } from '@/lib/utils/orderId';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Dot } from 'recharts';
 import SocialPlatformAnalytics from '@/components/dashboard/SocialPlatformAnalytics';
+import SellerDashboard from '@/components/dashboard/SellerDashboard';
 
 // Dummy data for preview (keeping original structure)
 const dummyStats = {
@@ -40,13 +40,13 @@ interface TopProduct {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [recentOrdersLoading, setRecentOrdersLoading] = useState(true);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Real data from Supabase
@@ -60,46 +60,19 @@ export default function DashboardPage() {
   const [todayProfits, setTodayProfits] = useState<number>(0);
   const [lowStock, setLowStock] = useState<Array<{ id: string; name: string; stock_quantity: number }>>([]);
 
-  // Check role and redirect sellers immediately (only once)
   useEffect(() => {
-    let mounted = true;
-    const checkRole = async () => {
-      try {
-        const response = await fetch('/api/auth/role');
-        const { role } = await response.json();
-        if (mounted && role === 'seller') {
-          setIsRedirecting(true);
-          // Use replace to avoid adding to history, and do it immediately
-          router.replace('/dashboard/products');
-          return; // Exit early to prevent rendering dashboard content
+    fetch('/api/auth/role')
+      .then(r => r.json())
+      .then(({ role }) => {
+        setUserRole(role);
+        setRoleLoading(false);
+        if (role !== 'seller') {
+          fetchDashboardData();
+          fetchRecentOrders();
         }
-      } catch (error) {
-        console.error('Error checking role:', error);
-      }
-    };
-    // Run immediately, don't wait
-    checkRole();
-    return () => { mounted = false; };
-  }, [router]);
-
-  useEffect(() => {
-    if (!isRedirecting) {
-      fetchDashboardData();
-      fetchRecentOrders();
-    }
-  }, [isRedirecting]);
-
-  // Don't render dashboard content if redirecting
-  if (isRedirecting) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f9a8d4] mx-auto mb-4"></div>
-          <p className="text-white/60">Redirecting to products...</p>
-        </div>
-      </div>
-    );
-  }
+      })
+      .catch(() => setRoleLoading(false));
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
@@ -254,6 +227,18 @@ export default function DashboardPage() {
       setRecentOrdersLoading(false);
     }
   };
+
+  if (roleLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f9a8d4]" />
+      </div>
+    );
+  }
+
+  if (userRole === 'seller') {
+    return <SellerDashboard />;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in pt-16 lg:pt-0">
