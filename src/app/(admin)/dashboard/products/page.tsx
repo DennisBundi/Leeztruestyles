@@ -497,58 +497,60 @@ export default function ProductsPage() {
 
       {/* Search and Filters */}
       <div className="glass-card p-6">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col gap-3">
           <input
             type="text"
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-3 bg-black/20 text-white placeholder-white/40 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="w-full px-4 py-3 bg-black/20 text-white placeholder-white/40 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
-          <select
-            value={selectedCategoryFilter}
-            onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-            className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.name}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          {availableColors.length > 0 && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <select
-              value={selectedColorFilter}
-              onChange={(e) => setSelectedColorFilter(e.target.value)}
+              value={selectedCategoryFilter}
+              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
               className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             >
-              <option value="all">All Colors</option>
-              {availableColors.map((color) => (
-                <option key={color} value={color}>
-                  {color}
+              <option value="all">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
                 </option>
               ))}
             </select>
-          )}
-          <select
-            value={selectedSource}
-            onChange={(e) => setSelectedSource(e.target.value)}
-            className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          >
-            <option value="all">All Sources</option>
-            <option value="admin">Admin Created</option>
-            <option value="pos">POS Created</option>
-          </select>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            {availableColors.length > 0 && (
+              <select
+                value={selectedColorFilter}
+                onChange={(e) => setSelectedColorFilter(e.target.value)}
+                className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="all">All Colors</option>
+                {availableColors.map((color) => (
+                  <option key={color} value={color}>
+                    {color}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              value={selectedSource}
+              onChange={(e) => setSelectedSource(e.target.value)}
+              className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">All Sources</option>
+              <option value="admin">Admin Created</option>
+              <option value="pos">POS Created</option>
+            </select>
+          </div>
         </div>
         {filteredProducts.length !== products.length && (
           <div className="mt-4 text-sm text-white/60">
