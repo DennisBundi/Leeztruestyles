@@ -204,14 +204,29 @@ export default function POSProductGrid({
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {availableProducts.map((product) => {
           return (
-            <button
+            <div
               key={product.id}
               data-product-id={product.id}
+              role="button"
+              tabIndex={0}
               onClick={(e) => {
-                const button = e.currentTarget;
-                handleProductClick(product, button, e);
+                handleProductClick(product, e.currentTarget as HTMLElement, e);
               }}
-              disabled={processingProductId === product.id}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (processingProductId !== product.id) {
+                    setProcessingProductId(product.id);
+                    setSelectedProduct(product);
+                    setShowSizeColorModal(true);
+                    fetch(`/api/products/${product.id}/sizes`)
+                      .then(r => r.ok ? r.json() : { sizes: [] })
+                      .then(d => setAvailableSizes(d.sizes || []))
+                      .catch(() => setAvailableSizes([]))
+                      .finally(() => setProcessingProductId(null));
+                  }
+                }
+              }}
               className={`group relative glass-card rounded-none shadow-md text-left hover:shadow-xl transition-all border-2 hover:scale-105 cursor-pointer border-transparent hover:border-primary/30 active:scale-95 ${
                 processingProductId === product.id ? 'opacity-60 pointer-events-none' : ''
               }`}
@@ -297,7 +312,7 @@ export default function POSProductGrid({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
             </button>
-          </button>
+          </div>
         );
       })}
     </div>
