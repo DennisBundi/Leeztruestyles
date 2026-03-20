@@ -448,7 +448,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in pt-16 lg:pt-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -503,12 +503,12 @@ export default function ProductsPage() {
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="flex-1 px-4 py-3 bg-black/20 text-white placeholder-white/40 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
           <select
             value={selectedCategoryFilter}
             onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-            className="px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">All Categories</option>
             {categories.map((cat) => (
@@ -520,7 +520,7 @@ export default function ProductsPage() {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -530,7 +530,7 @@ export default function ProductsPage() {
             <select
               value={selectedColorFilter}
               onChange={(e) => setSelectedColorFilter(e.target.value)}
-              className="px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             >
               <option value="all">All Colors</option>
               {availableColors.map((color) => (
@@ -543,7 +543,7 @@ export default function ProductsPage() {
           <select
             value={selectedSource}
             onChange={(e) => setSelectedSource(e.target.value)}
-            className="px-4 py-3 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">All Sources</option>
             <option value="admin">Admin Created</option>
