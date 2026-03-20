@@ -99,7 +99,7 @@ export async function login(formData: FormData) {
     if (userRole === "admin" || userRole === "manager") {
         redirectTo = "/dashboard";
     } else if (userRole === "seller") {
-        redirectTo = "/dashboard/products";
+        redirectTo = "/dashboard";
     }
 
     revalidatePath('/', 'layout')

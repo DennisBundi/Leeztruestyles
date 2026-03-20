@@ -344,7 +344,7 @@ export default function Header() {
                       {userRole ? (
                         // Admin, Manager, or Seller - show Dashboard
                         <Link
-                          href={userRole === 'seller' ? "/dashboard/products" : "/dashboard"}
+                          href="/dashboard"
                           className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-primary transition-colors"
                           onClick={() => setShowSignOutModal(false)}
                         >
