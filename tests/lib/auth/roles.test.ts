@@ -134,8 +134,10 @@ describe('Auth Role Utilities', () => {
       expect(canAccessSection('seller', 'profile')).toBe(true);
       expect(canAccessSection('seller', 'settings')).toBe(true);
 
+      // Sellers can access dashboard (scoped seller view)
+      expect(canAccessSection('seller', 'dashboard')).toBe(true);
+
       // Sellers cannot access
-      expect(canAccessSection('seller', 'dashboard')).toBe(false);
       expect(canAccessSection('seller', 'inventory')).toBe(false);
       expect(canAccessSection('seller', 'employees')).toBe(false);
       expect(canAccessSection('seller', 'payments')).toBe(false);
@@ -213,7 +215,7 @@ describe('Auth Role Utilities', () => {
       expect(sellerSections).toContain('products');
       expect(sellerSections).toContain('pos');
       expect(sellerSections).not.toContain('employees');
-      expect(sellerSections).not.toContain('dashboard');
+      expect(sellerSections).toContain('dashboard');
       expect(sellerSections).not.toContain('reviews');
       expect(sellerSections).not.toContain('loyalty');
 
