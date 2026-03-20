@@ -31,9 +31,12 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
   const [showCustomProductModal, setShowCustomProductModal] = useState(false);
   const [userRole, setUserRole] = useState<'admin' | 'manager' | 'seller' | null>(initialUserRole ?? null);
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const addCustomItem = useCartStore((state) => state.addCustomItem);
   const cartItems = useCartStore((state) => state.items);
   const getCartTotal = useCartStore((state) => state.getTotal);
+
+  useEffect(() => { setMounted(true); }, []);
 
   const fetchProducts = async () => {
     try {
@@ -279,13 +282,13 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 <span>View Cart</span>
-                {cartItems.length > 0 && (
+                {mounted && cartItems.length > 0 && (
                   <span className="bg-white text-primary text-xs font-bold px-2 py-0.5 rounded-full">
                     {cartItems.length}
                   </span>
                 )}
               </div>
-              {cartItems.length > 0 && (
+              {mounted && cartItems.length > 0 && (
                 <span className="font-bold">KES {getCartTotal().toLocaleString()}</span>
               )}
             </button>
