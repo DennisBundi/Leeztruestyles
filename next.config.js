@@ -70,7 +70,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://pklbqruulnpalzxurznr.supabase.co https://images.unsplash.com",
               "font-src 'self'",
-              "connect-src 'self' https://pklbqruulnpalzxurznr.supabase.co wss://pklbqruulnpalzxurznr.supabase.co https://api.paystack.co https://*.ingest.us.sentry.io",
+              "connect-src 'self' https://pklbqruulnpalzxurznr.supabase.co wss://pklbqruulnpalzxurznr.supabase.co https://api.paystack.co https://o4511092085948416.ingest.us.sentry.io",
               "frame-src 'self' https://js.paystack.co https://checkout.paystack.com",
               "object-src 'none'",
               "base-uri 'self'",
@@ -138,12 +138,16 @@ module.exports = withSentryConfig(nextConfig, {
   org: 'leeztruestyles',
   project: 'leeztruestyles',
 
-  // Upload source maps on production builds only
   silent: !process.env.CI,
 
-  // Disable Sentry's default performance features — errors only
-  widenClientFileUpload: true,
-  hideSourceMaps: true,
-  disableLogger: true,
-  automaticVercelMonitors: false,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+    automaticVercelMonitors: false,
+  },
 });
