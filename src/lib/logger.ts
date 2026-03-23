@@ -1,6 +1,9 @@
+import * as Sentry from '@sentry/nextjs';
+
 /**
  * Structured logger that redacts PII in production.
  * In development, logs are passed through as-is.
+ * In production, errors are also sent to Sentry.
  */
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -52,6 +55,16 @@ export const logger = {
   },
   error(message: string, ...args: unknown[]) {
     console.error(`[ERROR] ${message}`, ...args.map(redact));
+
+    // Report to Sentry in production
+    if (isProduction) {
+      const err = args.find((a) => a instanceof Error);
+      if (err instanceof Error) {
+        Sentry.captureException(err, { extra: { message } });
+      } else {
+        Sentry.captureMessage(message, 'error');
+      }
+    }
   },
   debug(message: string, ...args: unknown[]) {
     if (!isProduction) {
