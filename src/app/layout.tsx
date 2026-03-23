@@ -8,6 +8,7 @@ import InstallPrompt from "@/components/InstallPrompt";
 import PWAMetaTags from "@/components/PWAMetaTags";
 import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 import { ThemeProvider } from "next-themes";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Leeztruestyles - Fashion Marketplace",
@@ -57,6 +58,7 @@ export default function RootLayout({
           <CartNotificationProvider />
           <InstallPrompt />
           <PWAUpdatePrompt />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
