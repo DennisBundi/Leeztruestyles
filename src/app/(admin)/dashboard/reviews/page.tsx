@@ -1,8 +1,21 @@
 "use client";
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ReviewModeration from "@/components/reviews/ReviewModeration";
 
 export default function ReviewModerationPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/auth/role')
+      .then(r => r.json())
+      .then(({ role }) => { if (mounted && role === 'seller') router.replace('/dashboard/orders'); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [router]);
+
   return (
     <div className="p-6 pt-16 lg:pt-6">
       <div className="mb-6">

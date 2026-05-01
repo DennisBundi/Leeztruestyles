@@ -34,7 +34,7 @@ const createOrderSchema = z
           price: z.number().positive(),
         }),
       ])
-    ),
+    ).min(1, 'At least one item is required'),
     customer_info: z.object({
       name: z.string().min(1),
       email: z.string().email(),
@@ -352,6 +352,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // For POS orders, verify stock availability before creating the order
+    if (validated.sale_type === "pos" && existingProductItems.length > 0) {
+      const { InventoryService } = await import("@/services/inventoryService");
+      for (const item of existingProductItems) {
+        const available = await InventoryService.checkAvailability(
+          item.product_id,
+          item.quantity,
+          item.size,
+          item.color
+        );
+        if (!available) {
+          return NextResponse.json(
+            { error: "Insufficient stock for one or more items" },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
     // Calculate total (apply reward discount if validated)
     const subtotal = allOrderItems.reduce(
       (sum, item) => sum + item.price * item.quantity,
@@ -584,29 +603,25 @@ export async function POST(request: NextRequest) {
     if (validated.sale_type === "pos" && order) {
       const { InventoryService } = await import("@/services/inventoryService");
 
-      // Get order items to deduct inventory
-      const { data: posOrderItems } = await supabase
-        .from("order_items")
-        .select("product_id, quantity, size, color")
-        .eq("order_id", order.id);
-
-      if (posOrderItems) {
-        logger.debug(`Deducting inventory for POS order ${order.id}`);
-        for (const item of posOrderItems) {
-          try {
-            await InventoryService.deductStock(
-              item.product_id,
-              item.quantity,
-              undefined, // sellerId not needed for inventory deduction
-              item.size || undefined,
-              item.color || undefined
-            );
-            logger.debug(`Deducted ${item.quantity} from product ${item.product_id}`);
-          } catch (error) {
-            logger.error(`Error deducting inventory for product ${item.product_id}:`, error);
-            // Continue with other items even if one fails
-            // Don't fail the entire order creation - inventory can be adjusted manually if needed
-          }
+      logger.debug(`Deducting inventory for POS order ${order.id}`);
+      for (const item of allOrderItems) {
+        try {
+          await InventoryService.deductStock(
+            item.product_id,
+            item.quantity,
+            undefined,
+            item.size,
+            item.color
+          );
+          logger.debug(`Deducted ${item.quantity} from product ${item.product_id}`);
+        } catch (error) {
+          logger.error(`Error deducting inventory for product ${item.product_id}:`, error);
+          // Rollback: delete the order since inventory deduction failed
+          await supabase.from("orders").delete().eq("id", order.id);
+          return NextResponse.json(
+            { error: "Failed to update inventory. Order has been cancelled." },
+            { status: 500 }
+          );
         }
       }
     }
@@ -632,7 +647,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid request data" },
+        {
+          error: "Invalid request data",
+          details: error.errors.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
         { status: 400 }
       );
     }
