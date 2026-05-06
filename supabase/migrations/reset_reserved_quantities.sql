@@ -97,7 +97,7 @@ BEGIN
   ELSE
     UPDATE inventory
     SET reserved_quantity = 0,
-        stock_quantity = stock_quantity - p_quantity,
+        stock_quantity = GREATEST(0, stock_quantity - p_quantity),
         last_updated = NOW()
     WHERE product_id = p_product_id;
   END IF;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Transaction {
   id: string;
@@ -15,12 +16,22 @@ interface Transaction {
 }
 
 export default function PaymentsPage() {
+  const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedMethod, setSelectedMethod] = useState('all');
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/auth/role')
+      .then(r => r.json())
+      .then(({ role }) => { if (mounted && role === 'seller') router.replace('/dashboard/orders'); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [router]);
 
   // Fetch transactions from API
   useEffect(() => {

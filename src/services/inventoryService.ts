@@ -48,6 +48,46 @@ export class InventoryService {
   }
 
   /**
+   * Check if sufficient stock is available before a POS sale
+   */
+  static async checkAvailability(
+    productId: string,
+    quantity: number,
+    size?: string,
+    color?: string
+  ): Promise<boolean> {
+    const adminClient = createAdminClient();
+
+    if (size && color) {
+      const { data } = await adminClient
+        .from('product_size_colors')
+        .select('stock_quantity, reserved_quantity')
+        .eq('product_id', productId)
+        .eq('size', size)
+        .eq('color', color)
+        .single();
+      if (data) {
+        return Math.max(0, (data.stock_quantity || 0) - (data.reserved_quantity || 0)) >= quantity;
+      }
+    }
+
+    if (size && !color) {
+      const { data } = await adminClient
+        .from('product_sizes')
+        .select('stock_quantity, reserved_quantity')
+        .eq('product_id', productId)
+        .eq('size', size)
+        .single();
+      if (data) {
+        return Math.max(0, (data.stock_quantity || 0) - (data.reserved_quantity || 0)) >= quantity;
+      }
+    }
+
+    const available = await this.getStock(productId);
+    return available >= quantity;
+  }
+
+  /**
    * Reserve stock (for pending orders)
    */
   static async reserveStock(
@@ -424,8 +464,7 @@ export class InventoryService {
         const newStockQuantity = Math.max(0, (inventoryData.stock_quantity || 0) - quantity);
         const newReservedQuantity = Math.max(0, (inventoryData.reserved_quantity || 0) - quantity);
         logger.info(`Updating inventory: ${inventoryData.stock_quantity} -> ${newStockQuantity}, reserved: ${inventoryData.reserved_quantity} -> ${newReservedQuantity}`);
-        
-        const adminClient = createAdminClient();
+
         const { data: updateResult, error: directUpdateError } = await adminClient
           .from('inventory')
           .update({
@@ -491,8 +530,6 @@ export class InventoryService {
       const deductFromThisSize = Math.min(remainingQuantity, availableStock);
 
       if (deductFromThisSize > 0) {
-        // Use admin client to bypass RLS for size-based inventory updates
-        const adminClient = createAdminClient();
         const { error: updateError } = await adminClient
           .from('product_sizes')
           .update({

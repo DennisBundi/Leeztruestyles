@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface LoyaltyStats {
   totalAccounts: number;
@@ -12,9 +13,19 @@ interface LoyaltyStats {
 }
 
 export default function LoyaltyAnalyticsPage() {
+  const router = useRouter();
   const [stats, setStats] = useState<LoyaltyStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/auth/role')
+      .then(r => r.json())
+      .then(({ role }) => { if (mounted && role === 'seller') router.replace('/dashboard/orders'); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [router]);
 
   useEffect(() => {
     fetchStats();

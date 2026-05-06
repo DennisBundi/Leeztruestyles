@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getUserRole, canAccessSection } from '@/lib/auth/roles';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
     try {
         const supabase = await createClient();
+
+        // Require authentication
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Only admin and manager can access inventory
+        const role = await getUserRole(user.id);
+        if (!canAccessSection(role, 'inventory')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         // Fetch all products with their categories from Supabase
         const { data: products, error: productsError } = await supabase

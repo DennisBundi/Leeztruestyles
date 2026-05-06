@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getUserRole, getEmployee } from '@/lib/auth/roles';
+import { getUserRole, canAccessSection, getEmployee } from '@/lib/auth/roles';
 import { formatOrderId } from '@/lib/utils/orderId';
 
 export const dynamic = 'force-dynamic';
@@ -19,21 +19,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check user role
+    // Check user role — sellers cannot access the payments section
     const userRole = await getUserRole(user.id);
-    if (!userRole) {
+    if (!canAccessSection(userRole, 'payments')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get employee record for sellers
+    // Get employee record (only used for admin/manager-level filtering if needed)
     let employeeId: string | null = null;
-    if (userRole === 'seller') {
-      const employee = await getEmployee(user.id);
-      if (!employee) {
-        return NextResponse.json({ error: 'Employee record not found' }, { status: 403 });
-      }
-      employeeId = employee.id;
-    }
 
     // Fetch transactions from transactions table
     // For sellers, we need to filter by their orders
