@@ -464,8 +464,7 @@ export class InventoryService {
         const newStockQuantity = Math.max(0, (inventoryData.stock_quantity || 0) - quantity);
         const newReservedQuantity = Math.max(0, (inventoryData.reserved_quantity || 0) - quantity);
         logger.info(`Updating inventory: ${inventoryData.stock_quantity} -> ${newStockQuantity}, reserved: ${inventoryData.reserved_quantity} -> ${newReservedQuantity}`);
-        
-        const adminClient = createAdminClient();
+
         const { data: updateResult, error: directUpdateError } = await adminClient
           .from('inventory')
           .update({
@@ -531,8 +530,6 @@ export class InventoryService {
       const deductFromThisSize = Math.min(remainingQuantity, availableStock);
 
       if (deductFromThisSize > 0) {
-        // Use admin client to bypass RLS for size-based inventory updates
-        const adminClient = createAdminClient();
         const { error: updateError } = await adminClient
           .from('product_sizes')
           .update({
