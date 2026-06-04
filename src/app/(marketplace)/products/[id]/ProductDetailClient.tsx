@@ -467,6 +467,18 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
             </ul>
           </div>
 
+          {/* China import lead time notice */}
+          {product.is_china_import && (
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-pink-50 border border-pink-200 text-[#DB2777] text-sm font-medium mb-4">
+              <span className="text-base">🇨🇳</span>
+              <span>
+                Sourced from China
+                {product.lead_time_days
+                  ? ` · Ships in ~${product.lead_time_days} days`
+                  : ""}
+              </span>
+            </div>
+          )}
           <AddToCartButton
             product={product}
             availableStock={currentStock}
