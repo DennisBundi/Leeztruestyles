@@ -216,6 +216,17 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
       )}
 
+      {/* China Import Badge */}
+      {product.is_china_import && (
+        <div
+          className={`absolute top-4 z-20 bg-[#DB2777] text-white px-3 py-1 text-xs font-bold shadow ${
+            isOnSale ? "right-4" : "left-4"
+          }`}
+        >
+          🇨🇳 China
+        </div>
+      )}
+
       <Link href={`/products/${product.id}`}>
         <div 
           className="aspect-square relative bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden"
@@ -286,6 +297,12 @@ export default function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
         </Link>
+        {/* Lead time for China imports */}
+        {product.is_china_import && product.lead_time_days && (
+          <p className="text-xs font-semibold text-[#DB2777] mb-1.5">
+            ⏱ Ships in ~{product.lead_time_days} days
+          </p>
+        )}
         <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
           <div className="flex flex-col flex-1 min-w-0">
             <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
