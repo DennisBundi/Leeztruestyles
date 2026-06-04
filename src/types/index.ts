@@ -16,6 +16,8 @@ export interface Product {
   flash_sale_end?: string | null;
   status?: "active" | "inactive";
   source?: "admin" | "pos";
+  is_china_import?: boolean;
+  lead_time_days?: number | null;
 }
 
 export interface Category {
