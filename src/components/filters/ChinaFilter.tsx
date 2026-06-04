@@ -41,13 +41,13 @@ export default function ChinaFilter() {
       </button>
       {isChinaActive && (
         <span className="text-xs text-[#DB2777] font-medium ml-1">
-          Showing China imports
+          Showing: China imports only ·{" "}
           <button
             onClick={() => navigate(false)}
-            className="ml-2 text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 underline"
             aria-label="Clear China filter"
           >
-            ×
+            × Clear filter
           </button>
         </span>
       )}
