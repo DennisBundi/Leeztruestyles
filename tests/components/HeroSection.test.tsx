@@ -30,6 +30,6 @@ describe("HeroSection", () => {
     const flags = screen.getAllByText("🇨🇳");
     expect(flags).toHaveLength(1);
     // NEW badge appears once
-    expect(screen.getByText(/● NEW/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/● NEW/i)).toHaveLength(1);
   });
 });

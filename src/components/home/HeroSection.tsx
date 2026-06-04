@@ -125,17 +125,18 @@ export default function HeroSection() {
           )}
 
           {/* Label pill */}
-          <div
-            className="absolute top-4 left-4 z-10 text-[9px] font-bold tracking-[2px] px-3 py-1 rounded-full border"
-            style={{
-              background: `${panel.glowColor}`,
-              borderColor: panel.labelBorder,
-              color: panel.labelColor,
-              display: panel.isChina ? "none" : undefined,
-            }}
-          >
-            {panel.label}
-          </div>
+          {!panel.isChina && (
+            <div
+              className="absolute top-4 left-4 z-10 text-[9px] font-bold tracking-[2px] px-3 py-1 rounded-full border"
+              style={{
+                background: panel.glowColor,
+                borderColor: panel.labelBorder,
+                color: panel.labelColor,
+              }}
+            >
+              {panel.label}
+            </div>
+          )}
 
           {/* Text content */}
           <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
