@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import ProductGrid from "@/components/products/ProductGrid";
 import SearchBar from "@/components/search/SearchBar";
 import CategoryFilter from "@/components/filters/CategoryFilter";
@@ -217,7 +218,9 @@ export default async function ProductsPage({
         </div>
         {/* China source filter */}
         <div className="flex justify-center mt-2">
-          <ChinaFilter />
+          <Suspense fallback={null}>
+            <ChinaFilter />
+          </Suspense>
         </div>
       </div>
 
