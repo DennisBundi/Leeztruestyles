@@ -1,7 +1,5 @@
 import { Suspense } from "react";
 import ProductGrid from "@/components/products/ProductGrid";
-
-export const dynamic = "force-dynamic";
 import SearchBar from "@/components/search/SearchBar";
 import CategoryFilter from "@/components/filters/CategoryFilter";
 import PriceFilter from "@/components/filters/PriceFilter";
@@ -10,6 +8,8 @@ import ClearFiltersButton from "@/components/filters/ClearFiltersButton";
 import ChinaFilter from "@/components/filters/ChinaFilter";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from 'next';
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: 'Products - Leeztruestyles',
@@ -38,6 +38,7 @@ export default async function ProductsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  try {
   const supabase = await createClient();
 
   // Build query - try with status filter first
@@ -264,4 +265,13 @@ export default async function ProductsPage({
       )}
     </div>
   );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <p className="text-red-500 font-medium mb-2">Products page error</p>
+        <p className="text-sm text-gray-500 font-mono">{msg}</p>
+      </div>
+    );
+  }
 }
