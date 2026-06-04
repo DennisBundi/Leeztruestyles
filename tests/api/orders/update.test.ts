@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Orders API - Update endpoint
  */
 
@@ -374,4 +377,3 @@ describe('Orders API - Update', () => {
     });
   });
 });
-

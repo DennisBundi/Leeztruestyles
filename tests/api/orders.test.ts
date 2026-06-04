@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Orders API routes
  */
 

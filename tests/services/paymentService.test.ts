@@ -56,7 +56,7 @@ describe('PaymentService', () => {
     expect(result.status).toBe('success');
   });
 
-  it('should format phone number for M-Pesa', () => {
+  it('should format phone number for M-Pesa', async () => {
     const PaymentService = (await import('@/services/paymentService')).default;
     
     // Test phone number formatting

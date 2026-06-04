@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Products API - Search endpoint
  */
 
@@ -188,4 +191,3 @@ describe('Products API - Search', () => {
     });
   });
 });
-

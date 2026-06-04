@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Categories API routes
  */
 
@@ -247,4 +250,3 @@ describe('Categories API', () => {
     });
   });
 });
-

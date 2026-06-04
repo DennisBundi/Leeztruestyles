@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Payments API - Initiate endpoint
  */
 
@@ -505,4 +508,3 @@ describe('Payments API - Initiate', () => {
     });
   });
 });
-

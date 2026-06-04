@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Image Upload API
  */
 
@@ -229,4 +232,3 @@ describe('Image Upload API', () => {
     });
   });
 });
-

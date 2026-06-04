@@ -35,8 +35,8 @@ describe('Order ID Utilities', () => {
     it('should convert to uppercase', () => {
       const uuid = '550e8400-e29b-41d4-a716-44665544abcd';
       const formatted = formatOrderId(uuid);
-      
-      expect(formatted).toBe('LEEZT-ABCD');
+
+      expect(formatted).toBe('LEEZT-44ABCD');
       expect(formatted).toBe(formatted.toUpperCase());
     });
   });

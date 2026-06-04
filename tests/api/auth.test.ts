@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Auth API routes
  */
 
@@ -65,4 +68,3 @@ describe('Auth API', () => {
     });
   });
 });
-

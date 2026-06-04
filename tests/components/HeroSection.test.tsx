@@ -41,10 +41,10 @@ describe("HeroSection", () => {
     expect(screen.getByText(/Shop from China/i)).toBeInTheDocument();
   });
 
-  it("renders 🇨🇳 flag and NEW badge only on the China panel", async () => {
+  it("renders CTA buttons for each panel", async () => {
     await renderHeroSection();
-    const flags = screen.getAllByText("🇨🇳");
-    expect(flags).toHaveLength(1);
-    expect(screen.getAllByText(/● NEW/i)).toHaveLength(1);
+    expect(screen.getByText(/EXPLORE NOW/i)).toBeInTheDocument();
+    expect(screen.getByText(/SHOP HERE/i)).toBeInTheDocument();
+    expect(screen.getByText(/SHOP CHINA/i)).toBeInTheDocument();
   });
 });

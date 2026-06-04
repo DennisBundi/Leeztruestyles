@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Products API - Color Stocks endpoint
  */
 
@@ -132,4 +135,3 @@ describe('Products API - Color Stocks', () => {
     });
   });
 });
-

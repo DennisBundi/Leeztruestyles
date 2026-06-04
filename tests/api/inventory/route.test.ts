@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Inventory API - Route endpoint
  */
 
@@ -156,4 +159,3 @@ describe('Inventory API - Route', () => {
     });
   });
 });
-

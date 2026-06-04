@@ -2,7 +2,7 @@
  * Tests for POSProductGrid component
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import POSProductGrid from '@/components/pos/POSProductGrid';
 import type { Product } from '@/types';
@@ -18,15 +18,15 @@ jest.mock('next/navigation', () => ({
 // Mock cart store
 const mockAddItem = jest.fn();
 jest.mock('@/store/cartStore', () => ({
-  useCartStore: () => ({
-    addItem: mockAddItem,
-    items: [],
-  }),
+  useCartStore: (selector?: (state: any) => any) => {
+    const state = { addItem: mockAddItem, items: [] };
+    return selector ? selector(state) : state;
+  },
 }));
 
 // Mock cart animation
-jest.mock('@/hooks/useCartAnimation', () => ({
-  useCartAnimation: () => ({
+jest.mock('@/components/cart/CartAnimationProvider', () => ({
+  useCartAnimationContext: () => ({
     triggerAnimation: jest.fn(),
   }),
 }));

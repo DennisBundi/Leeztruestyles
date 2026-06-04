@@ -99,13 +99,13 @@ export default async function HeroSection() {
   }));
 
   return (
-    <section className="flex flex-col md:flex-row md:h-[520px]">
+    <section className="flex flex-col md:flex-row h-[calc(100vh-80px)] gap-1 md:gap-2">
       {panels.map((panel, i) => (
         <Link
           key={panel.href}
           href={panel.href}
           aria-label={`${panel.headline.replace(/\n/g, " ")} — ${panel.sub}`}
-          className="relative flex-1 min-h-[220px] md:min-h-0 overflow-hidden group block"
+          className="relative flex-1 overflow-hidden group block"
           style={{ background: panel.fallbackBg }}
         >
           {/* Background image */}
@@ -125,49 +125,7 @@ export default async function HeroSection() {
             }}
           />
 
-          {/* Top accent bar */}
-          <div
-            className="absolute top-0 left-0 right-0 h-[3px]"
-            style={{ background: panel.accentBar }}
-          />
 
-          {/* Divider (between panels, not after last) */}
-          {i < panels.length - 1 && (
-            <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-white/10 z-10 hidden md:block" />
-          )}
-
-          {/* China-only: flag + NEW badge */}
-          {panel.isChina && (
-            <>
-              <span className="absolute top-4 left-4 text-2xl opacity-60 z-10">
-                🇨🇳
-              </span>
-              <span
-                className="absolute top-4 right-4 z-10 text-[10px] font-bold tracking-widest px-2 py-1 rounded-full border"
-                style={{
-                  background: "rgba(219,39,119,0.2)",
-                  borderColor: "rgba(219,39,119,0.5)",
-                  color: "#f9a8d4",
-                }}
-              >
-                ● NEW
-              </span>
-            </>
-          )}
-
-          {/* Label pill */}
-          {!panel.isChina && (
-            <div
-              className="absolute top-4 left-4 z-10 text-[9px] font-bold tracking-[2px] px-3 py-1 rounded-full border"
-              style={{
-                background: panel.glowColor,
-                borderColor: panel.labelBorder,
-                color: panel.labelColor,
-              }}
-            >
-              {panel.label}
-            </div>
-          )}
 
           {/* Text content */}
           <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
@@ -176,11 +134,7 @@ export default async function HeroSection() {
             </h2>
             <p className="text-white/65 text-xs mb-4">{panel.sub}</p>
             <span
-              className="inline-block text-[10px] font-bold tracking-[1.5px] text-white px-3 py-2 border transition-all duration-200 group-hover:bg-white group-hover:text-gray-900"
-              style={{
-                borderColor: panel.ctaBorder,
-                background: panel.ctaBg,
-              }}
+              className="inline-block text-[10px] font-bold tracking-[1.5px] text-gray-900 bg-white px-3 py-2 border border-white transition-all duration-200 group-hover:bg-transparent group-hover:text-white"
             >
               {panel.cta} →
             </span>

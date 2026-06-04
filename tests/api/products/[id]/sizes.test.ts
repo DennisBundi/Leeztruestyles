@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Products API - Sizes endpoint
  */
 
@@ -117,4 +120,3 @@ describe('Products API - Sizes', () => {
     });
   });
 });
-

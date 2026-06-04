@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Tests for Payments API - Paystack webhook endpoint
  */
 
@@ -206,4 +209,3 @@ describe('Payments API - Paystack Webhook', () => {
     });
   });
 });
-
