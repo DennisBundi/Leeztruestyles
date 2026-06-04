@@ -72,6 +72,8 @@ export default function ProductForm({
     flash_sale_end: product?.flash_sale_end
       ? new Date(product.flash_sale_end).toISOString().slice(0, 16)
       : "",
+    is_china_import: product?.is_china_import || false,
+    lead_time_days: product?.lead_time_days?.toString() || "",
   });
 
   useEffect(() => {
@@ -275,6 +277,8 @@ export default function ProductForm({
             flash_sale_end: product.flash_sale_end
               ? new Date(product.flash_sale_end).toISOString().slice(0, 16)
               : "",
+            is_china_import: product.is_china_import || false,
+            lead_time_days: product.lead_time_days?.toString() || "",
           });
 
           // Set existing images as previews
@@ -317,6 +321,8 @@ export default function ProductForm({
             flash_sale_end: product.flash_sale_end
               ? new Date(product.flash_sale_end).toISOString().slice(0, 16)
               : "",
+            is_china_import: product.is_china_import || false,
+            lead_time_days: product.lead_time_days?.toString() || "",
           });
         }
       };
@@ -712,6 +718,10 @@ export default function ProductForm({
           formData.is_flash_sale && formData.flash_sale_end
             ? new Date(formData.flash_sale_end).toISOString()
             : null,
+        is_china_import: formData.is_china_import,
+        lead_time_days: formData.is_china_import && formData.lead_time_days
+          ? parseInt(formData.lead_time_days, 10)
+          : null,
       };
 
       console.log("📤 Sending to API:", {
@@ -790,6 +800,8 @@ export default function ProductForm({
         is_flash_sale: false,
         flash_sale_start: "",
         flash_sale_end: "",
+        is_china_import: false,
+        lead_time_days: "",
       });
       setImagePreviews([]);
       setSelectedColors([]);
@@ -1108,6 +1120,71 @@ export default function ProductForm({
                     </div>
                   </>
                 )}
+
+                {/* SOURCING section */}
+              <div className="col-span-1 md:col-span-2 border border-pink-100 p-4">
+                <h3 className="text-xs font-bold tracking-widest text-[#DB2777] mb-4 uppercase">
+                  Sourcing
+                </h3>
+
+                {/* From China toggle */}
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      From China 🇨🇳
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Product sourced directly from China
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={formData.is_china_import}
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        is_china_import: !prev.is_china_import,
+                        lead_time_days: !prev.is_china_import ? prev.lead_time_days : "",
+                      }))
+                    }
+                    className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${
+                      formData.is_china_import ? "bg-[#DB2777]" : "bg-gray-200"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                        formData.is_china_import ? "translate-x-5" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Lead time — only shown when toggle is on */}
+                {formData.is_china_import && (
+                  <div className="bg-pink-50 border border-pink-100 p-3">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Lead time (days)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 21"
+                      value={formData.lead_time_days}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          lead_time_days: e.target.value,
+                        }))
+                      }
+                      className="w-28 px-3 py-2 border border-gray-200 text-sm focus:outline-none focus:border-[#DB2777] focus:ring-1 focus:ring-[#DB2777]"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Shown as &ldquo;Ships in ~{formData.lead_time_days || "?"} days&rdquo; on product listings
+                    </p>
+                  </div>
+                )}
+              </div>
 
                 {/* Images */}
                 <div className="md:col-span-2">
