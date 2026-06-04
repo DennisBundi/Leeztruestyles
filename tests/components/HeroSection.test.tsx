@@ -23,4 +23,13 @@ describe("HeroSection", () => {
     expect(screen.getByText(/Your New Daily Fix/i)).toBeInTheDocument();
     expect(screen.getByText(/Shop from China/i)).toBeInTheDocument();
   });
+
+  it("renders 🇨🇳 flag and NEW badge only on the China panel", () => {
+    render(<HeroSection />);
+    // Flag emoji appears once (on the China panel)
+    const flags = screen.getAllByText("🇨🇳");
+    expect(flags).toHaveLength(1);
+    // NEW badge appears once
+    expect(screen.getByText(/● NEW/i)).toBeInTheDocument();
+  });
 });

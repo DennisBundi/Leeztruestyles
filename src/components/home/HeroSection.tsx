@@ -1,6 +1,23 @@
 import Link from "next/link";
 
-const panels = [
+interface HeroPanel {
+  label: string;
+  headline: string;
+  sub: string;
+  cta: string;
+  href: string;
+  image: string;
+  fallbackBg: string;
+  accentBar: string;
+  glowColor: string;
+  labelColor: string;
+  labelBorder: string;
+  ctaBorder: string;
+  ctaBg: string;
+  isChina?: boolean;
+}
+
+const panels: HeroPanel[] = [
   {
     label: "NEW IN",
     headline: "Love at\nFirst Try",
@@ -56,6 +73,7 @@ export default function HeroSection() {
         <Link
           key={panel.href}
           href={panel.href}
+          aria-label={`${panel.headline.replace(/\n/g, " ")} — ${panel.sub}`}
           className="relative flex-1 overflow-hidden group block"
           style={{ background: panel.fallbackBg }}
         >
