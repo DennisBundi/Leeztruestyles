@@ -4,6 +4,7 @@ import ProductGrid from "@/components/products/ProductGrid";
 import FlashSaleCountdown from "@/components/products/FlashSaleCountdown";
 import ReviewSection from "@/components/home/ReviewSection";
 import ImportationSection from "@/components/home/ImportationSection";
+import HeroSection from "@/components/home/HeroSection";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -200,35 +201,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative text-white min-h-[calc(60vh+150px)] flex items-center overflow-hidden">
-        {/* Background image */}
-        <div
-          className="absolute inset-0 bg-cover bg-top bg-no-repeat"
-          style={{ backgroundImage: "url('/images/hero-fashion.jpg')" }}
-        />
-        {/* Dark overlay for text readability */}
-        <div className="absolute inset-0 bg-black/50" />
-
-        <div className="container mx-auto px-4 text-center relative z-10 animate-slide-up w-full py-24 md:py-0">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
-            Dress Like You{" "}
-            <span className="bg-white/20 px-4 py-2 rounded-2xl">
-              Mean It
-            </span>
-          </h1>
-          <p className="text-xl md:text-2xl mb-10 text-white/90 max-w-2xl mx-auto">
-            Bold, fresh styles for the woman who walks in and owns the room. Shop Nairobi&apos;s go-to fashion destination.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/products"
-              className="inline-block px-8 py-4 bg-white text-primary rounded-none font-semibold hover:bg-gray-50 transition-all hover:scale-105 shadow-lg hover:shadow-xl"
-            >
-              Shop the Collection
-            </Link>
-          </div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* New Arrivals Section */}
       <section className="bg-gradient-to-br from-gray-50 to-white py-16 md:py-24">
