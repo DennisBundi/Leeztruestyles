@@ -4,6 +4,7 @@ import CategoryFilter from "@/components/filters/CategoryFilter";
 import PriceFilter from "@/components/filters/PriceFilter";
 import ColorFilter from "@/components/filters/ColorFilter";
 import ClearFiltersButton from "@/components/filters/ClearFiltersButton";
+import ChinaFilter from "@/components/filters/ChinaFilter";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from 'next';
 
@@ -25,6 +26,8 @@ interface SearchParams {
   color?: string;
   page?: string;
   flash_sale?: string;
+  china?: string;
+  sort?: string;
 }
 
 export default async function ProductsPage({
@@ -82,9 +85,13 @@ export default async function ProductsPage({
       .gte("flash_sale_end", new Date().toISOString());
   }
 
+  if (searchParams.china === "true") {
+    query = query.eq("is_china_import", true);
+  }
+
   // Execute query
   const { data: products, error } = await query.order("created_at", {
-    ascending: false,
+    ascending: searchParams.sort === "oldest",
   });
 
   // Fetch product colors for filtering
@@ -207,6 +214,10 @@ export default async function ProductsPage({
           <PriceFilter />
           <ColorFilter availableColors={Array.from(allAvailableColors).sort()} />
           <ClearFiltersButton />
+        </div>
+        {/* China source filter */}
+        <div className="flex justify-center mt-2">
+          <ChinaFilter />
         </div>
       </div>
 
