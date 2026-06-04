@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import ProductGrid from "@/components/products/ProductGrid";
+
+export const dynamic = "force-dynamic";
 import SearchBar from "@/components/search/SearchBar";
 import CategoryFilter from "@/components/filters/CategoryFilter";
 import PriceFilter from "@/components/filters/PriceFilter";
@@ -165,9 +167,13 @@ export default async function ProductsPage({
     });
   }
 
-  // Log errors for debugging
   if (error) {
     console.error("Error fetching products:", error);
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <p className="text-red-500 font-medium">Failed to load products: {error.message}</p>
+      </div>
+    );
   }
 
   // Transform products to include stock, category, and colors

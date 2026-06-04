@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 
 interface HeroPanel {
   label: string;
@@ -17,14 +18,13 @@ interface HeroPanel {
   isChina?: boolean;
 }
 
-const panels: HeroPanel[] = [
+const PANEL_TEMPLATES = [
   {
     label: "NEW IN",
     headline: "Love at\nFirst Try",
     sub: "Fresh drops, every week",
     cta: "EXPLORE NOW",
     href: "/products?sort=newest",
-    image: "/images/hero-fashion.jpg",
     fallbackBg: "linear-gradient(170deg,#1a0a12 0%,#3d1a2e 40%,#5e2244 100%)",
     accentBar: "linear-gradient(90deg,#f9a8d4,#EC4899)",
     glowColor: "rgba(249,168,212,0.18)",
@@ -39,7 +39,6 @@ const panels: HeroPanel[] = [
     sub: "The full collection",
     cta: "SHOP HERE",
     href: "/products",
-    image: "/images/hero-fashion.jpg",
     fallbackBg: "linear-gradient(170deg,#1a0818 0%,#3d0e30 40%,#6b1654 100%)",
     accentBar: "linear-gradient(90deg,#EC4899,#DB2777)",
     glowColor: "rgba(236,72,153,0.20)",
@@ -54,7 +53,6 @@ const panels: HeroPanel[] = [
     sub: "Sourced directly, shipped to you",
     cta: "SHOP CHINA",
     href: "/products?china=true",
-    image: "/images/hero-fashion.jpg",
     fallbackBg: "linear-gradient(170deg,#1a0008 0%,#4a0820 40%,#7c0a28 100%)",
     accentBar: "linear-gradient(90deg,#DB2777,#be123c)",
     glowColor: "rgba(219,39,119,0.25)",
@@ -66,7 +64,40 @@ const panels: HeroPanel[] = [
   },
 ];
 
-export default function HeroSection() {
+async function getHeroImages(): Promise<string[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("products")
+      .select("images")
+      .eq("status", "active")
+      .eq("source", "admin")
+      .order("created_at", { ascending: false })
+      .limit(15);
+
+    const images: string[] = [];
+    if (data) {
+      for (const product of data) {
+        if (images.length >= 3) break;
+        if (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) {
+          images.push(product.images[0]);
+        }
+      }
+    }
+    return images;
+  } catch {
+    return [];
+  }
+}
+
+export default async function HeroSection() {
+  const heroImages = await getHeroImages();
+
+  const panels: HeroPanel[] = PANEL_TEMPLATES.map((t, i) => ({
+    ...t,
+    image: heroImages[i] ?? "/images/hero-fashion.jpg",
+  }));
+
   return (
     <section className="flex flex-col md:flex-row md:h-[520px]">
       {panels.map((panel, i) => (
