@@ -24,7 +24,7 @@ const panels: HeroPanel[] = [
     sub: "Fresh drops, every week",
     cta: "EXPLORE NOW",
     href: "/products?sort=newest",
-    image: "/images/hero-explore.jpg",
+    image: "/images/hero-fashion.jpg",
     fallbackBg: "linear-gradient(170deg,#1a0a12 0%,#3d1a2e 40%,#5e2244 100%)",
     accentBar: "linear-gradient(90deg,#f9a8d4,#EC4899)",
     glowColor: "rgba(249,168,212,0.18)",
@@ -39,7 +39,7 @@ const panels: HeroPanel[] = [
     sub: "The full collection",
     cta: "SHOP HERE",
     href: "/products",
-    image: "/images/hero-shop.jpg",
+    image: "/images/hero-fashion.jpg",
     fallbackBg: "linear-gradient(170deg,#1a0818 0%,#3d0e30 40%,#6b1654 100%)",
     accentBar: "linear-gradient(90deg,#EC4899,#DB2777)",
     glowColor: "rgba(236,72,153,0.20)",
@@ -54,7 +54,7 @@ const panels: HeroPanel[] = [
     sub: "Sourced directly, shipped to you",
     cta: "SHOP CHINA",
     href: "/products?china=true",
-    image: "/images/hero-china.jpg",
+    image: "/images/hero-fashion.jpg",
     fallbackBg: "linear-gradient(170deg,#1a0008 0%,#4a0820 40%,#7c0a28 100%)",
     accentBar: "linear-gradient(90deg,#DB2777,#be123c)",
     glowColor: "rgba(219,39,119,0.25)",
@@ -68,13 +68,13 @@ const panels: HeroPanel[] = [
 
 export default function HeroSection() {
   return (
-    <section className="flex flex-col md:flex-row min-h-[420px] md:h-[520px]">
+    <section className="flex flex-col md:flex-row md:h-[520px]">
       {panels.map((panel, i) => (
         <Link
           key={panel.href}
           href={panel.href}
           aria-label={`${panel.headline.replace(/\n/g, " ")} — ${panel.sub}`}
-          className="relative flex-1 overflow-hidden group block"
+          className="relative flex-1 min-h-[220px] md:min-h-0 overflow-hidden group block"
           style={{ background: panel.fallbackBg }}
         >
           {/* Background image */}
