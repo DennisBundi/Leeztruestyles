@@ -91,6 +91,12 @@ const productSchema = z.object({
     .nullable()
     .transform((val) => val || null),
   source: z.enum(["admin", "pos"]).optional().default("admin"),
+  is_china_import: z.boolean().optional().default(false),
+  lead_time_days: z
+    .union([z.number().int().positive(), z.null()])
+    .optional()
+    .nullable()
+    .transform((val) => val ?? null),
 });
 
 export async function POST(request: NextRequest) {
@@ -129,6 +135,8 @@ export async function POST(request: NextRequest) {
       flash_sale_start: validated.flash_sale_start || null,
       flash_sale_end: validated.flash_sale_end || null,
       source: validated.source || "admin", // Admin-created products
+      is_china_import: validated.is_china_import ?? false,
+      lead_time_days: validated.lead_time_days ?? null,
     };
 
     // Only include buying_price if it's provided and is a number
@@ -748,6 +756,12 @@ export async function PUT(request: NextRequest) {
     }
     if (updateData.flash_sale_end !== undefined) {
       updatePayload.flash_sale_end = updateData.flash_sale_end || null;
+    }
+    if (updateData.is_china_import !== undefined) {
+      updatePayload.is_china_import = updateData.is_china_import;
+    }
+    if (updateData.lead_time_days !== undefined) {
+      updatePayload.lead_time_days = updateData.lead_time_days ?? null;
     }
 
     // Use admin client to bypass RLS since we've already verified the user's role
