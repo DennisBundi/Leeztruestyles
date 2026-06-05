@@ -38,3 +38,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local MCP config (contains API keys)
+.mcp.json
+
+# local tooling artifacts
+.superpowers/
+supabase/.temp/
+
