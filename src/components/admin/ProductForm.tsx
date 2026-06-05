@@ -1122,7 +1122,7 @@ export default function ProductForm({
                 )}
 
                 {/* SOURCING section */}
-              <div className="col-span-1 md:col-span-2 border border-pink-100 p-4">
+                <div className="col-span-1 md:col-span-2 border border-pink-100 p-4">
                 <h3 className="text-xs font-bold tracking-widest text-[#DB2777] mb-4 uppercase">
                   Sourcing
                 </h3>
@@ -1148,7 +1148,7 @@ export default function ProductForm({
                         lead_time_days: !prev.is_china_import ? prev.lead_time_days : "",
                       }))
                     }
-                    className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${
+                    className={`relative w-10 h-6 rounded-full overflow-hidden transition-colors duration-200 flex-shrink-0 ${
                       formData.is_china_import ? "bg-[#DB2777]" : "bg-gray-200"
                     }`}
                   >
@@ -1184,7 +1184,7 @@ export default function ProductForm({
                     </p>
                   </div>
                 )}
-              </div>
+                </div>
 
                 {/* Images */}
                 <div className="md:col-span-2">
