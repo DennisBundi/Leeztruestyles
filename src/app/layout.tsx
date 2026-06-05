@@ -1,5 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-sans",
+});
+
 import Header from "@/components/navigation/Header";
 import Footer from "@/components/navigation/Footer";
 import CartNotificationProvider from "@/components/cart/CartNotificationProvider";
@@ -46,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={jakarta.variable}>
       <body className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-200">
         <ThemeProvider attribute="class" defaultTheme="light" storageKey="leez-theme" enableSystem={false}>
           <PWAMetaTags />
