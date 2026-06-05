@@ -100,14 +100,16 @@ export class WhatsAppService {
    */
   static generateProductInquiryLink(
     productName: string,
-    productUrl: string
+    productUrl: string,
+    price?: number
   ): string {
+    const priceText = price !== undefined
+      ? `\n💰 *KES ${price.toLocaleString()}*`
+      : '';
     const message = encodeURIComponent(
-      `Hello! I'm interested in: ${productName}\n\nView product: ${productUrl}\n\nCould you please provide more information about this item?`
+      `Hi Leeztruestyles! 👋\n\nI just came across this product on your website and I'm really interested in it!${priceText}\n\n✨ *${productName}*\n${productUrl}\n\nIs this available? I'd love to get it — could you help me out? 🛍️`
     );
-    // Use the business phone number from env or default to 254797877254 (without +)
     const businessPhone = process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_PHONE || '254797877254';
-    // Format phone number for WhatsApp URL (digits only)
     const phoneNumber = this.formatPhoneForWhatsApp(businessPhone);
     return `https://wa.me/${phoneNumber}?text=${message}`;
   }
