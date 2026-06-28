@@ -19,7 +19,6 @@ export default async function AboutPage() {
   const { data: products } = await supabase
     .from("products")
     .select("id, name, images, price")
-    .eq("status", "active")
     .limit(6)
     .order("created_at", { ascending: false });
 
