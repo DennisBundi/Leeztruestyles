@@ -15,14 +15,15 @@ export const metadata: Metadata = {
 export default async function AboutPage() {
   const supabase = await createClient();
   
-  // Fetch some featured products to display images
+  // Fetch up to 10 products with images
   const { data: products } = await supabase
     .from("products")
     .select("id, name, images, price")
-    .limit(6)
+    .not("images", "eq", "{}")
+    .not("images", "is", null)
+    .limit(10)
     .order("created_at", { ascending: false });
 
-  // Filter products that have images
   const productsWithImages = (products || []).filter(
     (product: any) =>
       product.images &&
@@ -30,6 +31,14 @@ export default async function AboutPage() {
       product.images.length > 0 &&
       product.images[0]
   );
+
+  const FALLBACK = '/images/hero-fashion.jpg';
+
+  const img = (index: number): string =>
+    productsWithImages[index]?.images[0] ?? FALLBACK;
+
+  const isSupabase = (src: string) =>
+    src.includes('pklbqruulnpalzxurznr.supabase.co');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary/5">
@@ -69,18 +78,16 @@ export default async function AboutPage() {
                     carefully selects each item to ensure quality, style, and value for our customers.
                   </p>
                 </div>
-                {productsWithImages.length > 0 && (
-                  <div className="relative h-64 md:h-80 rounded-xl overflow-hidden shadow-lg">
-                    <Image
-                      src={productsWithImages[0]?.images[0]}
-                      alt={productsWithImages[0]?.name || "Fashion item"}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      unoptimized={productsWithImages[0]?.images[0]?.includes("unsplash.com")}
-                    />
-                  </div>
-                )}
+                <div className="relative h-64 md:h-80 rounded-xl overflow-hidden shadow-lg">
+                  <Image
+                    src={img(0)}
+                    alt={productsWithImages[0]?.name || "Fashion item"}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    unoptimized={!isSupabase(img(0))}
+                  />
+                </div>
               </div>
             </section>
 
@@ -95,18 +102,16 @@ export default async function AboutPage() {
                 <h2 className="text-3xl md:text-4xl font-semibold text-primary m-0">Our Mission</h2>
               </div>
               <div className="grid md:grid-cols-2 gap-8 items-center">
-                {productsWithImages.length > 1 && (
-                  <div className="relative h-64 md:h-80 rounded-xl overflow-hidden shadow-lg order-2 md:order-1">
-                    <Image
-                      src={productsWithImages[1]?.images[0]}
-                      alt={productsWithImages[1]?.name || "Fashion item"}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      unoptimized={productsWithImages[1]?.images[0]?.includes("unsplash.com")}
-                    />
-                  </div>
-                )}
+                <div className="relative h-64 md:h-80 rounded-xl overflow-hidden shadow-lg order-2 md:order-1">
+                  <Image
+                    src={img(1)}
+                    alt={productsWithImages[1]?.name || "Fashion item"}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    unoptimized={!isSupabase(img(1))}
+                  />
+                </div>
                 <div className="order-1 md:order-2">
                   <p className="text-gray-700 text-lg leading-relaxed">
                     To empower individuals to express their unique style through accessible,
@@ -124,22 +129,20 @@ export default async function AboutPage() {
               </div>
               
               {/* Product Images Gallery */}
-              {productsWithImages.length > 2 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-                  {productsWithImages.slice(2, 6).map((product: any, index: number) => (
-                    <div key={product.id} className="relative aspect-square rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow group">
-                      <Image
-                        src={product.images[0]}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-500"
-                        sizes="(max-width: 768px) 50vw, 25vw"
-                        unoptimized={product.images[0]?.includes("unsplash.com")}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+                {[2, 3, 4, 5].map((index) => (
+                  <div key={index} className="relative aspect-square rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow group">
+                    <Image
+                      src={img(index)}
+                      alt={productsWithImages[index]?.name || "Fashion item"}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                      unoptimized={!isSupabase(img(index))}
+                    />
+                  </div>
+                ))}
+              </div>
 
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow hover:border-primary/30 group">
