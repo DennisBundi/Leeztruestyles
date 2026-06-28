@@ -120,7 +120,7 @@ export default function Footer() {
                   +254 797 877 254
                 </a>
               </li>
-              <li>Nairobi, Kenya</li>
+              <li>Dynamic Mall, Shop ML 198<br />Fifth Floor, Nairobi, Kenya</li>
             </ul>
           </div>
         </div>
