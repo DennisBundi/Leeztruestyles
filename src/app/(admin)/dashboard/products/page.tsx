@@ -180,7 +180,7 @@ export default function ProductsPage() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedColorFilter, setSelectedColorFilter] = useState("all");
-  const [selectedSource, setSelectedSource] = useState("all");
+  const [activeView, setActiveView] = useState<"all" | "admin" | "pos">("admin");
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     product: { id: string; name: string } | null;
@@ -312,22 +312,19 @@ export default function ProductsPage() {
   const filteredProducts = useMemo(() => {
     return products
       .filter((product: any) => {
-        // Enhanced search: search across name, description, ID, and category
         const searchLower = searchQuery.toLowerCase().trim();
         let matchesSearch = true;
-        
+
         if (searchLower) {
           const searchInName = product.name?.toLowerCase().includes(searchLower) || false;
           const searchInDescription = product.description?.toLowerCase().includes(searchLower) || false;
           const searchInId = product.id?.toLowerCase().includes(searchLower) || false;
           const searchInCategory = product.category?.toLowerCase().includes(searchLower) || false;
-          // Also search in price as string (e.g., "2500" or "KES 2500")
-          const searchInPrice = product.price?.toString().includes(searchLower) || 
+          const searchInPrice = product.price?.toString().includes(searchLower) ||
                                product.sale_price?.toString().includes(searchLower) || false;
-          
           matchesSearch = searchInName || searchInDescription || searchInId || searchInCategory || searchInPrice;
         }
-        
+
         const matchesCategory =
           selectedCategoryFilter === "all" ||
           product.category === selectedCategoryFilter;
@@ -338,11 +335,7 @@ export default function ProductsPage() {
           (product.colors &&
             Array.isArray(product.colors) &&
             product.colors.includes(selectedColorFilter));
-        const matchesSource =
-          selectedSource === "all" || product.source === selectedSource;
-        return (
-          matchesSearch && matchesCategory && matchesStatus && matchesColor && matchesSource
-        );
+        return matchesSearch && matchesCategory && matchesStatus && matchesColor;
       })
       .map((product: any) => {
         const stock =
@@ -354,9 +347,18 @@ export default function ProductsPage() {
     selectedCategoryFilter,
     selectedStatus,
     selectedColorFilter,
-    selectedSource,
     products,
   ]);
+
+  const adminProducts = useMemo(
+    () => filteredProducts.filter((p: any) => p.source !== "pos"),
+    [filteredProducts]
+  );
+
+  const posProducts = useMemo(
+    () => filteredProducts.filter((p: any) => p.source === "pos"),
+    [filteredProducts]
+  );
 
   // Function to copy product link to clipboard
   const copyProductLink = async (productId: string) => {
@@ -447,6 +449,299 @@ export default function ProductsPage() {
     }
   };
 
+  const tableHeaders = (
+    <tr>
+      <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Product</th>
+      <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Category</th>
+      <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">Price</th>
+      <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Stock</th>
+      <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Flash Sale</th>
+      <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Status</th>
+      <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">Actions</th>
+    </tr>
+  );
+
+  const renderTableRows = (list: typeof filteredProducts, emptyMsg: string) => {
+    if (loadingProducts) {
+      return (
+        <tr>
+          <td colSpan={7} className="px-6 py-12 text-center">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-3 text-white/60">Loading products...</span>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+    if (list.length === 0) {
+      return (
+        <tr>
+          <td colSpan={7} className="px-6 py-12 text-center">
+            <div className="text-white/50">
+              <svg className="w-16 h-16 mx-auto mb-4 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              <p className="font-medium text-lg text-white/70 mb-2">No products found</p>
+              <p className="text-sm text-white/50">{emptyMsg}</p>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+    return list.map((product) => {
+      const hasBuyingPrice = userRole === "admin"
+        ? product.buying_price !== null && product.buying_price !== undefined && product.buying_price > 0
+        : true;
+      return (
+        <tr
+          key={product.id}
+          className={`transition-colors ${
+            userRole === "admin" && !hasBuyingPrice
+              ? "bg-yellow-400/10 hover:bg-yellow-400/15 border-l-4 border-yellow-400"
+              : "hover:bg-white/5"
+          }`}
+        >
+          <td className="px-6 py-4">
+            <div className="flex items-center gap-4">
+              <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white/10">
+                {product.image ? (
+                  <Image src={product.image} alt={product.name} fill className="object-cover" sizes="64px" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white/40">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="font-semibold text-white">{product.name}</div>
+                <div className="text-sm text-white/50">ID: {product.id}</div>
+              </div>
+            </div>
+          </td>
+          <td className="px-6 py-4">
+            <span className="text-sm text-white/70">{product.category}</span>
+          </td>
+          <td className="px-6 py-4">
+            <div className="flex flex-col">
+              {product.sale_price ? (
+                <>
+                  <span className="font-semibold text-white">KES {(product.sale_price || 0).toLocaleString()}</span>
+                  <span className="text-sm text-white/50 line-through">KES {(product.price || 0).toLocaleString()}</span>
+                </>
+              ) : (
+                <span className="font-semibold text-white">KES {(product.price || 0).toLocaleString()}</span>
+              )}
+            </div>
+          </td>
+          <td className="px-6 py-4 text-center">
+            {product.stock !== undefined ? (
+              <span className={`font-semibold ${
+                product.stock_status === "out" ? "text-red-600" : product.stock_status === "low" ? "text-yellow-600" : "text-green-600"
+              }`}>
+                {product.stock}
+              </span>
+            ) : (
+              <span className="text-white/40 text-sm">N/A</span>
+            )}
+          </td>
+          <td className="px-6 py-4 text-center">
+            {product.is_flash_sale ? (
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300">Flash Sale</span>
+            ) : (
+              <span className="text-white/40 text-sm">-</span>
+            )}
+          </td>
+          <td className="px-6 py-4 text-center">
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              product.status === "active" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/70"
+            }`}>
+              {product.status}
+            </span>
+          </td>
+          <td className="px-6 py-4 text-center">
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => copyProductLink(product.id)}
+                className="p-2 text-white/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                title="Copy product link"
+              >
+                {copiedProductId === product.id ? (
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={() => setSelectedProduct(product as Product)}
+                className="text-primary hover:text-primary-dark font-medium text-sm"
+              >
+                Edit
+              </button>
+              {userRole === "admin" && (
+                <button
+                  onClick={() => handleDeleteProduct(product.id, product.name)}
+                  className="text-red-600 hover:text-red-700 font-medium text-sm"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
+      );
+    });
+  };
+
+  const renderProductCards = (list: typeof filteredProducts, emptyMsg: string) => {
+    if (loadingProducts) {
+      return (
+        <div className="glass-card p-12 text-center">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-3 text-white/60">Loading products...</span>
+          </div>
+        </div>
+      );
+    }
+    if (list.length === 0) {
+      return (
+        <div className="glass-card p-12 text-center">
+          <div className="text-white/50">
+            <svg className="w-16 h-16 mx-auto mb-4 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <p className="font-medium text-lg text-white/70 mb-2">No products found</p>
+            <p className="text-sm text-white/50">{emptyMsg}</p>
+          </div>
+        </div>
+      );
+    }
+    return list.map((product) => {
+      const hasBuyingPrice = userRole === "admin"
+        ? product.buying_price !== null && product.buying_price !== undefined && product.buying_price > 0
+        : true;
+      return (
+        <div
+          key={product.id}
+          className={`glass-card overflow-hidden ${
+            userRole === "admin" && !hasBuyingPrice ? "border-l-4 border-l-yellow-400 bg-yellow-400/10" : ""
+          }`}
+        >
+          <div className="relative w-full h-48 bg-white/10">
+            {product.image ? (
+              <Image src={product.image} alt={product.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white/40">
+                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
+          </div>
+          <div className="p-4 space-y-3">
+            <div>
+              <h3 className="font-semibold text-lg text-white mb-1">{product.name}</h3>
+              <p className="text-xs text-white/50">ID: {product.id}</p>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-white/70">Category: </span>
+              <span className="text-sm text-white/60">{product.category}</span>
+            </div>
+            <div>
+              {product.sale_price ? (
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-lg text-white">KES {(product.sale_price || 0).toLocaleString()}</span>
+                  <span className="text-sm text-white/50 line-through">KES {(product.price || 0).toLocaleString()}</span>
+                </div>
+              ) : (
+                <span className="font-semibold text-lg text-white">KES {(product.price || 0).toLocaleString()}</span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/10">
+              <div className="flex-1 min-w-[100px]">
+                <span className="text-xs text-white/50 block mb-1">Stock</span>
+                {product.stock !== undefined ? (
+                  <span className={`font-semibold text-sm ${
+                    product.stock_status === "out" ? "text-red-600" : product.stock_status === "low" ? "text-yellow-600" : "text-green-600"
+                  }`}>{product.stock}</span>
+                ) : (
+                  <span className="text-white/40 text-sm">N/A</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-[100px]">
+                <span className="text-xs text-white/50 block mb-1">Flash Sale</span>
+                {product.is_flash_sale ? (
+                  <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300">Active</span>
+                ) : (
+                  <span className="text-white/40 text-sm">-</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-[100px]">
+                <span className="text-xs text-white/50 block mb-1">Status</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  product.status === "active" ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/70"
+                }`}>{product.status}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/10">
+              <button
+                onClick={() => copyProductLink(product.id)}
+                className="flex-1 px-3 py-2 text-white/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium border border-white/10"
+              >
+                {copiedProductId === product.id ? (
+                  <><svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg><span className="text-green-600">Copied</span></>
+                ) : (
+                  <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg><span>Copy Link</span></>
+                )}
+              </button>
+              <button
+                onClick={() => setSelectedProduct(product as Product)}
+                className="flex-1 px-3 py-2 bg-primary text-white rounded-lg font-medium text-sm hover:bg-primary-dark transition-colors"
+              >
+                Edit
+              </button>
+              {userRole === "admin" && (
+                <button
+                  onClick={() => handleDeleteProduct(product.id, product.name)}
+                  className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition-colors"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    });
+  };
+
+  const renderSection = (list: typeof filteredProducts, title: string, accentClass: string, emptyMsg: string, showHeader = false) => (
+    <div className="space-y-4">
+      {showHeader && (
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${accentClass}`}>{list.length}</span>
+        </div>
+      )}
+      <div className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl overflow-hidden hidden md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-black/20 border-b border-white/10">{tableHeaders}</thead>
+            <tbody className="divide-y divide-white/10">{renderTableRows(list, emptyMsg)}</tbody>
+          </table>
+        </div>
+      </div>
+      <div className="block md:hidden space-y-4">{renderProductCards(list, emptyMsg)}</div>
+    </div>
+  );
+
   return (
     <div className="space-y-8 animate-fade-in pt-16 lg:pt-0">
       {/* Header */}
@@ -458,7 +753,7 @@ export default function ProductsPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => setShowCategoriesPanel(!showCategoriesPanel)}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-xl font-medium transition-colors flex items-center gap-2"
+            className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white/70 text-sm rounded-xl font-semibold transition-colors flex items-center gap-2"
           >
             <svg
               className="w-5 h-5"
@@ -505,7 +800,7 @@ export default function ProductsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-3 bg-black/20 text-white placeholder-white/40 border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             <select
               value={selectedCategoryFilter}
               onChange={(e) => setSelectedCategoryFilter(e.target.value)}
@@ -527,28 +822,17 @@ export default function ProductsPage() {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-            {availableColors.length > 0 && (
-              <select
-                value={selectedColorFilter}
-                onChange={(e) => setSelectedColorFilter(e.target.value)}
-                className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="all">All Colors</option>
-                {availableColors.map((color) => (
-                  <option key={color} value={color}>
-                    {color}
-                  </option>
-                ))}
-              </select>
-            )}
             <select
-              value={selectedSource}
-              onChange={(e) => setSelectedSource(e.target.value)}
-              className="px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+              value={selectedColorFilter}
+              onChange={(e) => setSelectedColorFilter(e.target.value)}
+              className={`px-4 py-3 bg-black/20 text-white border-2 border-white/10 rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${availableColors.length === 0 ? "hidden" : ""}`}
             >
-              <option value="all">All Sources</option>
-              <option value="admin">Admin Created</option>
-              <option value="pos">POS Created</option>
+              <option value="all">All Colors</option>
+              {availableColors.map((color) => (
+                <option key={color} value={color}>
+                  {color}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -559,490 +843,49 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Products Table - Desktop Only */}
-      <div className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl overflow-hidden hidden md:block">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-black/20 border-b border-white/10">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">
-                  Product
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">
-                  Category
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-white/60">
-                  Price
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
-                  Stock
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
-                  Flash Sale
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-white/60">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/10">
-              {loadingProducts ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      <span className="ml-3 text-white/60">
-                        Loading products...
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="text-white/50">
-                      <svg
-                        className="w-16 h-16 mx-auto mb-4 text-white/20"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                        />
-                      </svg>
-                      <p className="font-medium text-lg text-white/70 mb-2">
-                        No products found
-                      </p>
-                      {products.length === 0 ? (
-                        <p className="text-sm text-white/50 mb-4">
-                          Your product catalog is empty. Start by adding your
-                          first product.
-                        </p>
-                      ) : (
-                        <p className="text-sm text-white/50 mb-4">
-                          No products match your current search or filters. Try
-                          adjusting your search criteria.
-                        </p>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((product) => {
-                  // Check if product has buying_price (only for admin users)
-                  const hasBuyingPrice =
-                    userRole === "admin"
-                      ? product.buying_price !== null &&
-                        product.buying_price !== undefined &&
-                        product.buying_price > 0
-                      : true; // For non-admin users, always show as normal
-
-                  return (
-                    <tr
-                      key={product.id}
-                      className={`transition-colors ${
-                        userRole === "admin" && !hasBuyingPrice
-                          ? "bg-yellow-400/10 hover:bg-yellow-400/15 border-l-4 border-yellow-400"
-                          : "hover:bg-white/5"
-                      }`}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-white/10">
-                            {product.image ? (
-                              <Image
-                                src={product.image}
-                                alt={product.name}
-                                fill
-                                className="object-cover"
-                                sizes="64px"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-white/40">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-white">
-                              {product.name}
-                            </div>
-                            <div className="text-sm text-white/50">
-                              ID: {product.id}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-white/70">
-                          {product.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          {product.sale_price ? (
-                            <>
-                              <span className="font-semibold text-white">
-                                KES {(product.sale_price || 0).toLocaleString()}
-                              </span>
-                              <span className="text-sm text-white/50 line-through">
-                                KES {(product.price || 0).toLocaleString()}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="font-semibold text-white">
-                              KES {(product.price || 0).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {product.stock !== undefined ? (
-                          <span
-                            className={`font-semibold ${
-                              product.stock_status === "out"
-                                ? "text-red-600"
-                                : product.stock_status === "low"
-                                ? "text-yellow-600"
-                                : "text-green-600"
-                            }`}
-                          >
-                            {product.stock}
-                          </span>
-                        ) : (
-                          <span className="text-white/40 text-sm">N/A</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {product.is_flash_sale ? (
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300">
-                            🔥 Flash Sale
-                          </span>
-                        ) : (
-                          <span className="text-white/40 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            product.status === "active"
-                              ? "bg-green-500/20 text-green-300"
-                              : "bg-white/10 text-white/70"
-                          }`}
-                        >
-                          {product.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-3">
-                          <button
-                            onClick={() => copyProductLink(product.id)}
-                            className="p-2 text-white/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                            title="Copy product link"
-                          >
-                            {copiedProductId === product.id ? (
-                              <svg
-                                className="w-5 h-5 text-green-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                                />
-                              </svg>
-                            )}
-                          </button>
-                          <button
-                            onClick={() =>
-                              setSelectedProduct(product as Product)
-                            }
-                            className="text-primary hover:text-primary-dark font-medium text-sm"
-                          >
-                            Edit
-                          </button>
-                          {userRole === "admin" && (
-                            <button
-                              onClick={() =>
-                                handleDeleteProduct(product.id, product.name)
-                              }
-                              className="text-red-600 hover:text-red-700 font-medium text-sm"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Source Tabs */}
+      <div className="flex gap-1 p-1 bg-black/30 border border-white/10 rounded-2xl w-full">
+        {(
+          [
+            { key: "admin", label: "Admin Created", count: adminProducts.length },
+            { key: "pos", label: "POS Created", count: posProducts.length },
+            { key: "all", label: "All Products", count: filteredProducts.length },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveView(tab.key)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+              activeView === tab.key
+                ? "bg-primary text-white shadow"
+                : "text-white/50 hover:text-white hover:bg-white/10"
+            }`}
+          >
+            {tab.label}
+            <span
+              className={`px-2 py-1 rounded-full text-xs font-semibold leading-none ${
+                activeView === tab.key
+                  ? "bg-white/20 text-white"
+                  : "bg-white/10 text-white/40"
+              }`}
+            >
+              {tab.count}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {/* Products Cards - Mobile Only */}
-      <div className="block md:hidden space-y-4">
-        {loadingProducts ? (
-          <div className="glass-card p-12 text-center">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <span className="ml-3 text-white/60">Loading products...</span>
-            </div>
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="glass-card p-12 text-center">
-            <div className="text-white/50">
-              <svg
-                className="w-16 h-16 mx-auto mb-4 text-white/20"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                />
-              </svg>
-              <p className="font-medium text-lg text-white/70 mb-2">
-                No products found
-              </p>
-              {products.length === 0 ? (
-                <p className="text-sm text-white/50 mb-4">
-                  Your product catalog is empty. Start by adding your first product.
-                </p>
-              ) : (
-                <p className="text-sm text-white/50 mb-4">
-                  No products match your current search or filters. Try adjusting your search criteria.
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
-          filteredProducts.map((product) => {
-            const hasBuyingPrice =
-              userRole === "admin"
-                ? product.buying_price !== null &&
-                  product.buying_price !== undefined &&
-                  product.buying_price > 0
-                : true;
-
-            return (
-              <div
-                key={product.id}
-                className={`glass-card overflow-hidden ${
-                  userRole === "admin" && !hasBuyingPrice
-                    ? "border-l-4 border-l-yellow-400 bg-yellow-400/10"
-                    : ""
-                }`}
-              >
-                {/* Product Image */}
-                <div className="relative w-full h-48 bg-white/10">
-                  {product.image ? (
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white/40">
-                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-
-                {/* Product Info */}
-                <div className="p-4 space-y-3">
-                  {/* Name and ID */}
-                  <div>
-                    <h3 className="font-semibold text-lg text-white mb-1">
-                      {product.name}
-                    </h3>
-                    <p className="text-xs text-white/50">ID: {product.id}</p>
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <span className="text-sm font-medium text-white/70">
-                      Category:{" "}
-                    </span>
-                    <span className="text-sm text-white/60">
-                      {product.category}
-                    </span>
-                  </div>
-
-                  {/* Price */}
-                  <div>
-                    {product.sale_price ? (
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-lg text-white">
-                          KES {(product.sale_price || 0).toLocaleString()}
-                        </span>
-                        <span className="text-sm text-white/50 line-through">
-                          KES {(product.price || 0).toLocaleString()}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="font-semibold text-lg text-white">
-                        KES {(product.price || 0).toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Stock, Flash Sale, Status Row */}
-                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/10">
-                    {/* Stock */}
-                    <div className="flex-1 min-w-[100px]">
-                      <span className="text-xs text-white/50 block mb-1">
-                        Stock
-                      </span>
-                      {product.stock !== undefined ? (
-                        <span
-                          className={`font-semibold text-sm ${
-                            product.stock_status === "out"
-                              ? "text-red-600"
-                              : product.stock_status === "low"
-                              ? "text-yellow-600"
-                              : "text-green-600"
-                          }`}
-                        >
-                          {product.stock}
-                        </span>
-                      ) : (
-                        <span className="text-white/40 text-sm">N/A</span>
-                      )}
-                    </div>
-
-                    {/* Flash Sale */}
-                    <div className="flex-1 min-w-[100px]">
-                      <span className="text-xs text-white/50 block mb-1">
-                        Flash Sale
-                      </span>
-                      {product.is_flash_sale ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-300">
-                          🔥 Active
-                        </span>
-                      ) : (
-                        <span className="text-white/40 text-sm">-</span>
-                      )}
-                    </div>
-
-                    {/* Status */}
-                    <div className="flex-1 min-w-[100px]">
-                      <span className="text-xs text-white/50 block mb-1">
-                        Status
-                      </span>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          product.status === "active"
-                            ? "bg-green-500/20 text-green-300"
-                            : "bg-white/10 text-white/70"
-                        }`}
-                      >
-                        {product.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/10">
-                    <button
-                      onClick={() => copyProductLink(product.id)}
-                      className="flex-1 px-3 py-2 text-white/60 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium border border-white/10"
-                      title="Copy product link"
-                    >
-                      {copiedProductId === product.id ? (
-                        <>
-                          <svg
-                            className="w-4 h-4 text-green-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          <span className="text-green-600">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                            />
-                          </svg>
-                          <span>Copy Link</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setSelectedProduct(product as Product)}
-                      className="flex-1 px-3 py-2 bg-primary text-white rounded-lg font-medium text-sm hover:bg-primary-dark transition-colors"
-                    >
-                      Edit
-                    </button>
-                    {userRole === "admin" && (
-                      <button
-                        onClick={() =>
-                          handleDeleteProduct(product.id, product.name)
-                        }
-                        className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+      {/* Product Tables */}
+      {activeView === "all" ? (
+        <>
+          {renderSection(adminProducts, "Admin Products", "bg-primary/20 text-primary", "No admin-created products found.", true)}
+          {renderSection(posProducts, "POS Products", "bg-blue-500/20 text-blue-300", "No POS-created products found.", true)}
+        </>
+      ) : activeView === "admin" ? (
+        renderSection(adminProducts, "Admin Products", "bg-primary/20 text-primary", "No admin-created products found.")
+      ) : (
+        renderSection(posProducts, "POS Products", "bg-blue-500/20 text-blue-300", "No POS-created products found.")
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatOrderId } from '@/lib/utils/orderId';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Dot } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import SocialPlatformAnalytics from '@/components/dashboard/SocialPlatformAnalytics';
 import SellerDashboard from '@/components/dashboard/SellerDashboard';
 
@@ -40,6 +40,7 @@ interface TopProduct {
 }
 
 export default function DashboardPage() {
+  const [isMounted, setIsMounted] = useState(false);
   const [salesByDay, setSalesByDay] = useState<SalesByDay[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,21 +62,14 @@ export default function DashboardPage() {
   const [lowStock, setLowStock] = useState<Array<{ id: string; name: string; stock_quantity: number }>>([]);
 
   useEffect(() => {
+    setIsMounted(true);
+    fetchDashboardData();
+    fetchRecentOrders();
+
     fetch('/api/auth/role')
       .then(r => r.json())
-      .then(({ role }) => {
-        setUserRole(role);
-        setRoleLoading(false);
-        if (role !== 'seller') {
-          fetchDashboardData();
-          fetchRecentOrders();
-        }
-      })
-      .catch(() => {
-        setRoleLoading(false);
-        fetchDashboardData();
-        fetchRecentOrders();
-      });
+      .then(({ role }) => { setUserRole(role); setRoleLoading(false); })
+      .catch(() => setRoleLoading(false));
   }, []);
 
   const fetchDashboardData = async () => {
@@ -232,10 +226,24 @@ export default function DashboardPage() {
     }
   };
 
-  if (roleLoading) {
+  // Render a stable skeleton until after hydration to prevent server/client mismatch
+  if (!isMounted) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#f9a8d4]" />
+      <div className="space-y-6 pt-16 lg:pt-0">
+        <div>
+          <div className="h-9 w-36 bg-white/10 rounded-lg animate-pulse" />
+          <div className="h-4 w-52 bg-white/10 rounded-lg animate-pulse mt-2" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="glass-card p-5 h-28 bg-white/5 animate-pulse" />
+          ))}
+        </div>
+        <div className="glass-card h-48 bg-white/5 animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="glass-card h-72 bg-white/5 animate-pulse" />
+          <div className="glass-card h-72 bg-white/5 animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -281,9 +289,9 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-2xl font-bold text-white">
-            {loading ? '...' : error ? '—' : `KES ${(totalSales || 0).toLocaleString()}`}
-          </p>
+          {loading
+            ? <div className="h-7 w-32 bg-white/10 rounded-lg animate-pulse mt-1" />
+            : <p className="text-2xl font-bold text-white">{error ? '—' : `KES ${(totalSales || 0).toLocaleString()}`}</p>}
           <p className="text-white/40 text-xs mt-1">All time</p>
         </Link>
 
@@ -294,12 +302,12 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
-          <p className="text-2xl font-bold text-white">
-            {loading ? '...' : error ? '—' : totalOrders}
-          </p>
-          <p className="text-white/40 text-xs mt-1">
-            {loading ? '...' : `${completedOrders} completed · ${pendingOrders} pending`}
-          </p>
+          {loading
+            ? <div className="h-7 w-16 bg-white/10 rounded-lg animate-pulse mt-1" />
+            : <p className="text-2xl font-bold text-white">{error ? '—' : totalOrders}</p>}
+          {loading
+            ? <div className="h-3 w-36 bg-white/10 rounded animate-pulse mt-2" />
+            : <p className="text-white/40 text-xs mt-1">{`${completedOrders} completed · ${pendingOrders} pending`}</p>}
         </Link>
 
         <div className="glass-card p-5">
@@ -309,12 +317,12 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
-          <p className="text-2xl font-bold text-white">
-            {loading ? '...' : error ? '—' : `KES ${(todaySales || 0).toLocaleString()}`}
-          </p>
-          <p className="text-white/40 text-xs mt-1">
-            {loading ? '...' : `${todayOrders} orders today`}
-          </p>
+          {loading
+            ? <div className="h-7 w-28 bg-white/10 rounded-lg animate-pulse mt-1" />
+            : <p className="text-2xl font-bold text-white">{error ? '—' : `KES ${(todaySales || 0).toLocaleString()}`}</p>}
+          {loading
+            ? <div className="h-3 w-24 bg-white/10 rounded animate-pulse mt-2" />
+            : <p className="text-white/40 text-xs mt-1">{`${todayOrders} orders today`}</p>}
         </div>
 
         <div className="glass-card p-5">
@@ -324,12 +332,12 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
-          <p className="text-2xl font-bold text-white">
-            {loading ? '...' : error ? '—' : `KES ${(todayProfits || 0).toLocaleString()}`}
-          </p>
-          <p className="text-white/40 text-xs mt-1">
-            {loading ? '...' : `${totalCustomers} customers total`}
-          </p>
+          {loading
+            ? <div className="h-7 w-28 bg-white/10 rounded-lg animate-pulse mt-1" />
+            : <p className="text-2xl font-bold text-white">{error ? '—' : `KES ${(todayProfits || 0).toLocaleString()}`}</p>}
+          {loading
+            ? <div className="h-3 w-28 bg-white/10 rounded animate-pulse mt-2" />
+            : <p className="text-white/40 text-xs mt-1">{`${totalCustomers} customers total`}</p>}
         </div>
       </div>
 
@@ -397,34 +405,43 @@ export default function DashboardPage() {
           ) : (
             <div className="w-full">
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart
+                <AreaChart
                   data={salesByDay.map((day) => ({ day: day.day, sales: day.sales || 0 }))}
                   margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="day" stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false} />
-                  <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickLine={false}
+                  <defs>
+                    <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f9a8d4" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#f9a8d4" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="day" stroke="rgba(255,255,255,0.25)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="rgba(255,255,255,0.25)" fontSize={12} tickLine={false} axisLine={false}
                     tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'rgba(0,0,0,0.75)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '8px',
+                      backgroundColor: 'rgba(10,0,20,0.92)',
+                      border: '1px solid rgba(249,168,212,0.2)',
+                      borderRadius: '12px',
                       color: '#fff',
+                      fontSize: '13px',
                     }}
                     formatter={(value: any) => [`KES ${Number(value).toLocaleString()}`, 'Sales']}
-                    labelStyle={{ color: 'rgba(255,255,255,0.7)', marginBottom: '4px' }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.6)', marginBottom: '4px' }}
+                    cursor={{ stroke: 'rgba(249,168,212,0.2)', strokeWidth: 1 }}
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="sales"
                     stroke="#f9a8d4"
                     strokeWidth={2.5}
+                    fill="url(#salesGradient)"
                     dot={{ fill: '#f9a8d4', r: 4, strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: '#f43f5e', stroke: 'rgba(255,255,255,0.3)', strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: '#f43f5e', stroke: '#f9a8d4', strokeWidth: 2 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
               <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/40">
                 <span>Week Total</span>
