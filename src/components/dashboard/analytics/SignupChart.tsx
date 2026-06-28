@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -49,7 +49,7 @@ export default function SignupChart({ signupsByDay, signupsByMonth }: SignupChar
           <button
             onClick={() => setView('30d')}
             className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
-              view === '30d' ? 'bg-[#EC4899] text-white' : 'text-white/50 hover:text-white'
+              view === '30d' ? 'bg-[#22C55E] text-white' : 'text-white/50 hover:text-white'
             }`}
           >
             30 Days
@@ -57,7 +57,7 @@ export default function SignupChart({ signupsByDay, signupsByMonth }: SignupChar
           <button
             onClick={() => setView('12m')}
             className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
-              view === '12m' ? 'bg-[#EC4899] text-white' : 'text-white/50 hover:text-white'
+              view === '12m' ? 'bg-[#22C55E] text-white' : 'text-white/50 hover:text-white'
             }`}
           >
             12 Months
@@ -65,7 +65,13 @@ export default function SignupChart({ signupsByDay, signupsByMonth }: SignupChar
         </div>
       </div>
       <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+        <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+          <defs>
+            <linearGradient id="greenGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#22C55E" stopOpacity={0.45} />
+              <stop offset="100%" stopColor="#22C55E" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid
             strokeDasharray="3 3"
             stroke="rgba(255,255,255,0.05)"
@@ -89,17 +95,25 @@ export default function SignupChart({ signupsByDay, signupsByMonth }: SignupChar
           <Tooltip
             contentStyle={{
               backgroundColor: 'rgba(10,0,20,0.92)',
-              border: '1px solid rgba(249,168,212,0.2)',
+              border: '1px solid rgba(34,197,94,0.2)',
               borderRadius: '12px',
               color: '#fff',
               fontSize: '13px',
             }}
             formatter={(value: number) => [value, 'Signups']}
             labelStyle={{ color: 'rgba(255,255,255,0.6)', marginBottom: '4px' }}
-            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+            cursor={{ fill: 'rgba(34,197,94,0.05)' }}
           />
-          <Bar dataKey="count" fill="#EC4899" radius={[3, 3, 0, 0]} maxBarSize={32} />
-        </BarChart>
+          <Area
+            type="monotone"
+            dataKey="count"
+            stroke="#22C55E"
+            strokeWidth={2.5}
+            fill="url(#greenGradient)"
+            dot={false}
+            activeDot={{ r: 5, fill: '#22C55E', stroke: 'rgba(34,197,94,0.4)', strokeWidth: 3 }}
+          />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   )
