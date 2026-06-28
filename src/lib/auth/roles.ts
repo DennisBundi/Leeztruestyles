@@ -55,7 +55,7 @@ export function canAccessPOS(userRole: UserRole | null): boolean {
   return hasRole(userRole, 'admin') || hasRole(userRole, 'manager') || hasRole(userRole, 'seller');
 }
 
-export type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings' | 'reviews' | 'loyalty' | 'importation';
+export type DashboardSection = 'dashboard' | 'products' | 'orders' | 'inventory' | 'employees' | 'payments' | 'pos' | 'profile' | 'settings' | 'reviews' | 'loyalty' | 'importation' | 'analytics';
 
 export function canAccessSection(userRole: UserRole | null, section: DashboardSection): boolean {
   if (!userRole) return false;
@@ -85,13 +85,18 @@ export function canAccessSection(userRole: UserRole | null, section: DashboardSe
     return userRole === 'admin' || userRole === 'manager';
   }
 
+  // Admin and manager only for analytics
+  if (section === 'analytics') {
+    return userRole === 'admin' || userRole === 'manager';
+  }
+
   return false;
 }
 
 export function getAllowedSections(userRole: UserRole | null): DashboardSection[] {
   if (!userRole) return [];
 
-  const allSections: DashboardSection[] = ['dashboard', 'products', 'orders', 'inventory', 'employees', 'payments', 'pos', 'profile', 'settings', 'reviews', 'loyalty', 'importation'];
+  const allSections: DashboardSection[] = ['dashboard', 'products', 'orders', 'inventory', 'employees', 'payments', 'pos', 'profile', 'settings', 'reviews', 'loyalty', 'importation', 'analytics'];
   
   return allSections.filter(section => canAccessSection(userRole, section));
 }
