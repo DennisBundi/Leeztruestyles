@@ -6,6 +6,7 @@ import PriceFilter from "@/components/filters/PriceFilter";
 import ColorFilter from "@/components/filters/ColorFilter";
 import ClearFiltersButton from "@/components/filters/ClearFiltersButton";
 import ChinaFilter from "@/components/filters/ChinaFilter";
+import ChinaOrderBanner from "@/components/products/ChinaOrderBanner";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from 'next';
 
@@ -230,6 +231,9 @@ export default async function ProductsPage({
           </Suspense>
         </div>
       </div>
+
+      {/* China Order Banner */}
+      {searchParams.china === 'true' && <ChinaOrderBanner />}
 
       {/* Results Count */}
       {productsWithStock.length > 0 && (
