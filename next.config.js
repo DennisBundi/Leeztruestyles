@@ -18,7 +18,7 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
       },
     ],
-    unoptimized: false,
+    unoptimized: true,
   },
   eslint: {
     ignoreDuringBuilds: false,
