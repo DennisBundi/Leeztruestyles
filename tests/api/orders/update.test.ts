@@ -32,6 +32,10 @@ jest.mock('@/lib/auth/roles', () => ({
   getUserRole: jest.fn().mockResolvedValue('admin'),
 }));
 
+jest.mock('@/lib/email/service', () => ({
+  sendCancellationEmail: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe('Orders API - Update', () => {
   beforeEach(() => {
     jest.clearAllMocks();

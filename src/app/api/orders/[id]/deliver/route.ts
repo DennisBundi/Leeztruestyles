@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendDeliveryConfirmation } from '@/lib/email/service'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +54,7 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to update order' }, { status: 500 })
     }
 
+    await sendDeliveryConfirmation(id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Deliver endpoint error:', error)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserRole } from '@/lib/auth/roles';
 import { z } from 'zod';
+import { sendCancellationEmail } from '@/lib/email/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,17 @@ export async function PUT(request: NextRequest) {
     if (validated.status !== undefined) updateData.status = validated.status;
     if (validated.social_platform !== undefined) updateData.social_platform = validated.social_platform;
 
+    // Pre-fetch current status to prevent duplicate cancellation emails
+    let previousStatus: string | null = null
+    if (validated.status === 'cancelled') {
+      const { data: currentOrder } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', validated.order_id)
+        .single()
+      previousStatus = currentOrder?.status ?? null
+    }
+
     const { error } = await supabase
       .from('orders')
       .update(updateData)
@@ -75,6 +87,9 @@ export async function PUT(request: NextRequest) {
             { status: 500 }
           );
         }
+        if (validated.status === 'cancelled' && previousStatus !== 'cancelled') {
+          await sendCancellationEmail(validated.order_id)
+        }
         return NextResponse.json({ success: true, warning: 'Social platform column not found, order updated without it' });
       }
     }
@@ -87,6 +102,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    if (validated.status === 'cancelled' && previousStatus !== 'cancelled') {
+      await sendCancellationEmail(validated.order_id)
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {

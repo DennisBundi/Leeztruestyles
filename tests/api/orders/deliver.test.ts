@@ -38,6 +38,10 @@ jest.mock('@/lib/supabase/admin', () => ({
   createAdminClient: jest.fn(() => mockAdminClient),
 }))
 
+jest.mock('@/lib/email/service', () => ({
+  sendDeliveryConfirmation: jest.fn().mockResolvedValue(undefined),
+}))
+
 describe('POST /api/orders/[id]/deliver', () => {
   beforeEach(() => {
     jest.clearAllMocks()
