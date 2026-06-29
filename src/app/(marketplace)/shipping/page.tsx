@@ -20,6 +20,23 @@ export default function ShippingPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4 text-primary">Delivery Options</h2>
             <div className="space-y-4">
+              <div className="bg-primary/5 border border-primary/20 p-6 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-semibold">Same Day Delivery</h3>
+                  <span className="text-xs font-semibold bg-primary text-white px-2 py-0.5 rounded-full">New</span>
+                </div>
+                <p className="text-gray-700 mb-2">
+                  <strong>Duration:</strong> Same day (order before 11:00 AM)
+                </p>
+                <p className="text-gray-700 mb-2">
+                  <strong>Cost:</strong> Subject to location
+                </p>
+                <p className="text-gray-600 text-sm">
+                  Get your order delivered the same day. Price varies depending on your location —
+                  contact us on <a href="https://wa.me/254797877254" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">WhatsApp</a> to confirm availability and get a quote for your area.
+                </p>
+              </div>
+
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h3 className="font-semibold mb-2">Standard Delivery</h3>
                 <p className="text-gray-700 mb-2">
