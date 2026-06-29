@@ -1,11 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import WaitlistModal from "@/components/home/WaitlistModal";
+import Link from "next/link";
 
 export default function ImportationSection() {
-  const [modalOpen, setModalOpen] = useState(false);
-
   return (
     <section className="relative text-white py-16 md:py-24 overflow-hidden">
       {/* Background image */}
@@ -34,12 +31,12 @@ export default function ImportationSection() {
             </h2>
             <p className="text-white/85 text-lg mb-8 max-w-lg leading-relaxed">
               Are you a Kenyan retailer? Get connected with verified Chinese
-              suppliers. Join our waitlist and be among the first to access
-              direct importation at competitive prices.
+              suppliers. Browse our China-sourced collection and place a custom
+              order for any product at competitive prices.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => setModalOpen(true)}
+              <Link
+                href="/products?china=true"
                 className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-secondary text-white font-semibold transition-all hover:scale-105 shadow-lg hover:bg-secondary-dark"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,11 +44,11 @@ export default function ImportationSection() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
                   />
                 </svg>
-                Join the Waitlist
-              </button>
+                Shop Now
+              </Link>
               <a
                 href="/importation/status"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 border border-white/30 text-white font-semibold hover:bg-white/20 transition-all"
@@ -68,7 +65,6 @@ export default function ImportationSection() {
         </div>
       </div>
 
-      {modalOpen && <WaitlistModal onClose={() => setModalOpen(false)} />}
     </section>
   );
 }

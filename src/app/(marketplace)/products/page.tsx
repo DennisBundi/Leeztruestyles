@@ -233,7 +233,7 @@ export default async function ProductsPage({
       </div>
 
       {/* China Order Banner */}
-      {searchParams.china === 'true' && <ChinaOrderBanner />}
+      <ChinaOrderBanner />
 
       {/* Results Count */}
       {productsWithStock.length > 0 && (
