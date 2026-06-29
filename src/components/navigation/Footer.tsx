@@ -128,6 +128,25 @@ export default function Footer() {
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-gray-400">
           <p>&copy; {new Date().getFullYear()} Leeztruestyles. All rights reserved.</p>
 
+          {/* Built by Techscrafts */}
+          <a
+            href="https://www.techscrafts.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors group"
+          >
+            <span className="text-xs">Made by</span>
+            <Image
+              src="/images/techscrafts-logo.png"
+              alt="Techscrafts"
+              width={20}
+              height={20}
+              className="rounded-sm opacity-70 group-hover:opacity-100 transition-opacity"
+              unoptimized
+            />
+            <span className="text-xs font-semibold">Techscrafts</span>
+          </a>
+
           {/* Social links */}
           <div className="flex items-center gap-4">
             {/* Facebook */}
