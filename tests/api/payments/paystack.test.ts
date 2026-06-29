@@ -33,6 +33,10 @@ jest.mock('@/services/inventoryService', () => ({
   },
 }));
 
+jest.mock('@/lib/email/service', () => ({
+  sendOrderConfirmation: jest.fn().mockResolvedValue(undefined),
+}))
+
 describe('Payments API - Paystack Webhook', () => {
   beforeEach(() => {
     jest.clearAllMocks();

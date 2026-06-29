@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { InventoryService } from '@/services/inventoryService';
 import { LoyaltyService } from '@/services/loyaltyService';
+import { sendOrderConfirmation } from '@/lib/email/service'
 
 export const dynamic = 'force-dynamic';
 
@@ -212,6 +213,7 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('Order completed successfully:', order.id);
+      await sendOrderConfirmation(order.id)
       return NextResponse.json({ ResultCode: 0, ResultDesc: 'Success' });
     } else {
       // Payment failed or cancelled
