@@ -19,6 +19,7 @@ import {
 
 const STORE_EMAIL = 'leeztruestyles44@gmail.com'
 const FROM_EMAIL = 'orders@leeztruestyles.com'
+const FROM_HELLO = 'hello@leeztruestyles.com'
 const REPLY_TO = 'leeztruestyles44@gmail.com'
 
 async function fetchOrderWithItems(
@@ -65,8 +66,8 @@ async function resolveEmail(userId: string | null, override?: string): Promise<s
   return (data as any)?.email ?? null
 }
 
-async function dispatch(recipients: string[], subject: string, html: string): Promise<void> {
-  await resendClient.emails.send({ from: FROM_EMAIL, to: recipients, replyTo: REPLY_TO, subject, html })
+async function dispatch(recipients: string[], subject: string, html: string, from = FROM_EMAIL): Promise<void> {
+  await resendClient.emails.send({ from, to: recipients, replyTo: REPLY_TO, subject, html })
 }
 
 export async function sendOrderConfirmation(orderId: string, customerEmail?: string): Promise<void> {
@@ -126,7 +127,7 @@ export async function sendWelcomeEmail(userId: string): Promise<void> {
     const { data: user } = await admin.from('users').select('email, full_name').eq('id', userId).single()
     if (!user?.email) return
     const t = welcomeTemplate(user.full_name ?? 'Customer')
-    await dispatch([user.email], t.subject, t.html)
+    await dispatch([user.email], t.subject, t.html, FROM_HELLO)
   } catch (error) {
     console.error('[email] sendWelcomeEmail failed:', error)
   }
