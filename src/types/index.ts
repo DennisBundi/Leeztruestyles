@@ -88,14 +88,16 @@ export interface PaymentRequest {
   order_id: string;
   amount: number;
   method: "mpesa" | "card";
-  phone?: string; // Required for M-Pesa
-  email?: string; // Required for card
+  phone?: string;
+  email?: string;
+  customer_name?: string;
   callback_url?: string;
 }
 
 export interface PaymentResponse {
   success: boolean;
   reference?: string;
+  access_code?: string;
   authorization_url?: string;
   message?: string;
   error?: string;

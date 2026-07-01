@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent, useEffect } from "react";
+import Script from "next/script";
 import { useCartStore } from "@/store/cartStore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -8,6 +9,18 @@ import PaymentMethodSelector from "@/components/checkout/PaymentMethodSelector";
 import OrderSummary from "@/components/checkout/OrderSummary";
 import CheckoutLoyalty from "@/components/loyalty/CheckoutLoyalty";
 import { createClient } from "@/lib/supabase/client";
+
+declare global {
+  interface Window {
+    PaystackPop: {
+      setup(options: {
+        accessCode?: string;
+        onClose?: () => void;
+        callback?: (response: { reference: string }) => void;
+      }): { openIframe(): void };
+    };
+  }
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -285,8 +298,9 @@ export default function CheckoutPage() {
           order_id,
           amount: total,
           method: paymentMethod,
-          phone: paymentMethod === "mpesa" ? customerInfo.phone : undefined,
-          email: paymentMethod === "card" ? customerInfo.email : undefined,
+          phone: customerInfo.phone,
+          email: customerInfo.email,
+          customer_name: customerInfo.name,
         }),
       });
 
@@ -299,16 +313,33 @@ export default function CheckoutPage() {
 
       const paymentData = await paymentResponse.json();
 
-      if (paymentData.authorization_url) {
-        // Redirect to Paystack payment page
+      if (paymentData.access_code && window.PaystackPop) {
+        // Open Paystack inline popup — no redirect, same-page experience
+        const handler = window.PaystackPop.setup({
+          accessCode: paymentData.access_code,
+          onClose: () => {
+            setLoading(false);
+          },
+          callback: async (response) => {
+            // Verify payment server-side
+            const verifyRes = await fetch(`/api/payments/verify?reference=${response.reference}`);
+            if (verifyRes.ok) {
+              clearCart();
+              router.push(`/checkout/success?order_id=${order_id}`);
+            } else {
+              setError("Payment verification failed. Please contact support.");
+              setLoading(false);
+            }
+          },
+        });
+        handler.openIframe();
+        return;
+      } else if (paymentData.authorization_url) {
+        // Fallback: redirect if popup not available
         window.location.href = paymentData.authorization_url;
         return;
       } else {
-        // authorization_url missing — payment initialized but no redirect URL
-        console.error('Payment response missing authorization_url:', paymentData);
-        throw new Error(
-          'Payment was initialized but no payment page URL was returned. Please try again or contact support.'
-        );
+        throw new Error("Payment could not be initialized. Please try again.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -439,6 +470,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12">
+      <Script src="https://js.paystack.co/v1/inline.js" strategy="beforeInteractive" />
       {/* Breadcrumb */}
       <nav className="mb-8 text-sm text-gray-600">
         <Link href="/" className="hover:text-primary">

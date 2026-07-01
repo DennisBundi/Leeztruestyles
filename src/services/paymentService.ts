@@ -101,6 +101,9 @@ export class PaymentService {
 
     try {
       const email = request.email || `${formattedPhone}@customer.leeztruestyles.com`;
+      const nameParts = (request.customer_name || '').trim().split(' ');
+      const firstName = nameParts[0] || undefined;
+      const lastName = nameParts.slice(1).join(' ') || undefined;
 
       const data = await paystackRequest('POST', '/transaction/initialize', {
         email,
@@ -109,6 +112,9 @@ export class PaymentService {
         channels: ['mobile_money'],
         callback_url: request.callback_url,
         reference: `order_${request.order_id}_${Date.now()}`,
+        first_name: firstName,
+        last_name: lastName,
+        phone: `+${formattedPhone}`,
         metadata: {
           order_id: request.order_id,
           phone: `+${formattedPhone}`,
@@ -127,9 +133,10 @@ export class PaymentService {
       if (data.status) {
         return {
           success: true,
-          reference: data.data.reference,
-          authorization_url: data.data.authorization_url,
-          message: data.message || 'Redirecting to M-Pesa payment...',
+          reference: data.data.reference as string,
+          access_code: data.data.access_code as string,
+          authorization_url: data.data.authorization_url as string,
+          message: data.message || 'Payment ready',
         };
       }
 
@@ -154,12 +161,19 @@ export class PaymentService {
     request: PaymentRequest
   ): Promise<PaymentResponse> {
     try {
+      const nameParts = (request.customer_name || '').trim().split(' ');
+      const firstName = nameParts[0] || undefined;
+      const lastName = nameParts.slice(1).join(' ') || undefined;
+
       const data = await paystackRequest('POST', '/transaction/initialize', {
         email: request.email!,
         amount: request.amount * 100,
         currency: 'KES',
         callback_url: request.callback_url,
         reference: `order_${request.order_id}_${Date.now()}`,
+        first_name: firstName,
+        last_name: lastName,
+        phone: request.phone || undefined,
         metadata: {
           order_id: request.order_id,
           custom_fields: [
@@ -175,8 +189,9 @@ export class PaymentService {
       if (data.status) {
         return {
           success: true,
-          reference: data.data.reference,
-          authorization_url: data.data.authorization_url,
+          reference: data.data.reference as string,
+          access_code: data.data.access_code as string,
+          authorization_url: data.data.authorization_url as string,
           message: data.message || 'Payment initialized successfully',
         };
       }

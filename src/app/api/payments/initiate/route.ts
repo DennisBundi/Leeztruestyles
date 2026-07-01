@@ -14,6 +14,7 @@ const paymentRequestSchema = z.object({
   method: z.enum(['mpesa', 'card']),
   phone: z.string().optional(),
   email: z.string().email().optional(),
+  customer_name: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
       method: validated.method,
       phone: validated.phone,
       email: validated.email,
+      customer_name: validated.customer_name,
       callback_url: callbackUrl,
     };
 
@@ -185,6 +187,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       reference: paymentResponse.reference,
+      access_code: paymentResponse.access_code,
       authorization_url: paymentResponse.authorization_url,
       message: paymentResponse.message,
     });
