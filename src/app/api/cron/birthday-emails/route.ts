@@ -15,16 +15,8 @@ export async function GET(request: NextRequest) {
   const month = now.getMonth() + 1
   const day = now.getDate()
 
-  // NOTE: The Supabase JS client does not support raw EXTRACT() in .eq() calls.
-  // This query is a placeholder so tests (which mock the chain) pass.
-  // In production, use rpc() instead:
-  //   const { data: accounts } = await admin.rpc('get_birthday_users', { p_month: month, p_day: day })
-  // And create a matching Postgres function. Update this before the first production birthday fires.
   const { data: accounts, error } = await admin
-    .from('loyalty_accounts')
-    .select('user_id')
-    .eq('EXTRACT(month FROM birthday)', month)
-    .eq('EXTRACT(day FROM birthday)', day)
+    .rpc('get_birthday_users', { p_month: month, p_day: day })
 
   if (error) {
     console.error('[cron] birthday-emails query failed:', error)
