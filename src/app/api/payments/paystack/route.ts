@@ -6,7 +6,7 @@ import { LoyaltyService } from '@/services/loyaltyService';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createHmac } from 'crypto';
 import { logger } from '@/lib/logger';
-import { sendOrderConfirmation } from '@/lib/email/service'
+import { sendOrderConfirmation, sendInvoiceEmail } from '@/lib/email/service'
 
 function verifyPaystackSignature(rawBody: string, signature: string | null): boolean {
   const secret = process.env.PAYSTACK_SECRET_KEY;
@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
       }
 
       await sendOrderConfirmation(orderId, data.customer?.email)
+      await sendInvoiceEmail(orderId, data.customer?.email)
       return NextResponse.json({ success: true });
     }
 

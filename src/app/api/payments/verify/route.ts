@@ -7,7 +7,7 @@ import { InventoryService } from '@/services/inventoryService';
 import { LoyaltyService } from '@/services/loyaltyService';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
-import { sendOrderConfirmation } from '@/lib/email/service'
+import { sendOrderConfirmation, sendInvoiceEmail } from '@/lib/email/service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -137,6 +137,7 @@ export async function GET(request: NextRequest) {
     }
 
     await sendOrderConfirmation(order.id, user.email ?? undefined)
+    await sendInvoiceEmail(order.id, user.email ?? undefined)
     return NextResponse.json({ success: true, order_id: order.id });
   } catch (error) {
     logger.error('Payment verification error:', error);
