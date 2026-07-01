@@ -17,10 +17,14 @@ import {
   type OrderItemForEmail,
 } from './templates'
 
-const STORE_EMAIL = 'leeztruestyles44@gmail.com'
-const FROM_EMAIL = 'orders@leeztruestyles.com'
-const FROM_HELLO = 'hello@leeztruestyles.com'
-const REPLY_TO = 'leeztruestyles44@gmail.com'
+const STORE_EMAIL   = 'leeztruestyles44@gmail.com'
+const FROM_EMAIL    = 'orders@leeztruestyles.com'
+const FROM_HELLO    = 'hello@leeztruestyles.com'
+const FROM_INVOICE  = 'invoice@leeztruestyles.com'
+const FROM_REFUNDS  = 'refunds@leeztruestyles.com'
+const FROM_REWARDS  = 'rewards@leeztruestyles.com'
+const FROM_WAITLIST = 'waitlist@leeztruestyles.com'
+const REPLY_TO      = 'leeztruestyles44@gmail.com'
 
 async function fetchOrderWithItems(
   orderId: string
@@ -158,10 +162,10 @@ export async function sendRefundEmail(orderId: string): Promise<void> {
 
     if (email) {
       const t = refundTemplate(order, name, false)
-      await dispatch([email], t.subject, t.html)
+      await dispatch([email], t.subject, t.html, FROM_REFUNDS)
     }
     const st = refundTemplate(order, name, true)
-    await dispatch([STORE_EMAIL], st.subject, st.html)
+    await dispatch([STORE_EMAIL], st.subject, st.html, FROM_REFUNDS)
   } catch (error) {
     console.error('[email] sendRefundEmail failed:', error)
   }
@@ -178,7 +182,7 @@ export async function sendInvoiceEmail(orderId: string, customerEmail?: string):
     const num = formatOrderId(order.id)
     const t = invoiceEmailTemplate(order, name)
     await resendClient.emails.send({
-      from: FROM_EMAIL,
+      from: FROM_INVOICE,
       to: [email],
       replyTo: REPLY_TO,
       subject: t.subject,
@@ -200,7 +204,7 @@ export async function sendReferralRewardEmail(
     const { data: user } = await admin.from('users').select('email, full_name').eq('id', referrerId).single()
     if (!user?.email) return
     const t = referralRewardTemplate(user.full_name ?? 'Customer', referredFirstName, pointsAwarded)
-    await dispatch([user.email], t.subject, t.html)
+    await dispatch([user.email], t.subject, t.html, FROM_REWARDS)
   } catch (error) {
     console.error('[email] sendReferralRewardEmail failed:', error)
   }
@@ -216,7 +220,7 @@ export async function sendBirthdayOfferEmail(
     const { data: user } = await admin.from('users').select('email, full_name').eq('id', userId).single()
     if (!user?.email) return
     const t = birthdayOfferTemplate(user.full_name ?? 'Customer', discountCode, expiresAt)
-    await dispatch([user.email], t.subject, t.html)
+    await dispatch([user.email], t.subject, t.html, FROM_REWARDS)
   } catch (error) {
     console.error('[email] sendBirthdayOfferEmail failed:', error)
   }
@@ -225,7 +229,7 @@ export async function sendBirthdayOfferEmail(
 export async function sendImportationWaitlistEmail(email: string, name: string): Promise<void> {
   try {
     const t = importationWaitlistTemplate(name)
-    await dispatch([email], t.subject, t.html)
+    await dispatch([email], t.subject, t.html, FROM_WAITLIST)
   } catch (error) {
     console.error('[email] sendImportationWaitlistEmail failed:', error)
   }
