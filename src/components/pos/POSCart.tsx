@@ -8,16 +8,30 @@ import { formatOrderId } from "@/lib/utils/orderId";
 
 const NAIROBI_UTC_OFFSET_HOURS = 3;
 
+interface SellerEmployee {
+  id: string;
+  employee_code: string;
+  name: string;
+}
+
 interface POSCartProps {
   employeeId?: string;
   employeeCode?: string;
   onOrderComplete?: () => void;
+  employees?: SellerEmployee[];
+  sellerOverrideId?: string;
+  sellerOverrideCode?: string;
+  onSellerChange?: (id: string | null, code: string | null) => void;
 }
 
 export default function POSCart({
   employeeId,
   employeeCode,
   onOrderComplete,
+  employees = [],
+  sellerOverrideId,
+  sellerOverrideCode,
+  onSellerChange,
 }: POSCartProps) {
   const router = useRouter();
   const items = useCartStore((state) => state.items);
@@ -119,6 +133,7 @@ export default function POSCart({
         setSaleDateTime("");
         setPaymentMethod("cash");
         setSocialPlatform("");
+        onSellerChange?.(null, null);
 
         setProcessing(false);
         return;
@@ -231,16 +246,17 @@ export default function POSCart({
         sale_datetime: saleDateIso || undefined,
       };
 
-      // Include seller_id if employeeId is a valid UUID
+      // Use selected seller override if set, otherwise fall back to logged-in employee
+      const effectiveSellerId = sellerOverrideId ?? employeeId;
       if (
-        employeeId &&
-        typeof employeeId === "string" &&
-        employeeId.trim() !== ""
+        effectiveSellerId &&
+        typeof effectiveSellerId === "string" &&
+        effectiveSellerId.trim() !== ""
       ) {
         const uuidRegex =
           /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(employeeId)) {
-          orderData.seller_id = employeeId;
+        if (uuidRegex.test(effectiveSellerId)) {
+          orderData.seller_id = effectiveSellerId;
         }
       }
 
@@ -275,20 +291,21 @@ export default function POSCart({
         updateData.social_platform = socialPlatform;
       }
 
-      // Only include seller_id if employeeId is provided and is a valid UUID
+      // Use selected seller override if set, otherwise fall back to logged-in employee
+      const effectiveSellerIdForUpdate = sellerOverrideId ?? employeeId;
       if (
-        employeeId &&
-        typeof employeeId === "string" &&
-        employeeId.trim() !== ""
+        effectiveSellerIdForUpdate &&
+        typeof effectiveSellerIdForUpdate === "string" &&
+        effectiveSellerIdForUpdate.trim() !== ""
       ) {
         const uuidRegex =
           /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(employeeId)) {
-          updateData.seller_id = employeeId;
+        if (uuidRegex.test(effectiveSellerIdForUpdate)) {
+          updateData.seller_id = effectiveSellerIdForUpdate;
         } else {
           console.warn(
-            "Invalid employeeId format, skipping seller_id:",
-            employeeId
+            "Invalid seller ID format, skipping seller_id:",
+            effectiveSellerIdForUpdate
           );
         }
       }
@@ -330,6 +347,7 @@ export default function POSCart({
       setSaleDateTime("");
       setPaymentMethod("cash"); // Reset to default
       setSocialPlatform(""); // Reset social platform
+      onSellerChange?.(null, null);
 
       // Refresh products to show updated inventory
       if (onOrderComplete) {
@@ -460,6 +478,33 @@ export default function POSCart({
             <p className="text-xs text-white/50 mt-1">
               Timezone: Africa/Nairobi. Leave blank to use current time.
             </p>
+          </div>
+        )}
+
+        {/* Seller (Optional) — only shown for admin/manager when employees are loaded */}
+        {items.length > 0 && employees.length > 0 && (
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-white/70 mb-2">
+              Seller (Optional)
+            </label>
+            <select
+              value={sellerOverrideId ?? ""}
+              onChange={(e) => {
+                const selected = employees.find((emp) => emp.id === e.target.value);
+                onSellerChange?.(
+                  selected ? selected.id : null,
+                  selected ? selected.employee_code : null
+                );
+              }}
+              className="w-full px-4 py-3 bg-white/10 border-2 border-white/20 text-white rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-rose-400/50 transition-all"
+            >
+              <option value="">Select seller...</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name} — {emp.employee_code}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -796,12 +841,12 @@ export default function POSCart({
             </button>
 
             {/* Employee Info */}
-            {employeeCode && (
+            {(sellerOverrideCode ?? employeeCode) && (
               <div className="mt-4 pt-4 border-t border-white/10 text-center">
                 <p className="text-xs text-white/50">
                   Sale by:{" "}
                   <span className="font-semibold text-white/70">
-                    {employeeCode}
+                    {sellerOverrideCode ?? employeeCode}
                   </span>
                 </p>
               </div>
