@@ -158,3 +158,163 @@ export function cancellationTemplate(
 
   return { subject, html: shell(body) }
 }
+
+export function welcomeTemplate(customerName: string): EmailTemplate {
+  const body = `
+    ${HDR}
+    <div class="body">
+      <h2>Welcome to Leeztruestyles, ${customerName}!</h2>
+      <p>We're thrilled to have you. Explore our latest collections and find your style.</p>
+      <p>As a member you'll earn Leez Rewards points on every purchase, get early access to new arrivals, and enjoy exclusive member offers.</p>
+      ${WA}
+    </div>
+    ${FTR}`
+  return { subject: 'Welcome to Leeztruestyles!', html: shell(body) }
+}
+
+export function orderProcessingTemplate(
+  order: OrderForEmail,
+  items: OrderItemForEmail[],
+  customerName: string,
+  isStoreCopy = false
+): EmailTemplate {
+  const num = formatOrderId(order.id)
+  const subject = `Your order is preparing — #${num}`
+
+  const banner = isStoreCopy
+    ? `<div class="banner">&#9201; Order #${num} is now processing &mdash; ${customerName}</div>`
+    : ''
+
+  const rows = items
+    .map(
+      (i) =>
+        `<tr><td>${i.product_name}</td><td style="text-align:center">${i.quantity}</td>` +
+        `<td style="text-align:right">${formatCurrency(i.unit_price)}</td></tr>`
+    )
+    .join('')
+
+  const body = `
+    ${HDR}
+    <div class="body">
+      ${banner}
+      <h2>We're preparing your order, ${customerName}!</h2>
+      <div class="num">Order #${num} &middot; ${formatDate(order.created_at)}</div>
+      <table>
+        <thead><tr><th>Product</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="total">Total: ${formatCurrency(order.total_amount)}</div>
+      <p>We'll let you know as soon as it's on its way.</p>
+      ${WA}
+    </div>
+    ${FTR}`
+
+  return { subject, html: shell(body) }
+}
+
+export function refundTemplate(
+  order: OrderForEmail,
+  customerName: string,
+  isStoreCopy = false
+): EmailTemplate {
+  const num = formatOrderId(order.id)
+  const subject = `Refund initiated — #${num}`
+
+  const banner = isStoreCopy
+    ? `<div class="banner">&#128260; Refund initiated for order #${num} &mdash; ${customerName}</div>`
+    : ''
+
+  const body = `
+    ${HDR}
+    <div class="body">
+      ${banner}
+      <h2>Your refund is on its way, ${customerName}</h2>
+      <div class="num">Order #${num}</div>
+      <p>We've initiated a refund of <strong>${formatCurrency(order.total_amount)}</strong> for your order.</p>
+      <p>Please allow 3&ndash;5 business days for the funds to reflect in your account.</p>
+      ${WA.replace('Contact us on WhatsApp', 'Contact us on WhatsApp for any questions')}
+    </div>
+    ${FTR}`
+
+  return { subject, html: shell(body) }
+}
+
+export function invoiceEmailTemplate(
+  order: OrderForEmail,
+  customerName: string
+): EmailTemplate {
+  const num = formatOrderId(order.id)
+  const subject = `Your invoice — #${num}`
+
+  const body = `
+    ${HDR}
+    <div class="body">
+      <h2>Hi ${customerName}, here is your invoice</h2>
+      <div class="num">Order #${num} &middot; ${formatDate(order.created_at)}</div>
+      <p>Please find your invoice attached as a PDF. Keep it for your records.</p>
+      <p>Total paid: <strong>${formatCurrency(order.total_amount)}</strong> via ${paymentLabel(order.payment_method)}.</p>
+      ${WA}
+    </div>
+    ${FTR}`
+
+  return { subject, html: shell(body) }
+}
+
+export function referralRewardTemplate(
+  referrerName: string,
+  referredFirstName: string,
+  pointsAwarded: number
+): EmailTemplate {
+  const body = `
+    ${HDR}
+    <div class="body">
+      <h2>You earned points, ${referrerName}!</h2>
+      <p><strong>${referredFirstName}</strong> just completed their first purchase using your referral code.</p>
+      <p>We've added <strong>${pointsAwarded} Leez Rewards points</strong> to your account.</p>
+      <p>Keep sharing your code to earn more rewards!</p>
+      ${WA}
+    </div>
+    ${FTR}`
+
+  return { subject: `You earned ${pointsAwarded} points from a referral!`, html: shell(body) }
+}
+
+export function birthdayOfferTemplate(
+  customerName: string,
+  discountCode: string,
+  expiresAt: string
+): EmailTemplate {
+  const body = `
+    ${HDR}
+    <div class="body">
+      <h2>Happy Birthday, ${customerName}! &#127874;</h2>
+      <p>From all of us at Leeztruestyles, we hope you have a wonderful day.</p>
+      <p>Here's a birthday gift — <strong>10% off</strong> your next order:</p>
+      <div style="background:#f4f4f4;border-radius:6px;padding:16px;text-align:center;font-size:22px;font-weight:bold;letter-spacing:3px;margin:16px 0">
+        ${discountCode}
+      </div>
+      <p style="font-size:13px;color:#666">Valid until ${formatDate(expiresAt)}. One use per account.</p>
+      ${WA.replace('Contact us on WhatsApp', 'Shop now and treat yourself')}
+    </div>
+    ${FTR}`
+
+  return { subject: `Happy Birthday! Here's a gift from Leeztruestyles 🎂`, html: shell(body) }
+}
+
+export function importationWaitlistTemplate(customerName: string): EmailTemplate {
+  const body = `
+    ${HDR}
+    <div class="body">
+      <h2>You're on the list, ${customerName}!</h2>
+      <p>Thank you for your interest in Leeztruestyles Importation Services.</p>
+      <p>We'll review your application and get in touch as soon as we're ready to onboard new clients.</p>
+      <p>In the meantime, feel free to reach out if you have any questions.</p>
+      ${WA}
+    </div>
+    ${FTR}`
+
+  return {
+    subject: `You're on the Leeztruestyles Importation Waitlist`,
+    html: shell(body),
+  }
+}

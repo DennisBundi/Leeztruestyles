@@ -4,6 +4,13 @@ import {
   orderConfirmationTemplate,
   deliveryConfirmationTemplate,
   cancellationTemplate,
+  welcomeTemplate,
+  orderProcessingTemplate,
+  refundTemplate,
+  invoiceEmailTemplate,
+  referralRewardTemplate,
+  birthdayOfferTemplate,
+  importationWaitlistTemplate,
 } from '@/lib/email/templates'
 
 const mockOrder = {
@@ -78,5 +85,109 @@ describe('cancellationTemplate', () => {
   it('store copy contains customer name', () => {
     const { html } = cancellationTemplate(mockOrder, 'Jane Doe', true)
     expect(html).toContain('Jane Doe')
+  })
+})
+
+describe('welcomeTemplate', () => {
+  it('subject contains Welcome', () => {
+    const { subject } = welcomeTemplate('Jane Doe')
+    expect(subject).toContain('Welcome')
+  })
+
+  it('html contains customer name', () => {
+    const { html } = welcomeTemplate('Jane Doe')
+    expect(html).toContain('Jane Doe')
+    expect(html).toContain('Leeztruestyles')
+  })
+})
+
+describe('orderProcessingTemplate', () => {
+  it('subject contains order number and preparing', () => {
+    const { subject } = orderProcessingTemplate(mockOrder, mockItems, 'Jane Doe')
+    expect(subject).toMatch(/LEEZT-/)
+    expect(subject).toMatch(/preparing/i)
+  })
+
+  it('customer copy contains items', () => {
+    const { html } = orderProcessingTemplate(mockOrder, mockItems, 'Jane Doe', false)
+    expect(html).toContain('Ankara Dress')
+    expect(html).not.toContain('being prepared for')
+  })
+
+  it('store copy contains customer name banner', () => {
+    const { html } = orderProcessingTemplate(mockOrder, mockItems, 'Jane Doe', true)
+    expect(html).toContain('Jane Doe')
+  })
+})
+
+describe('refundTemplate', () => {
+  it('subject contains Refund and order number', () => {
+    const { subject } = refundTemplate(mockOrder, 'Jane Doe')
+    expect(subject).toMatch(/Refund/i)
+    expect(subject).toMatch(/LEEZT-/)
+  })
+
+  it('html contains refund notice', () => {
+    const { html } = refundTemplate(mockOrder, 'Jane Doe', false)
+    expect(html).toContain('refund')
+    expect(html).toContain('3')
+  })
+
+  it('store copy contains customer name', () => {
+    const { html } = refundTemplate(mockOrder, 'Jane Doe', true)
+    expect(html).toContain('Jane Doe')
+  })
+})
+
+describe('invoiceEmailTemplate', () => {
+  it('subject contains invoice and order number', () => {
+    const { subject } = invoiceEmailTemplate(mockOrder, 'Jane Doe')
+    expect(subject).toMatch(/invoice/i)
+    expect(subject).toMatch(/LEEZT-/)
+  })
+
+  it('html mentions PDF attachment', () => {
+    const { html } = invoiceEmailTemplate(mockOrder, 'Jane Doe')
+    expect(html).toContain('Jane Doe')
+    expect(html.toLowerCase()).toContain('attach')
+  })
+})
+
+describe('referralRewardTemplate', () => {
+  it('subject mentions points earned', () => {
+    const { subject } = referralRewardTemplate('John', 'Mary', 100)
+    expect(subject.toLowerCase()).toContain('point')
+  })
+
+  it('html contains referred name and points', () => {
+    const { html } = referralRewardTemplate('John', 'Mary', 100)
+    expect(html).toContain('Mary')
+    expect(html).toContain('100')
+  })
+})
+
+describe('birthdayOfferTemplate', () => {
+  it('subject contains birthday', () => {
+    const { subject } = birthdayOfferTemplate('Jane', 'BDAY-ABC123', '2026-07-08')
+    expect(subject.toLowerCase()).toContain('birthday')
+  })
+
+  it('html contains name and discount code', () => {
+    const { html } = birthdayOfferTemplate('Jane', 'BDAY-ABC123', '2026-07-08')
+    expect(html).toContain('Jane')
+    expect(html).toContain('BDAY-ABC123')
+  })
+})
+
+describe('importationWaitlistTemplate', () => {
+  it('subject confirms waitlist', () => {
+    const { subject } = importationWaitlistTemplate('Jane')
+    expect(subject.toLowerCase()).toContain('waitlist')
+  })
+
+  it('html contains name and next steps', () => {
+    const { html } = importationWaitlistTemplate('Jane')
+    expect(html).toContain('Jane')
+    expect(html.toLowerCase()).toContain('touch')
   })
 })
