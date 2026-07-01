@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ADMIN_EMAILS } from '@/config/admin'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
+import { sendWelcomeEmail } from '@/lib/email/service'
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
@@ -254,6 +255,8 @@ export async function signup(formData: FormData) {
         } catch (err) {
             logger.error("Profile/Admin setup failed:", err)
         }
+
+        await sendWelcomeEmail(user.id)
     }
 
     revalidatePath('/', 'layout')
