@@ -15,6 +15,9 @@ declare global {
     PaystackPop: {
       setup(options: {
         accessCode?: string;
+        phone?: string;
+        firstName?: string;
+        lastName?: string;
         onClose?: () => void;
         callback?: (response: { reference: string }) => void;
       }): { openIframe(): void };
@@ -315,8 +318,12 @@ export default function CheckoutPage() {
 
       if (paymentData.access_code && window.PaystackPop) {
         // Open Paystack inline popup — no redirect, same-page experience
+        const nameParts = customerInfo.name.trim().split(' ');
         const handler = window.PaystackPop.setup({
           accessCode: paymentData.access_code,
+          phone: customerInfo.phone,
+          firstName: nameParts[0],
+          lastName: nameParts.slice(1).join(' ') || undefined,
           onClose: () => {
             setLoading(false);
           },
