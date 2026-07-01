@@ -250,3 +250,55 @@ describe('sendInvoiceEmail', () => {
     expect(mockEmailSend.mock.calls[0][0].to).toContain('override@example.com')
   })
 })
+
+describe('sendReferralRewardEmail', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('sends one email to the referrer', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserWithEmail))
+
+    const { sendReferralRewardEmail } = await import('@/lib/email/service')
+    await sendReferralRewardEmail('user-uuid-1', 'Mary', 100)
+
+    expect(mockEmailSend).toHaveBeenCalledTimes(1)
+    expect(mockEmailSend.mock.calls[0][0].to).toContain('jane@example.com')
+  })
+
+  it('does not send if referrer has no email', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserNoEmail))
+
+    const { sendReferralRewardEmail } = await import('@/lib/email/service')
+    await sendReferralRewardEmail('user-uuid-1', 'Mary', 100)
+
+    expect(mockEmailSend).not.toHaveBeenCalled()
+  })
+})
+
+describe('sendBirthdayOfferEmail', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('sends one email to the customer', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserWithEmail))
+
+    const { sendBirthdayOfferEmail } = await import('@/lib/email/service')
+    await sendBirthdayOfferEmail('user-uuid-1', 'BDAY-ABC123', '2026-07-08')
+
+    expect(mockEmailSend).toHaveBeenCalledTimes(1)
+    expect(mockEmailSend.mock.calls[0][0].to).toContain('jane@example.com')
+  })
+})
+
+describe('sendImportationWaitlistEmail', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('sends one email to provided address', async () => {
+    const { sendImportationWaitlistEmail } = await import('@/lib/email/service')
+    await sendImportationWaitlistEmail('jane@example.com', 'Jane Doe')
+
+    expect(mockEmailSend).toHaveBeenCalledTimes(1)
+    expect(mockEmailSend.mock.calls[0][0].to).toContain('jane@example.com')
+  })
+})

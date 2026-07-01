@@ -188,3 +188,44 @@ export async function sendInvoiceEmail(orderId: string, customerEmail?: string):
     console.error('[email] sendInvoiceEmail failed:', error)
   }
 }
+
+export async function sendReferralRewardEmail(
+  referrerId: string,
+  referredFirstName: string,
+  pointsAwarded: number
+): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    const { data: user } = await admin.from('users').select('email, full_name').eq('id', referrerId).single()
+    if (!user?.email) return
+    const t = referralRewardTemplate(user.full_name ?? 'Customer', referredFirstName, pointsAwarded)
+    await dispatch([user.email], t.subject, t.html)
+  } catch (error) {
+    console.error('[email] sendReferralRewardEmail failed:', error)
+  }
+}
+
+export async function sendBirthdayOfferEmail(
+  userId: string,
+  discountCode: string,
+  expiresAt: string
+): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    const { data: user } = await admin.from('users').select('email, full_name').eq('id', userId).single()
+    if (!user?.email) return
+    const t = birthdayOfferTemplate(user.full_name ?? 'Customer', discountCode, expiresAt)
+    await dispatch([user.email], t.subject, t.html)
+  } catch (error) {
+    console.error('[email] sendBirthdayOfferEmail failed:', error)
+  }
+}
+
+export async function sendImportationWaitlistEmail(email: string, name: string): Promise<void> {
+  try {
+    const t = importationWaitlistTemplate(name)
+    await dispatch([email], t.subject, t.html)
+  } catch (error) {
+    console.error('[email] sendImportationWaitlistEmail failed:', error)
+  }
+}
