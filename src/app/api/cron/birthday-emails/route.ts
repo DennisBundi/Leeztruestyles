@@ -39,13 +39,17 @@ export async function GET(request: NextRequest) {
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + 7)
 
-      await admin.from('reward_codes').insert({
+      const { error: insertError } = await admin.from('reward_codes').insert({
         user_id: account.user_id,
         code,
         type: 'birthday_offer',
         discount_percent: 10,
         expires_at: expiresAt.toISOString(),
       })
+      if (insertError) {
+        console.error(`[cron] reward_codes insert failed for user ${account.user_id}:`, insertError)
+        continue
+      }
 
       await sendBirthdayOfferEmail(account.user_id, code, expiresAt.toISOString())
       sent++

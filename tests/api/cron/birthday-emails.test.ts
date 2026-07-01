@@ -15,8 +15,6 @@ jest.mock('@/lib/supabase/admin', () => ({
   createAdminClient: jest.fn(),
 }))
 
-const mockToday = { month: 7, day: 1 }
-
 function makeAdminClient(users: Array<{ id: string; full_name: string; email: string }>) {
   return {
     from: jest.fn((table: string) => {
