@@ -1,9 +1,18 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resendClient } from './resend'
+import { generateInvoiceBuffer } from './invoice-pdf'
+import { formatOrderId } from '@/lib/utils/orderId'
 import {
   orderConfirmationTemplate,
   deliveryConfirmationTemplate,
   cancellationTemplate,
+  welcomeTemplate,
+  orderProcessingTemplate,
+  refundTemplate,
+  invoiceEmailTemplate,
+  referralRewardTemplate,
+  birthdayOfferTemplate,
+  importationWaitlistTemplate,
   type OrderForEmail,
   type OrderItemForEmail,
 } from './templates'
@@ -108,5 +117,74 @@ export async function sendCancellationEmail(orderId: string, customerEmail?: str
     await dispatch([STORE_EMAIL], st.subject, st.html)
   } catch (error) {
     console.error('[email] sendCancellationEmail failed:', error)
+  }
+}
+
+export async function sendWelcomeEmail(userId: string): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    const { data: user } = await admin.from('users').select('email, full_name').eq('id', userId).single()
+    if (!user?.email) return
+    const t = welcomeTemplate(user.full_name ?? 'Customer')
+    await dispatch([user.email], t.subject, t.html)
+  } catch (error) {
+    console.error('[email] sendWelcomeEmail failed:', error)
+  }
+}
+
+export async function sendOrderProcessingEmail(orderId: string): Promise<void> {
+  try {
+    const { order, items } = await fetchOrderWithItems(orderId)
+    const name = await fetchCustomerName(order.user_id)
+    const email = await resolveEmail(order.user_id)
+
+    if (email) {
+      const t = orderProcessingTemplate(order, items, name, false)
+      await dispatch([email], t.subject, t.html)
+    }
+    const st = orderProcessingTemplate(order, items, name, true)
+    await dispatch([STORE_EMAIL], st.subject, st.html)
+  } catch (error) {
+    console.error('[email] sendOrderProcessingEmail failed:', error)
+  }
+}
+
+export async function sendRefundEmail(orderId: string): Promise<void> {
+  try {
+    const { order } = await fetchOrderWithItems(orderId)
+    const name = await fetchCustomerName(order.user_id)
+    const email = await resolveEmail(order.user_id)
+
+    if (email) {
+      const t = refundTemplate(order, name, false)
+      await dispatch([email], t.subject, t.html)
+    }
+    const st = refundTemplate(order, name, true)
+    await dispatch([STORE_EMAIL], st.subject, st.html)
+  } catch (error) {
+    console.error('[email] sendRefundEmail failed:', error)
+  }
+}
+
+export async function sendInvoiceEmail(orderId: string, customerEmail?: string): Promise<void> {
+  try {
+    const { order, items } = await fetchOrderWithItems(orderId)
+    const name = await fetchCustomerName(order.user_id)
+    const email = await resolveEmail(order.user_id, customerEmail)
+    if (!email) return
+
+    const pdfBuffer = await generateInvoiceBuffer(order, items, name)
+    const num = formatOrderId(order.id)
+    const t = invoiceEmailTemplate(order, name)
+    await resendClient.emails.send({
+      from: FROM_EMAIL,
+      to: [email],
+      reply_to: REPLY_TO,
+      subject: t.subject,
+      html: t.html,
+      attachments: [{ filename: `invoice-${num}.pdf`, content: pdfBuffer }],
+    })
+  } catch (error) {
+    console.error('[email] sendInvoiceEmail failed:', error)
   }
 }

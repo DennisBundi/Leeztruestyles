@@ -7,6 +7,12 @@ jest.mock('@/lib/email/resend', () => ({
   resendClient: { emails: { send: mockEmailSend } },
 }))
 
+// Add after mockEmailSend declaration (top of file)
+const mockPdfGenerate = jest.fn().mockResolvedValue(Buffer.from('fake-pdf'))
+jest.mock('@/lib/email/invoice-pdf', () => ({
+  generateInvoiceBuffer: (...args: any[]) => mockPdfGenerate(...args),
+}))
+
 // Mock data
 const mockOrder = {
   id: 'f1a2b3c4-d5e6-7890-abcd-ef1234567890',
@@ -132,5 +138,116 @@ describe('sendCancellationEmail', () => {
     await sendCancellationEmail('f1a2b3c4-d5e6-7890-abcd-ef1234567890')
 
     expect(mockEmailSend).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('sendWelcomeEmail', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('sends one email to the customer', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserWithEmail))
+
+    const { sendWelcomeEmail } = await import('@/lib/email/service')
+    await sendWelcomeEmail('user-uuid-1')
+
+    expect(mockEmailSend).toHaveBeenCalledTimes(1)
+    expect(mockEmailSend.mock.calls[0][0].to).toContain('jane@example.com')
+  })
+
+  it('swallows errors without rethrowing', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({ single: jest.fn().mockResolvedValue({ data: null, error: { message: 'DB error' } }) }),
+        }),
+      }),
+    })
+
+    const { sendWelcomeEmail } = await import('@/lib/email/service')
+    await expect(sendWelcomeEmail('bad-id')).resolves.toBeUndefined()
+  })
+})
+
+describe('sendOrderProcessingEmail', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('sends two emails when customer has email', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserWithEmail))
+
+    const { sendOrderProcessingEmail } = await import('@/lib/email/service')
+    await sendOrderProcessingEmail('f1a2b3c4-d5e6-7890-abcd-ef1234567890')
+
+    expect(mockEmailSend).toHaveBeenCalledTimes(2)
+    const recipients = mockEmailSend.mock.calls.flatMap((c: any) => c[0].to)
+    expect(recipients).toContain('jane@example.com')
+    expect(recipients).toContain('leeztruestyles44@gmail.com')
+  })
+})
+
+describe('sendRefundEmail', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('sends two emails when customer has email', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserWithEmail))
+
+    const { sendRefundEmail } = await import('@/lib/email/service')
+    await sendRefundEmail('f1a2b3c4-d5e6-7890-abcd-ef1234567890')
+
+    expect(mockEmailSend).toHaveBeenCalledTimes(2)
+  })
+
+  it('sends only store copy when no customer email', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserNoEmail))
+
+    const { sendRefundEmail } = await import('@/lib/email/service')
+    await sendRefundEmail('f1a2b3c4-d5e6-7890-abcd-ef1234567890')
+
+    expect(mockEmailSend).toHaveBeenCalledTimes(1)
+    expect(mockEmailSend.mock.calls[0][0].to).toContain('leeztruestyles44@gmail.com')
+  })
+})
+
+describe('sendInvoiceEmail', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('sends one email with PDF attachment when customer has email', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserWithEmail))
+
+    const { sendInvoiceEmail } = await import('@/lib/email/service')
+    await sendInvoiceEmail('f1a2b3c4-d5e6-7890-abcd-ef1234567890')
+
+    expect(mockPdfGenerate).toHaveBeenCalledTimes(1)
+    expect(mockEmailSend).toHaveBeenCalledTimes(1)
+    const call = mockEmailSend.mock.calls[0][0]
+    expect(call.to).toContain('jane@example.com')
+    expect(call.attachments).toHaveLength(1)
+    expect(call.attachments[0].filename).toMatch(/^invoice-LEEZT-/)
+  })
+
+  it('does not send when customer has no email and no override', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserNoEmail))
+
+    const { sendInvoiceEmail } = await import('@/lib/email/service')
+    await sendInvoiceEmail('f1a2b3c4-d5e6-7890-abcd-ef1234567890')
+
+    expect(mockEmailSend).not.toHaveBeenCalled()
+  })
+
+  it('uses customerEmail override', async () => {
+    const { createAdminClient } = require('@/lib/supabase/admin')
+    createAdminClient.mockReturnValue(makeAdminClient(mockUserNoEmail))
+
+    const { sendInvoiceEmail } = await import('@/lib/email/service')
+    await sendInvoiceEmail('f1a2b3c4-d5e6-7890-abcd-ef1234567890', 'override@example.com')
+
+    expect(mockEmailSend).toHaveBeenCalledTimes(1)
+    expect(mockEmailSend.mock.calls[0][0].to).toContain('override@example.com')
   })
 })
