@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { InventoryService } from '@/services/inventoryService';
 import { LoyaltyService } from '@/services/loyaltyService';
-import { sendOrderConfirmation, sendInvoiceEmail } from '@/lib/email/service'
+import { sendOrderConfirmation, sendInvoiceEmail, sendReferralRewardEmail } from '@/lib/email/service'
 
 export const dynamic = 'force-dynamic';
 
@@ -205,6 +205,9 @@ export async function POST(request: NextRequest) {
             );
             if (referralPoints > 0) {
               console.log(`Awarded ${referralPoints} referral points to referrer for order ${order.id}`);
+              const { data: referredUser } = await adminClient.from('users').select('full_name').eq('id', completedOrder.user_id).single()
+              const firstName = ((referredUser as any)?.full_name ?? 'Someone').split(' ')[0]
+              await sendReferralRewardEmail(pendingReferral.referrer_id, firstName, referralPoints)
             }
           }
         }

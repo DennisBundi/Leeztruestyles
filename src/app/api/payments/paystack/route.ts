@@ -6,7 +6,7 @@ import { LoyaltyService } from '@/services/loyaltyService';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createHmac } from 'crypto';
 import { logger } from '@/lib/logger';
-import { sendOrderConfirmation, sendInvoiceEmail } from '@/lib/email/service'
+import { sendOrderConfirmation, sendInvoiceEmail, sendReferralRewardEmail } from '@/lib/email/service'
 
 function verifyPaystackSignature(rawBody: string, signature: string | null): boolean {
   const secret = process.env.PAYSTACK_SECRET_KEY;
@@ -124,6 +124,9 @@ export async function POST(request: NextRequest) {
             );
             if (referralPoints > 0) {
               logger.info(`Awarded ${referralPoints} referral points to referrer for order ${orderId}`);
+              const { data: referredUser } = await adminClient.from('users').select('full_name').eq('id', completedOrder.user_id).single()
+              const firstName = ((referredUser as any)?.full_name ?? 'Someone').split(' ')[0]
+              await sendReferralRewardEmail(pendingReferral.referrer_id, firstName, referralPoints)
             }
           }
         }

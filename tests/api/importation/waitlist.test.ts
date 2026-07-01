@@ -13,6 +13,10 @@ jest.mock('@/lib/supabase/admin', () => ({
   createAdminClient: jest.fn(() => mockAdminClient),
 }));
 
+jest.mock('@/lib/email/service', () => ({
+  sendImportationWaitlistEmail: jest.fn().mockResolvedValue(undefined),
+}));
+
 const validBody = {
   full_name: 'Jane Wanjiku',
   email: 'jane@retailer.co.ke',
@@ -80,10 +84,27 @@ describe('POST /api/importation/waitlist', () => {
     expect(res.status).toBe(400);
   });
 
-  it('should return 500 when DB insert fails', async () => {
+  it('should return 409 when email already exists', async () => {
     mockAdminClient.single.mockResolvedValueOnce({
       data: null,
       error: { message: 'DB error', code: '23505' },
+    });
+
+    const { POST } = await import('@/app/api/importation/waitlist/route');
+    const req = new NextRequest('http://localhost/api/importation/waitlist', {
+      method: 'POST',
+      body: JSON.stringify(validBody),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(409);
+  });
+
+  it('should return 500 when DB insert fails with non-duplicate error', async () => {
+    mockAdminClient.single.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'DB error', code: '42P01' },
     });
 
     const { POST } = await import('@/app/api/importation/waitlist/route');

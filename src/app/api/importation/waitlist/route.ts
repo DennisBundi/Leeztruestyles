@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendImportationWaitlistEmail } from "@/lib/email/service";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to save application." }, { status: 500 });
     }
 
+    await sendImportationWaitlistEmail(body.email.trim().toLowerCase(), body.full_name.trim())
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
     console.error("Waitlist route error:", error);

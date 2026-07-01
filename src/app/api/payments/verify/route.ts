@@ -7,7 +7,7 @@ import { InventoryService } from '@/services/inventoryService';
 import { LoyaltyService } from '@/services/loyaltyService';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
-import { sendOrderConfirmation, sendInvoiceEmail } from '@/lib/email/service'
+import { sendOrderConfirmation, sendInvoiceEmail, sendReferralRewardEmail } from '@/lib/email/service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -129,6 +129,9 @@ export async function GET(request: NextRequest) {
           );
           if (referralPoints > 0) {
             logger.info(`Awarded ${referralPoints} referral points for order ${order.id}`);
+            const { data: referredUser } = await adminClient.from('users').select('full_name').eq('id', order.user_id).single()
+            const firstName = ((referredUser as any)?.full_name ?? 'Someone').split(' ')[0]
+            await sendReferralRewardEmail(pendingReferral.referrer_id, firstName, referralPoints)
           }
         }
       }
