@@ -7,7 +7,6 @@ jest.mock('@/lib/email/resend', () => ({
   resendClient: { emails: { send: mockEmailSend } },
 }))
 
-// Add after mockEmailSend declaration (top of file)
 const mockPdfGenerate = jest.fn().mockResolvedValue(Buffer.from('fake-pdf'))
 jest.mock('@/lib/email/invoice-pdf', () => ({
   generateInvoiceBuffer: (...args: any[]) => mockPdfGenerate(...args),
