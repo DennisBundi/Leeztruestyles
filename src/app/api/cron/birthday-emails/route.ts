@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       const { error: insertError } = await admin.from('reward_codes').insert({
         user_id: account.user_id,
         code,
-        type: 'birthday_offer',
+        type: 'birthday',
         discount_percent: 10,
         expires_at: expiresAt.toISOString(),
       })
