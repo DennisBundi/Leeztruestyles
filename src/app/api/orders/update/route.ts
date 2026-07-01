@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserRole } from '@/lib/auth/roles';
 import { z } from 'zod';
-import { sendCancellationEmail } from '@/lib/email/service';
+import { sendCancellationEmail, sendOrderProcessingEmail, sendRefundEmail } from '@/lib/email/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,9 +54,8 @@ export async function PUT(request: NextRequest) {
     if (validated.status !== undefined) updateData.status = validated.status;
     if (validated.social_platform !== undefined) updateData.social_platform = validated.social_platform;
 
-    // Pre-fetch current status to prevent duplicate cancellation emails
     let previousStatus: string | null = null
-    if (validated.status === 'cancelled') {
+    if (['cancelled', 'processing', 'refunded'].includes(validated.status ?? '')) {
       const { data: currentOrder } = await supabase
         .from('orders')
         .select('status')
@@ -90,6 +89,12 @@ export async function PUT(request: NextRequest) {
         if (validated.status === 'cancelled' && previousStatus !== 'cancelled') {
           await sendCancellationEmail(validated.order_id)
         }
+        if (validated.status === 'processing' && previousStatus !== 'processing') {
+          await sendOrderProcessingEmail(validated.order_id)
+        }
+        if (validated.status === 'refunded' && previousStatus !== 'refunded') {
+          await sendRefundEmail(validated.order_id)
+        }
         return NextResponse.json({ success: true, warning: 'Social platform column not found, order updated without it' });
       }
     }
@@ -104,6 +109,12 @@ export async function PUT(request: NextRequest) {
 
     if (validated.status === 'cancelled' && previousStatus !== 'cancelled') {
       await sendCancellationEmail(validated.order_id)
+    }
+    if (validated.status === 'processing' && previousStatus !== 'processing') {
+      await sendOrderProcessingEmail(validated.order_id)
+    }
+    if (validated.status === 'refunded' && previousStatus !== 'refunded') {
+      await sendRefundEmail(validated.order_id)
     }
     return NextResponse.json({ success: true });
   } catch (error) {
