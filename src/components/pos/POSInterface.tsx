@@ -21,6 +21,12 @@ interface Category {
   description: string | null;
 }
 
+interface SellerEmployee {
+  id: string;
+  employee_code: string;
+  name: string;
+}
+
 export default function POSInterface({ employeeId, employeeCode, userRole: initialUserRole }: POSInterfaceProps) {
   const [products, setProducts] = useState<(Product & { available_stock?: number })[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -32,6 +38,9 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
   const [userRole, setUserRole] = useState<'admin' | 'manager' | 'seller' | null>(initialUserRole ?? null);
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [employees, setEmployees] = useState<SellerEmployee[]>([]);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | undefined>(undefined);
+  const [selectedSellerCode, setSelectedSellerCode] = useState<string | undefined>(undefined);
   const addCustomItem = useCartStore((state) => state.addCustomItem);
   const cartItems = useCartStore((state) => state.items);
   const getCartTotal = useCartStore((state) => state.getTotal);
@@ -100,11 +109,35 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
     }
   };
 
+  const fetchEmployees = async () => {
+    try {
+      const response = await fetch('/api/employees');
+      if (!response.ok) return;
+      const data = await response.json();
+      const nonAdmins: SellerEmployee[] = (data.employees || [])
+        .filter((e: any) => e.role !== 'admin')
+        .map((e: any) => ({
+          id: e.id,
+          employee_code: e.employee_code,
+          name: e.name,
+        }));
+      setEmployees(nonAdmins);
+    } catch {
+      // silently fail — selector simply won't appear
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchCategories();
     fetchUserRole();
   }, []);
+
+  useEffect(() => {
+    if (userRole === 'admin' || userRole === 'manager') {
+      fetchEmployees();
+    }
+  }, [userRole]);
 
   const fetchUserRole = async () => {
     try {
@@ -134,8 +167,9 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
   const canAddCustomProduct = userRole === 'admin' || userRole === 'seller';
 
   const handleOrderComplete = () => {
-    // Refresh products after order completion to update inventory
     fetchProducts();
+    setSelectedSellerId(undefined);
+    setSelectedSellerCode(undefined);
   };
 
   const filteredProducts = products.filter((product) => {
@@ -243,6 +277,13 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
               employeeId={employeeId}
               employeeCode={employeeCode}
               onOrderComplete={handleOrderComplete}
+              employees={employees}
+              sellerOverrideId={selectedSellerId}
+              sellerOverrideCode={selectedSellerCode}
+              onSellerChange={(id: string | null, code: string | null) => {
+                setSelectedSellerId(id ?? undefined);
+                setSelectedSellerCode(code ?? undefined);
+              }}
             />
           </div>
         </div>
@@ -254,6 +295,13 @@ export default function POSInterface({ employeeId, employeeCode, userRole: initi
               employeeId={employeeId}
               employeeCode={employeeCode}
               onOrderComplete={() => { handleOrderComplete(); setShowMobileCart(false); }}
+              employees={employees}
+              sellerOverrideId={selectedSellerId}
+              sellerOverrideCode={selectedSellerCode}
+              onSellerChange={(id: string | null, code: string | null) => {
+                setSelectedSellerId(id ?? undefined);
+                setSelectedSellerCode(code ?? undefined);
+              }}
             />
           ) : (
             productPanel
