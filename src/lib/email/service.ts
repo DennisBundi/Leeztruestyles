@@ -66,7 +66,7 @@ async function resolveEmail(userId: string | null, override?: string): Promise<s
 }
 
 async function dispatch(recipients: string[], subject: string, html: string): Promise<void> {
-  await resendClient.emails.send({ from: FROM_EMAIL, to: recipients, reply_to: REPLY_TO, subject, html })
+  await resendClient.emails.send({ from: FROM_EMAIL, to: recipients, replyTo: REPLY_TO, subject, html })
 }
 
 export async function sendOrderConfirmation(orderId: string, customerEmail?: string): Promise<void> {
@@ -179,7 +179,7 @@ export async function sendInvoiceEmail(orderId: string, customerEmail?: string):
     await resendClient.emails.send({
       from: FROM_EMAIL,
       to: [email],
-      reply_to: REPLY_TO,
+      replyTo: REPLY_TO,
       subject: t.subject,
       html: t.html,
       attachments: [{ filename: `invoice-${num}.pdf`, content: pdfBuffer }],
