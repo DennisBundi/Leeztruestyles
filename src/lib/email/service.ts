@@ -41,7 +41,7 @@ async function fetchOrderWithItems(
 
   const { data: rawItems, error: itemsError } = await admin
     .from('order_items')
-    .select('quantity, unit_price, products(name)')
+    .select('quantity, price, products(name)')
     .eq('order_id', orderId)
 
   if (itemsError) throw new Error(`Failed to fetch items: ${itemsError.message}`)
@@ -49,7 +49,7 @@ async function fetchOrderWithItems(
   const items: OrderItemForEmail[] = (rawItems ?? []).map((i: any) => ({
     product_name: i.products?.name ?? 'Unknown product',
     quantity: i.quantity,
-    unit_price: i.unit_price,
+    unit_price: i.price,
   }))
 
   return { order, items }
