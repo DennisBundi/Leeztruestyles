@@ -52,12 +52,13 @@ export default async function ProductDetailPage({
 }) {
   const supabase = await createClient();
 
-  // Parallel fetch: product, inventory, colors, sizes
-  const [productResult, inventoryResult, colorsResult, sizesResult] = await Promise.all([
+  // Parallel fetch: product, inventory, colors, sizes, reviews
+  const [productResult, inventoryResult, colorsResult, sizesResult, reviewsResult] = await Promise.all([
     supabase.from('products').select('*').eq('id', params.id).single(),
     supabase.from('inventory').select('stock_quantity, reserved_quantity').eq('product_id', params.id).single(),
     supabase.from('product_colors').select('color').eq('product_id', params.id),
     supabase.from('product_sizes').select('size, stock_quantity, reserved_quantity').eq('product_id', params.id).order('size', { ascending: true }),
+    supabase.from('reviews').select('rating').eq('product_id', params.id),
   ]);
 
   const product = productResult.data;
@@ -68,6 +69,11 @@ export default async function ProductDetailPage({
   const inventory = inventoryResult.data;
   const productColors = colorsResult.data;
   const productSizes = sizesResult.data;
+  const reviews = reviewsResult.data ?? [];
+  const reviewCount = reviews.length;
+  const ratingValue = reviewCount > 0
+    ? reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviewCount
+    : 0;
 
   // Fetch category (depends on product data)
   let categoryName = 'Uncategorized';
@@ -111,6 +117,7 @@ export default async function ProductDetailPage({
     '@type': 'Product',
     name: product.name,
     description: product.description || '',
+    sku: params.id,
     ...(imageUrl && { image: imageUrl }),
     offers: {
       '@type': 'Offer',
@@ -123,8 +130,15 @@ export default async function ProductDetailPage({
     },
     brand: {
       '@type': 'Brand',
-      name: 'Leeztruestyles',
+      name: 'Leez True Styles',
     },
+    ...(reviewCount > 0 && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: ratingValue.toFixed(1),
+        reviewCount: String(reviewCount),
+      },
+    }),
   };
 
   return (
