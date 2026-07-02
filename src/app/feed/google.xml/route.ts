@@ -29,11 +29,11 @@ export async function GET() {
 
   const { data: inventory } = await admin
     .from('inventory')
-    .select('product_id, stock_quantity');
+    .select('product_id, stock_quantity, reserved_quantity');
 
   const stockMap = new Map<string, number>();
   for (const row of inventory ?? []) {
-    stockMap.set(row.product_id, row.stock_quantity);
+    stockMap.set(row.product_id, Math.max(0, (row.stock_quantity ?? 0) - (row.reserved_quantity ?? 0)));
   }
 
   const now = new Date();
