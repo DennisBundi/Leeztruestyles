@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import AddToCartButton from '@/components/products/AddToCartButton';
 import WhatsAppWidget from '@/components/whatsapp/WhatsAppWidget';
+import ProductRecommendations from '@/components/products/ProductRecommendations';
 import type { Product } from '@/types';
 import { PRODUCT_COLORS } from '@/lib/utils/colors';
 
@@ -441,6 +442,8 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
               </p>
             </div>
           )}
+
+          <ProductRecommendations productId={product.id} title="You May Also Like" />
 
           {/* Product Features */}
           <div className="bg-gray-50 rounded-xl p-6">
