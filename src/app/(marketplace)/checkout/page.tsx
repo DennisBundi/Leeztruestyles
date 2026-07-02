@@ -8,6 +8,7 @@ import Link from "next/link";
 import PaymentMethodSelector from "@/components/checkout/PaymentMethodSelector";
 import OrderSummary from "@/components/checkout/OrderSummary";
 import CheckoutLoyalty from "@/components/loyalty/CheckoutLoyalty";
+import ProductRecommendations from "@/components/products/ProductRecommendations";
 import { createClient } from "@/lib/supabase/client";
 
 declare global {
@@ -636,6 +637,12 @@ export default function CheckoutPage() {
         {/* Order Summary + Loyalty */}
         <div className="lg:col-span-1 space-y-4">
           <OrderSummary items={isMounted ? items : []} total={total} />
+          {isMounted && items.length > 0 && (
+            <ProductRecommendations
+              productId={items[0].product.id}
+              title="Complete the Look"
+            />
+          )}
           {rewardDiscount > 0 && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between text-sm">
               <span className="text-green-700 font-medium">Reward Discount</span>
